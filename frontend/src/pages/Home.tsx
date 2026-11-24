@@ -30,20 +30,20 @@ export function Home() {
           <Link to="/users" className="dash-kpi glass" data-tone="ok">
             <span className="dash-kpi-l"><Users size={16} /> المستخدمين</span>
             <span className="dash-kpi-n num">{users.data ? people.length : '…'}</span>
-            <small>{users.data ? `${people.filter((p) => !p.is_active).length} موقوف · ${people.filter((p) => p.must_change_password).length} ما دخلوا لسا` : ' '}</small>
+            <small>{users.data ? `${people.filter((p) => !p.is_active).length} موقوف · ${people.filter((p) => p.must_change_password).length} لم يدخلوا بعد` : ' '}</small>
           </Link>
         )}
         {can(user, 'permissions.manage') && (
           <Link to="/permissions" className="dash-kpi glass" data-tone="info">
             <span className="dash-kpi-l"><KeyRound size={16} /> الصلاحيات</span>
             <span className="dash-kpi-n">⚙</span>
-            <small>مين بيشوف شو</small>
+            <small>من يطّلع على ماذا</small>
           </Link>
         )}
       </div>
       <section className="card glass af-pad">
-        <h2 className="af-h2">شو في بالنظام لهلأ</h2>
-        <p className="eyebrow">هلأ في: الفروع، والموظفين وملفاتهم، والصلاحيات، والحضور. باقي الأقسام (الرواتب، المراسلات، التوليد…) جاي بالمراحل الجاية.</p>
+        <h2 className="af-h2">ما يتضمنه النظام حالياً</h2>
+        <p className="eyebrow">يتضمن النظام حالياً: الفروع، والموظفين وملفاتهم، والصلاحيات، والحضور. وستُضاف بقية الأقسام (الرواتب، والمراسلات، والتوليد…) في المراحل القادمة.</p>
         <p className="eyebrow">حسابك: <b>{user.role?.name}</b>{user.branch ? <> · فرع <b>{user.branch.name}</b></> : <> · كل الفروع</>}</p>
       </section>
     </div>

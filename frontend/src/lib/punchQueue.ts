@@ -54,11 +54,11 @@ export async function flushPunches(): Promise<void> {
         res = await punch({ method: 'app', uuid: item.uuid, device_time: item.device_time, offline: true })
       } catch (e) {
         if (e instanceof ApiError && (e.status === 0 || e.status >= 500 || e.status === 401 || e.status === 429)) return
-        res = { ok: false, status: 'error', message: e instanceof ApiError ? e.message : 'صار خطأ', wait_until: null, day: null }
+        res = { ok: false, status: 'error', message: e instanceof ApiError ? e.message : 'حدث خطأ', wait_until: null, day: null }
       }
       save(queued().filter((q) => q.uuid !== item.uuid))
-      if (res.ok) toast(`انبعت تسجيل ${res.day?.check_out ? 'الانصراف' : 'الحضور'} اللي انحفظ بدون نت`, 'ok')
-      else if (res.status !== 'repeat' && res.status !== 'full') toast(`تسجيل محفوظ ما انقبل: ${res.message}`, 'danger')
+      if (res.ok) toast(`أُرسل تسجيل ${res.day?.check_out ? 'الانصراف' : 'الحضور'} الذي حُفظ دون إنترنت`, 'ok')
+      else if (res.status !== 'repeat' && res.status !== 'full') toast(`لم يُقبل تسجيل محفوظ: ${res.message}`, 'danger')
     }
   } finally {
     flushing = false

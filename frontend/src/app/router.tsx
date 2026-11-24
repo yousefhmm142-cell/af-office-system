@@ -17,7 +17,7 @@ import { AppShell } from './AppShell'
 import { can, useAuth, useUser } from './auth'
 
 function Splash() {
-  return <div className="splash" role="status" aria-label="بيحمّل"><span className="spinner" aria-hidden="true" /></div>
+  return <div className="splash" role="status" aria-label="جارٍ التحميل"><span className="spinner" aria-hidden="true" /></div>
 }
 
 /** Signed out → login (or first setup); temporary password → choose your own first. */

@@ -79,7 +79,7 @@ export function EmployeeFile() {
           <Row k="قيمة الراتب" v={f.job.salary_amount ? `${Number(f.job.salary_amount)} شيكل` : null} num />
           <Row k="ساعات الدوام" v={String(Number(f.job.daily_hours))} num />
           <Row k="تاريخ التوظيف" v={f.job.hire_date} num />
-          <Row k="الحضور" v={f.job.tracks_attendance ? (f.job.punch_anywhere ? 'بيسجّل · الـQR من أي مكان' : 'بيسجّل') : 'ما بيسجّل حضور'} />
+          <Row k="الحضور" v={f.job.tracks_attendance ? (f.job.punch_anywhere ? 'يسجّل · الـQR من أي مكان' : 'يسجّل') : 'لا يسجّل الحضور'} />
         </Section>
 
         <Attachments file={f} onChange={(attachments) => setData({ ...f, attachments })} />
@@ -135,7 +135,7 @@ function useSave(onSaved: (f: File_) => void) {
     setBusy(true); setFields({}); setError(null)
     try {
       const f = await api<File_>(path, { method, body })
-      toast('انحفظ')
+      toast('تم الحفظ')
       onSaved(f)
     } catch (e) {
       if (e instanceof ApiError) { setFields(e.fields); setError(Object.keys(e.fields).length ? null : e.message) }
@@ -207,7 +207,7 @@ function PersonalDialog({ file, part, onClose, onSaved }: { file: File_; part: '
                 <button type="button" role="radio" aria-checked={form.payment_method === 'bank'} onClick={() => set('payment_method', 'bank')}>حساب بنك</button>
               </div>
             </div>
-            {input('provider', form.payment_method === 'bank' ? 'اسم البنك' : 'اسم المحفظة', { placeholder: form.payment_method === 'bank' ? 'مثلاً: بنك فلسطين' : 'مثلاً: PalPay' })}
+            {input('provider', form.payment_method === 'bank' ? 'اسم البنك' : 'اسم المحفظة', { placeholder: form.payment_method === 'bank' ? 'مثال: بنك فلسطين' : 'مثال: PalPay' })}
             {input('account_number', 'رقم الحساب', digits)}
             {input('account_holder_name', 'اسم صاحب الحساب')}
             <div className="af-row2">{input('account_holder_national_id', 'هوية صاحب الحساب', digits)}{input('account_holder_phone', 'جوال صاحب الحساب', { ...digits, inputMode: 'tel' })}</div>
@@ -246,7 +246,7 @@ function JobDialog({ file, onClose, onSaved }: { file: File_; onClose(): void; o
       footer={<><Button onClick={onClose}>إلغاء</Button><Button variant="primary" busy={busy} onClick={() => save()}>حفظ</Button></>}>
       <form className="form-grid" onSubmit={save}>
         <div className="af-row2">
-          <Field label="المسمى الوظيفي" error={fields.job_title}>{(id) => <input id={id} className="input" value={form.job_title} onChange={(e) => set('job_title', e.target.value)} placeholder="مثلاً: محصّل، كهربائي" />}</Field>
+          <Field label="المسمى الوظيفي" error={fields.job_title}>{(id) => <input id={id} className="input" value={form.job_title} onChange={(e) => set('job_title', e.target.value)} placeholder="مثال: محصّل، كهربائي" />}</Field>
           <Field label="القسم" error={fields.department_id}>{(id) => (
             <select id={id} className="input select" value={form.department_id} onChange={(e) => set('department_id', e.target.value)}>
               <option value="">—</option>{deps.data?.departments.filter((d) => d.is_active || String(d.id) === form.department_id).map((d) => <option key={d.id} value={d.id}>{d.name}</option>)}
@@ -270,7 +270,7 @@ function JobDialog({ file, onClose, onSaved }: { file: File_; onClose(): void; o
             </select>)}</Field>
         </div>
         <div className="af-switches">
-          <Switch label="بيسجّل حضور" on={form.tracks_attendance} onChange={(v) => set('tracks_attendance', v)} />
+          <Switch label="يسجّل الحضور" on={form.tracks_attendance} onChange={(v) => set('tracks_attendance', v)} />
           <Switch label="الـQR من أي مكان" on={form.punch_anywhere} onChange={(v) => set('punch_anywhere', v)} />
         </div>
         <ErrorBanner text={error} />
@@ -291,7 +291,7 @@ function StatusDialog({ file, onClose, onSaved }: { file: File_; onClose(): void
         <div className="chips" role="radiogroup" aria-label="الحالة">
           {(Object.keys(STATUS_LABEL) as EmployeeStatus[]).map((s) => <button key={s} type="button" className="chip" aria-pressed={status === s} onClick={() => setStatus(s)}>{STATUS_LABEL[s]}</button>)}
         </div>
-        {status === 'terminated' && <p className="eyebrow">المفصول ما بيقدر يدخل على النظام. لو رجّعته فعّال، حسابه بيرجع يشتغل.</p>}
+        {status === 'terminated' && <p className="eyebrow">لا يستطيع الموظف المفصول الدخول إلى النظام. وإذا أعدته إلى «فعّال» يعود حسابه للعمل.</p>}
         <Field label={needsReason ? 'السبب (مطلوب)' : 'السبب (اختياري)'} error={fields.reason}>
           {(id) => <textarea id={id} className="input textarea" rows={3} value={reason} onChange={(e) => setReason(e.target.value)} />}
         </Field>
@@ -317,9 +317,9 @@ function Attachments({ file, onChange }: { file: File_; onChange(a: File_['attac
       body.append('file', f)
       const res = await api<{ attachment: File_['attachments'][number] }>(`/employees/${file.user.id}/attachments`, { method: 'POST', body })
       onChange([res.attachment, ...file.attachments])
-      toast('انرفع المرفق')
+      toast('رُفع المرفق')
     } catch (e) {
-      toast(e instanceof ApiError ? (Object.values(e.fields)[0] ?? e.message) : 'ما انرفع', 'danger')
+      toast(e instanceof ApiError ? (Object.values(e.fields)[0] ?? e.message) : 'لم يُرفع', 'danger')
     } finally {
       setBusy(false)
       if (input.current) input.current.value = ''
@@ -331,7 +331,7 @@ function Attachments({ file, onChange }: { file: File_; onChange(a: File_['attac
     try {
       await api(`/employees/${file.user.id}/attachments/${id}`, { method: 'DELETE' })
       onChange(file.attachments.filter((a) => a.id !== id))
-    } catch (e) { toast(e instanceof ApiError ? e.message : 'ما انحذف', 'danger') }
+    } catch (e) { toast(e instanceof ApiError ? e.message : 'لم يُحذف', 'danger') }
   }
 
   return (
@@ -356,7 +356,7 @@ function Attachments({ file, onChange }: { file: File_; onChange(a: File_['attac
             {canEdit && <button type="button" className="icon-btn" aria-label={`حذف ${a.name}`} onClick={() => void remove(a.id, a.name)}><Trash2 size={16} /></button>}
           </div>
         ))}
-        {file.attachments.length === 0 && <p className="eyebrow">لسا ما في مرفقات.</p>}
+        {file.attachments.length === 0 && <p className="eyebrow">لا توجد مرفقات بعد.</p>}
       </div>
     </section>
   )

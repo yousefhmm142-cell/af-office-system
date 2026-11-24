@@ -14,7 +14,7 @@ export function useLoad<T>(path: string | null) {
       setData(await api<T>(path))
       setError(null)
     } catch (e) {
-      setError(e instanceof ApiError ? e.message : 'صار خطأ.')
+      setError(e instanceof ApiError ? e.message : 'حدث خطأ.')
     } finally {
       setLoading(false)
     }

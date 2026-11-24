@@ -36,7 +36,7 @@ class UsersTest extends TestCase
         $body = ['name' => 'محمد', 'password' => 'temp1234', 'role_id' => $this->roleId(Role::EMPLOYEE), 'branch_id' => $branch->id];
 
         $this->postJson('/api/users', $body + ['username' => 'محمد.ش'])->assertCreated();
-        $this->postJson('/api/users', $body + ['username' => 'محمد.ش'])->assertStatus(422)->assertJsonPath('errors.username.0', 'اسم المستخدم مستعمل. اختار اسم ثاني.');
+        $this->postJson('/api/users', $body + ['username' => 'محمد.ش'])->assertStatus(422)->assertJsonPath('errors.username.0', 'اسم المستخدم مستخدم من قبل. اختر اسماً آخر.');
         $this->postJson('/api/users', $body + ['username' => 'فيه فراغ'])->assertStatus(422);
         $this->postJson('/api/users', $body + ['username' => 'ab'])->assertStatus(422);
     }

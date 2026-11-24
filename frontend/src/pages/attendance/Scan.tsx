@@ -30,7 +30,7 @@ export function Scan() {
       const place = withPlace ? await position() : null
       setRes(await punch({ method: 'qr', code, peek, uuid: crypto.randomUUID(), ...(place ?? {}) }))
     } catch (e) {
-      setError(e instanceof ApiError ? e.message : 'ما انسجّل. جرّب كمان مرة.')
+      setError(e instanceof ApiError ? e.message : 'لم يُسجَّل. حاول مرة أخرى.')
     } finally { setBusy(false) }
   }
 
@@ -50,9 +50,9 @@ export function Scan() {
       <div className="scan-brand"><Logo height={42} /></div>
       <section className="card glass scan-step">
         {busy ? (
-          <p role="status"><span className="spinner" aria-hidden="true" /> بيسجّل…</p>
+          <p role="status"><span className="spinner" aria-hidden="true" /> جارٍ التسجيل…</p>
         ) : error ? (
-          <><CircleAlert size={40} className="scan-bad" /><h1>ما انسجّل</h1><p>{error}</p><Button variant="primary" onClick={() => void run(false)}>جرّب كمان مرة</Button></>
+          <><CircleAlert size={40} className="scan-bad" /><h1>لم يُسجَّل</h1><p>{error}</p><Button variant="primary" onClick={() => void run(false)}>حاول مرة أخرى</Button></>
         ) : res && done ? (
           <div className={`scan-done${kindOut ? ' out' : ''}`}>
             <span className="scan-ico">{kindOut ? <LogOut size={34} /> : <LogIn size={34} />}</span>
@@ -63,7 +63,7 @@ export function Scan() {
           </div>
         ) : res && peeked ? (
           <>
-            <h1>{res.status === 'in' ? 'لسا ما سجّلت حضورك' : 'جاهز تسجّل انصرافك'}</h1>
+            <h1>{res.status === 'in' ? 'لم تسجّل حضورك بعد' : 'يمكنك تسجيل انصرافك'}</h1>
             <Button variant="primary" size="lg" onClick={() => void run(false)} icon={res.status === 'in' ? <LogIn size={20} /> : <LogOut size={20} />}>
               {res.status === 'in' ? 'سجّل حضوري الآن' : 'سجّل انصرافي الآن'}
             </Button>
@@ -71,9 +71,9 @@ export function Scan() {
         ) : res ? (
           <>
             {res.status === 'full' || res.status === 'repeat' ? <CheckCircle2 size={40} className="scan-ok" /> : res.status === 'wait' ? <Clock3 size={40} className="scan-wait" /> : <CircleAlert size={40} className="scan-bad" />}
-            <h1>{res.status === 'wait' && res.wait_until ? `الانصراف بيفتح الساعة ${formatTime(new Date(res.wait_until))}` : res.message}</h1>
-            {res.status === 'location_needed' && <Button variant="primary" icon={<MapPin size={18} />} onClick={() => void run(false, true)}>اسمح للموقع وسجّل</Button>}
-            {res.status === 'too_far' && <Button onClick={() => void run(false, true)}>جرّب كمان مرة</Button>}
+            <h1>{res.status === 'wait' && res.wait_until ? `يُتاح الانصراف الساعة ${formatTime(new Date(res.wait_until))}` : res.message}</h1>
+            {res.status === 'location_needed' && <Button variant="primary" icon={<MapPin size={18} />} onClick={() => void run(false, true)}>اسمح بالموقع وسجّل</Button>}
+            {res.status === 'too_far' && <Button onClick={() => void run(false, true)}>حاول مرة أخرى</Button>}
           </>
         ) : null}
       </section>

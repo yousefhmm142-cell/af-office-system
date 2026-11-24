@@ -26,7 +26,7 @@ class WorkScheduleController extends Controller
     public function store(Request $request): JsonResponse
     {
         $data = $this->validated($request, null);
-        abort_unless(Access::allowsBranch($request->user(), 'schedules.manage', $data['branch_id']), 403, 'ما عندك صلاحية على دوامات هاد الفرع.');
+        abort_unless(Access::allowsBranch($request->user(), 'schedules.manage', $data['branch_id']), 403, 'ليست لديك صلاحية على دوامات هذا الفرع.');
 
         $schedule = DB::transaction(function () use ($data) {
             $s = WorkSchedule::create($data);
@@ -41,7 +41,7 @@ class WorkScheduleController extends Controller
 
     public function update(Request $request, WorkSchedule $schedule): JsonResponse
     {
-        abort_unless(Access::allowsBranch($request->user(), 'schedules.manage', $schedule->branch_id), 403, 'ما عندك صلاحية على دوامات هاد الفرع.');
+        abort_unless(Access::allowsBranch($request->user(), 'schedules.manage', $schedule->branch_id), 403, 'ليست لديك صلاحية على دوامات هذا الفرع.');
         $data = $this->validated($request, $schedule);
         unset($data['branch_id']);
         $before = Present::schedule($schedule);
@@ -57,9 +57,9 @@ class WorkScheduleController extends Controller
 
     public function destroy(Request $request, WorkSchedule $schedule): JsonResponse
     {
-        abort_unless(Access::allowsBranch($request->user(), 'schedules.manage', $schedule->branch_id), 403, 'ما عندك صلاحية على دوامات هاد الفرع.');
+        abort_unless(Access::allowsBranch($request->user(), 'schedules.manage', $schedule->branch_id), 403, 'ليست لديك صلاحية على دوامات هذا الفرع.');
         if ($schedule->is_default) {
-            return response()->json(['message' => 'هاد الدوام الأساسي للفرع. اختار دوام ثاني أساسي قبل ما تحذفه.', 'code' => 'default_schedule'], 422);
+            return response()->json(['message' => 'هذا هو الدوام الأساسي للفرع. اجعل دواماً آخر أساسياً قبل حذفه.', 'code' => 'default_schedule'], 422);
         }
         $schedule->delete();
         Audit::log('schedule.deleted', $schedule, Present::schedule($schedule));
@@ -89,7 +89,7 @@ class WorkScheduleController extends Controller
         $start = $data['start_time'] ?? substr((string) $schedule?->start_time, 0, 5);
         $end = $data['end_time'] ?? substr((string) $schedule?->end_time, 0, 5);
         if ($end <= $start) {
-            throw \Illuminate\Validation\ValidationException::withMessages(['end_time' => 'وقت نهاية الدوام لازم يكون بعد البداية.']);
+            throw \Illuminate\Validation\ValidationException::withMessages(['end_time' => 'يجب أن يكون وقت نهاية الدوام بعد بدايته.']);
         }
         if (isset($data['work_days'])) {
             $data['work_days'] = collect($data['work_days'])->map(fn ($d) => (int) $d)->sort()->values()->all();

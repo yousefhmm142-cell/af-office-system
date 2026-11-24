@@ -13,7 +13,7 @@ class PasswordChanged
     {
         if ($request->user()?->must_change_password) {
             return response()->json([
-                'message' => 'لازم تغيّر رمزك أول مرة قبل ما تكمل.',
+                'message' => 'يجب أن تغيّر رمزك المؤقت قبل المتابعة.',
                 'code' => 'must_change_password',
             ], 403);
         }

@@ -21,7 +21,7 @@ class AttendancePointController extends Controller
     {
         $actor = $request->user();
         $branchId = $request->integer('branch_id') ?: $actor->branch_id;
-        abort_unless($branchId && Access::allowsBranch($actor, 'attendance.points', $branchId), 403, 'ما عندك صلاحية على أوراق هاد الفرع.');
+        abort_unless($branchId && Access::allowsBranch($actor, 'attendance.points', $branchId), 403, 'ليست لديك صلاحية على أوراق هذا الفرع.');
 
         return response()->json([
             'points' => AttendancePoint::where('branch_id', $branchId)->orderBy('id')->get()->map(fn ($p) => $this->present($p)),
@@ -67,7 +67,7 @@ class AttendancePointController extends Controller
         $ips = $point->allowed_ips ?? [];
         if (! in_array($ip, $ips, true)) {
             if (count($ips) >= config('access.attendance.max_ips')) {
-                throw ValidationException::withMessages(['ip' => 'في 5 شبكات معتمدة. احذف وحدة قديمة أول.']);
+                throw ValidationException::withMessages(['ip' => 'توجد خمس شبكات معتمدة. احذف إحداها أولاً.']);
             }
             $ips[] = $ip;
             $point->forceFill(['allowed_ips' => $ips])->save();
@@ -114,7 +114,7 @@ class AttendancePointController extends Controller
 
     private function authorizeBranch(Request $request, int $branchId): void
     {
-        abort_unless(Access::allowsBranch($request->user(), 'attendance.points', $branchId), 403, 'ما عندك صلاحية على أوراق هاد الفرع.');
+        abort_unless(Access::allowsBranch($request->user(), 'attendance.points', $branchId), 403, 'ليست لديك صلاحية على أوراق هذا الفرع.');
     }
 
     private function present(AttendancePoint $p): array

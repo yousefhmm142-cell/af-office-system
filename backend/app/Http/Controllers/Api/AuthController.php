@@ -23,7 +23,7 @@ class AuthController extends Controller
 
         $cfg = config('access.login');
         $user = User::where('username', User::normalizeUsername($data['username']))->first();
-        $wrong = fn () => throw ValidationException::withMessages(['username' => 'اسم المستخدم أو الرمز غلط.']);
+        $wrong = fn () => throw ValidationException::withMessages(['username' => 'اسم المستخدم أو الرمز غير صحيح.']);
 
         if (! $user || ! $user->is_active) {
             $wrong();
@@ -33,7 +33,7 @@ class AuthController extends Controller
             $minutes = (int) ceil(now()->diffInSeconds($user->locked_until) / 60);
 
             return response()->json([
-                'message' => "الحساب مقفول مؤقتاً بسبب محاولات غلط. جرّب بعد {$minutes} دقيقة.",
+                'message' => "الحساب مقفل مؤقتاً بسبب محاولات خاطئة. حاول بعد {$minutes} دقيقة.",
                 'code' => 'locked',
                 'minutes' => $minutes,
             ], 423);
@@ -76,7 +76,7 @@ class AuthController extends Controller
         ]);
 
         if (! Hash::check($data['current_password'], $user->password)) {
-            throw ValidationException::withMessages(['current_password' => 'الرمز الحالي غلط.']);
+            throw ValidationException::withMessages(['current_password' => 'الرمز الحالي غير صحيح.']);
         }
 
         $user->forceFill([

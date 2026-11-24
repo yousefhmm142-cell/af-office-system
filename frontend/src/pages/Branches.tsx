@@ -19,7 +19,7 @@ export function Branches() {
 
   return (
     <>
-      <PageHead title="الفروع" eyebrow="كل فرع إله موظفينه وأقسامه ودوامه"
+      <PageHead title="الفروع" eyebrow="لكل فرع موظفوه وأقسامه ودوامه"
         actions={canAdd && <Button variant="primary" icon={<Plus size={18} />} onClick={() => setAdding(true)}>فرع جديد</Button>} />
       <ErrorBanner text={error} />
       {loading && !data ? <Loading /> : (
@@ -40,7 +40,7 @@ export function Branches() {
               </div>
             </Link>
           ))}
-          {data?.branches.length === 0 && <p className="eyebrow">لسا ما في فروع. اضغط «فرع جديد».</p>}
+          {data?.branches.length === 0 && <p className="eyebrow">لا توجد فروع بعد. اضغط «فرع جديد».</p>}
         </div>
       )}
       <NewBranch open={adding} onClose={() => setAdding(false)} onSaved={() => { setAdding(false); void reload() }} />
@@ -62,7 +62,7 @@ function NewBranch({ open, onClose, onSaved }: { open: boolean; onClose(): void;
     setBusy(true); setFields({}); setError(null)
     try {
       await api('/branches', { method: 'POST', body: { name, start_time: start, work_hours: Number(hours) } })
-      toast(`انضاف فرع ${name}`)
+      toast(`أُضيف فرع ${name}`)
       setName('')
       onSaved()
     } catch (err) {
@@ -71,10 +71,10 @@ function NewBranch({ open, onClose, onSaved }: { open: boolean; onClose(): void;
   }
 
   return (
-    <Dialog open={open} onClose={onClose} title="فرع جديد" subtitle="كل الأقسام بتكون مفتوحة، وبتقدر تسكّر اللي بدك ياه بعدين" icon={<Building2 size={20} />}
+    <Dialog open={open} onClose={onClose} title="فرع جديد" subtitle="تكون جميع الأقسام مفعّلة، ويمكنك إغلاق ما تريد لاحقاً" icon={<Building2 size={20} />}
       footer={<><Button onClick={onClose}>إلغاء</Button><Button variant="primary" busy={busy} onClick={save} disabled={!name}>إضافة</Button></>}>
       <form className="form-grid" onSubmit={save}>
-        <Field label="اسم الفرع" error={fields.name}>{(id) => <input id={id} className="input" value={name} onChange={(e) => setName(e.target.value)} placeholder="مثلاً: مخيم 2" />}</Field>
+        <Field label="اسم الفرع" error={fields.name}>{(id) => <input id={id} className="input" value={name} onChange={(e) => setName(e.target.value)} placeholder="مثال: مخيم 2" />}</Field>
         <div className="af-row2">
           <Field label="بداية الدوام" error={fields.start_time}>{(id) => <input id={id} className="input num" type="time" value={start} onChange={(e) => setStart(e.target.value)} />}</Field>
           <Field label="عدد الساعات" error={fields.work_hours}>{(id) => <input id={id} className="input num" type="number" min={1} max={16} value={hours} onChange={(e) => setHours(e.target.value)} />}</Field>

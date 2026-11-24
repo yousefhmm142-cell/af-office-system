@@ -14,7 +14,7 @@ Artisan::command('app:super-admin {username} {--name=}', function (string $usern
     $username = User::normalizeUsername($username);
     $password = $this->secret('الرمز (6 خانات على الأقل)');
     if (mb_strlen((string) $password) < config('access.login.password_min')) {
-        $this->error('الرمز قصير.');
+        $this->error('الرمز قصير جداً.');
 
         return 1;
     }
@@ -31,5 +31,5 @@ Artisan::command('app:super-admin {username} {--name=}', function (string $usern
     $user->failed_logins = 0;
     $user->locked_until = null;
     $user->save();
-    $this->info("تم: {$username} صار سوبر أدمن.");
+    $this->info("تم: أصبح {$username} سوبر أدمن.");
 })->purpose('Create or restore a super admin account');

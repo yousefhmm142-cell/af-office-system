@@ -18,6 +18,6 @@ class RequirePermission
                 return $next($request);
             }
         }
-        abort(403, 'ما عندك صلاحية لهاي الصفحة.');
+        abort(403, 'ليست لديك صلاحية لهذه الصفحة.');
     }
 }

@@ -50,7 +50,7 @@ export interface PermissionDef { id: number; key: string; name: string; group: s
 export interface RoleGrants extends RoleRef { locked: boolean; grants: Record<string, Scope> }
 export interface Override { key: string; effect: 'allow' | 'deny'; scope: Scope | null }
 
-export const SCOPE_LABEL: Record<Scope, string> = { own: 'إله بس', branch: 'فرعه', all: 'كل الفروع' }
+export const SCOPE_LABEL: Record<Scope, string> = { own: 'بياناته فقط', branch: 'فرعه فقط', all: 'كل الفروع' }
 /** ISO days, Saturday first (the local week). */
 export const DAYS: Array<[number, string]> = [[6, 'السبت'], [7, 'الأحد'], [1, 'الاثنين'], [2, 'الثلاثاء'], [3, 'الأربعاء'], [4, 'الخميس'], [5, 'الجمعة']]
 

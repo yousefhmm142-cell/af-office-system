@@ -40,9 +40,9 @@ class HolidayController extends Controller
             'name' => ['required', 'string', 'min:2', 'max:80'],
         ]);
         $branchId = $data['branch_id'] ?? null;
-        abort_unless(Access::allowsBranch($request->user(), 'holidays.manage', $branchId), 403, 'ما عندك صلاحية تضيف هاي العطلة.');
+        abort_unless(Access::allowsBranch($request->user(), 'holidays.manage', $branchId), 403, 'ليست لديك صلاحية لإضافة هذه العطلة.');
         if (Holiday::where('date', $data['date'])->where('branch_id', $branchId)->exists()) {
-            throw ValidationException::withMessages(['date' => 'في عطلة مسجّلة بنفس اليوم.']);
+            throw ValidationException::withMessages(['date' => 'توجد عطلة مسجّلة في اليوم نفسه.']);
         }
         $holiday = Holiday::create($data);
         Audit::log('holiday.created', $holiday, null, $data);
@@ -52,7 +52,7 @@ class HolidayController extends Controller
 
     public function destroy(Request $request, Holiday $holiday): JsonResponse
     {
-        abort_unless(Access::allowsBranch($request->user(), 'holidays.manage', $holiday->branch_id), 403, 'ما عندك صلاحية تحذف هاي العطلة.');
+        abort_unless(Access::allowsBranch($request->user(), 'holidays.manage', $holiday->branch_id), 403, 'ليست لديك صلاحية لحذف هذه العطلة.');
         $holiday->delete();
         Audit::log('holiday.deleted', $holiday, $holiday->only('date', 'name', 'branch_id'));
 

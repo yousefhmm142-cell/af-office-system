@@ -9,7 +9,7 @@ export function OfflineBar() {
   return (
     <div className="af-bar warn" role="status" aria-live="polite">
       <CloudOff size={17} aria-hidden="true" />
-      <span><b>بدون إنترنت</b> · زر الحضور شغّال وبيحفظ على جوالك. باقي الصفحات بدها نت.</span>
+      <span><b>بدون إنترنت</b> · زر الحضور يعمل ويحفظ التسجيل على جوالك. بقية الصفحات تحتاج إلى الإنترنت.</span>
     </div>
   )
 }
@@ -41,7 +41,7 @@ export function UpdateBar() {
   return (
     <div className="af-bar info" role="status">
       <RefreshCw size={17} aria-hidden="true" />
-      <span>في تحديث جديد للنظام.</span>
+      <span>يتوفر تحديث جديد للنظام.</span>
       <button type="button" className="link-btn" onClick={() => void applyUpdate?.(true)}>تحديث الآن</button>
     </div>
   )

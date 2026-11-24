@@ -28,7 +28,7 @@ class BranchController extends Controller
 
     public function show(Request $request, Branch $branch): JsonResponse
     {
-        abort_unless(Access::allowsBranch($request->user(), 'branches.view', $branch->id), 403, 'ما عندك صلاحية على هاد الفرع.');
+        abort_unless(Access::allowsBranch($request->user(), 'branches.view', $branch->id), 403, 'ليست لديك صلاحية على هذا الفرع.');
         $branch->loadCount('users');
 
         return response()->json([
@@ -39,7 +39,7 @@ class BranchController extends Controller
 
     public function store(Request $request): JsonResponse
     {
-        abort_unless(Access::scope($request->user(), 'branches.manage') === 'all', 403, 'إضافة الفروع للإدارة العليا بس.');
+        abort_unless(Access::scope($request->user(), 'branches.manage') === 'all', 403, 'إضافة الفروع من صلاحية الإدارة العليا فقط.');
         $data = $request->validate([
             'name' => ['required', 'string', 'min:2', 'max:80', Rule::unique('branches', 'name')],
             'code' => ['nullable', 'string', 'max:20', Rule::unique('branches', 'code')],
@@ -80,7 +80,7 @@ class BranchController extends Controller
 
     public function update(Request $request, Branch $branch): JsonResponse
     {
-        abort_unless(Access::allowsBranch($request->user(), 'branches.manage', $branch->id), 403, 'ما عندك صلاحية على هاد الفرع.');
+        abort_unless(Access::allowsBranch($request->user(), 'branches.manage', $branch->id), 403, 'ليست لديك صلاحية على هذا الفرع.');
         $data = $request->validate([
             'name' => ['sometimes', 'string', 'min:2', 'max:80', Rule::unique('branches', 'name')->ignore($branch->id)],
             'code' => ['sometimes', 'nullable', 'string', 'max:20', Rule::unique('branches', 'code')->ignore($branch->id)],
@@ -88,7 +88,7 @@ class BranchController extends Controller
             'manager_user_id' => ['sometimes', 'nullable', 'integer', Rule::exists('users', 'id')->whereNull('deleted_at')],
         ]);
         if (! empty($data['manager_user_id']) && User::find($data['manager_user_id'])?->branch_id !== $branch->id) {
-            throw ValidationException::withMessages(['manager_user_id' => 'مدير الفرع لازم يكون من موظفين نفس الفرع.']);
+            throw ValidationException::withMessages(['manager_user_id' => 'يجب أن يكون مدير الفرع من موظفي الفرع نفسه.']);
         }
 
         $branch->fill($data)->save();
@@ -102,7 +102,7 @@ class BranchController extends Controller
 
     public function updateModules(Request $request, Branch $branch): JsonResponse
     {
-        abort_unless(Access::allowsBranch($request->user(), 'branches.manage', $branch->id), 403, 'ما عندك صلاحية على هاد الفرع.');
+        abort_unless(Access::allowsBranch($request->user(), 'branches.manage', $branch->id), 403, 'ليست لديك صلاحية على هذا الفرع.');
         $keys = array_keys(config('access.modules'));
         $data = $request->validate(['modules' => ['required', 'array']] + collect($keys)->mapWithKeys(fn ($k) => ["modules.$k" => ['sometimes', 'boolean']])->all());
 
@@ -118,9 +118,9 @@ class BranchController extends Controller
 
     public function destroy(Request $request, Branch $branch): JsonResponse
     {
-        abort_unless(Access::scope($request->user(), 'branches.manage') === 'all', 403, 'حذف الفروع للإدارة العليا بس.');
+        abort_unless(Access::scope($request->user(), 'branches.manage') === 'all', 403, 'حذف الفروع من صلاحية الإدارة العليا فقط.');
         if ($branch->users()->exists()) {
-            return response()->json(['message' => 'ما بنقدر نحذف فرع فيه موظفين. انقلهم أو احذفهم أول.', 'code' => 'branch_has_users'], 422);
+            return response()->json(['message' => 'لا يمكن حذف فرع فيه موظفون. انقلهم أو احذفهم أولاً.', 'code' => 'branch_has_users'], 422);
         }
         $branch->delete();
         Audit::log('branch.deleted', $branch, $branch->only('name', 'code'), null, null, $branch->id);

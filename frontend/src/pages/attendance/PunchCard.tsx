@@ -67,11 +67,11 @@ export function PunchCard() {
   const waitUntil = next.wait_until ? new Date(next.wait_until) : null
   const blocked = (next.status === 'wait' || next.status === 'repeat') && waitUntil && waitUntil.getTime() > Date.now()
   const canPress = next.status === 'in' || next.status === 'out' || ((next.status === 'wait' || next.status === 'repeat') && !blocked)
-  const label = next.status === 'in' ? 'سجّل حضور' : 'سجّل انصراف'
+  const label = next.status === 'in' ? 'تسجيل الحضور' : 'تسجيل الانصراف'
 
   function keepOffline() {
     enqueue({ uuid: crypto.randomUUID(), device_time: new Date().toISOString() })
-    toast('انحفظ على جوالك. بينبعت لحاله لما يرجع النت.')
+    toast('حُفظ التسجيل على جوالك، وسيُرسل تلقائياً عند عودة الإنترنت.')
   }
 
   async function press() {
@@ -87,8 +87,8 @@ export function PunchCard() {
       // The internet dropped on the way: keep the press with the same id (the server counts it once).
       if (e instanceof ApiError && e.status === 0) {
         enqueue({ uuid, device_time: at })
-        toast('انحفظ على جوالك. بينبعت لحاله لما يرجع النت.')
-      } else toast(e instanceof ApiError ? e.message : 'ما انسجّل', 'danger')
+        toast('حُفظ التسجيل على جوالك، وسيُرسل تلقائياً عند عودة الإنترنت.')
+      } else toast(e instanceof ApiError ? e.message : 'لم يُسجَّل', 'danger')
     } finally { setBusy(false) }
   }
 
@@ -99,24 +99,24 @@ export function PunchCard() {
         <div className="af-punch-times">
           <span><LogIn size={16} /> حضور <b className="num">{day?.check_in ?? '—'}</b></span>
           <span><LogOut size={16} /> انصراف <b className="num">{day?.check_out ?? '—'}</b></span>
-          {!waiting.length && day && day.late_minutes > 0 && <span className="af-late">تأخير <b className="num">{day.late_minutes}</b> د</span>}
+          {!waiting.length && day && day.late_minutes > 0 && <span className="af-late">تأخير <b className="num">{day.late_minutes}</b> دقيقة</span>}
         </div>
         {pending > 0 && (
-          <p className="af-pending"><CloudOff size={15} /> {pending === 1 ? 'تسجيل واحد' : `${pending} تسجيلات`} محفوظ على جوالك وبينبعت لحاله لما يرجع النت
-            {online && <button type="button" className="link-btn" onClick={() => void flushPunches()}>ابعت هلأ</button>}
+          <p className="af-pending"><CloudOff size={15} /> {pending === 1 ? 'تسجيل واحد محفوظ' : `${pending} تسجيلات محفوظة`} على جوالك، وسيُرسل تلقائياً عند عودة الإنترنت
+            {online && <button type="button" className="link-btn" onClick={() => void flushPunches()}>أرسل الآن</button>}
           </p>
         )}
       </div>
       {next.status === 'full' ? (
-        <span className="af-punch-done"><CheckCircle2 size={22} /> خلّصت يومك</span>
+        <span className="af-punch-done"><CheckCircle2 size={22} /> اكتمل يومك</span>
       ) : blocked ? (
-        <span className="af-punch-wait"><Clock3 size={18} /> الانصراف بيفتح الساعة <b className="num">{formatTime(waitUntil)}</b></span>
+        <span className="af-punch-wait"><Clock3 size={18} /> يُتاح الانصراف الساعة <b className="num">{formatTime(waitUntil)}</b></span>
       ) : (
         <Button variant="primary" size="lg" busy={busy} disabled={!canPress} icon={next.status === 'in' ? <LogIn size={20} /> : <LogOut size={20} />} onClick={() => void press()}>
           {label}
         </Button>
       )}
-      <Link to="/attendance/me" className="link-btn af-punch-more">حضوري بالشهر</Link>
+      <Link to="/attendance/me" className="link-btn af-punch-more">حضوري خلال الشهر</Link>
     </section>
   )
 }

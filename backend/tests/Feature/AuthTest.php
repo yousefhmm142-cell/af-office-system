@@ -31,7 +31,7 @@ class AuthTest extends TestCase
             ->assertOk()->assertJsonStructure(['token', 'user' => ['permissions', 'modules']]);
 
         $this->postJson('/api/auth/login', ['username' => 'ahmad', 'password' => 'wrong'])
-            ->assertStatus(422)->assertJsonPath('errors.username.0', 'اسم المستخدم أو الرمز غلط.');
+            ->assertStatus(422)->assertJsonPath('errors.username.0', 'اسم المستخدم أو الرمز غير صحيح.');
         $this->postJson('/api/auth/login', ['username' => 'nobody', 'password' => 'secret123'])->assertStatus(422);
     }
 

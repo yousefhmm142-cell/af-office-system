@@ -44,26 +44,26 @@ export function Users() {
 
   async function toggleActive(u: User) {
     const stop = u.is_active
-    if (stop && !(await confirm({ title: `إيقاف حساب ${u.name}؟`, message: 'ما بيقدر يدخل، وبيطلع من كل أجهزته فوراً. بتقدر ترجّعه بأي وقت.', confirmLabel: 'إيقاف', danger: true }))) return
+    if (stop && !(await confirm({ title: `إيقاف حساب ${u.name}؟`, message: 'لن يتمكن من الدخول، وسيُسجَّل خروجه من جميع أجهزته فوراً. ويمكنك إعادة تفعيله في أي وقت.', confirmLabel: 'إيقاف', danger: true }))) return
     try {
       await api(`/users/${u.id}`, { method: 'PATCH', body: { is_active: !stop } })
-      toast(stop ? 'انوقف الحساب' : 'رجع الحساب فعّال')
+      toast(stop ? 'أُوقف الحساب' : 'أُعيد تفعيل الحساب')
       void reload()
-    } catch (e) { toast(e instanceof ApiError ? e.message : 'ما انحفظ', 'danger') }
+    } catch (e) { toast(e instanceof ApiError ? e.message : 'لم يُحفظ', 'danger') }
   }
 
   async function remove(u: User) {
-    if (!(await confirm({ title: `حذف ${u.name}؟`, message: 'اسم المستخدم بيضل محجوز وما بينعطى لحد ثاني.', confirmLabel: 'حذف', danger: true }))) return
+    if (!(await confirm({ title: `حذف ${u.name}؟`, message: 'يبقى اسم المستخدم محجوزاً ولا يُعطى لشخص آخر.', confirmLabel: 'حذف', danger: true }))) return
     try {
       await api(`/users/${u.id}`, { method: 'DELETE' })
-      toast('انحذف')
+      toast('تم الحذف')
       void reload()
-    } catch (e) { toast(e instanceof ApiError ? e.message : 'ما انحذف', 'danger') }
+    } catch (e) { toast(e instanceof ApiError ? e.message : 'لم يُحذف', 'danger') }
   }
 
   return (
     <>
-      <PageHead title="الموظفين" eyebrow="كل موظف إله حساب: اسم مستخدم ورمز"
+      <PageHead title="الموظفين" eyebrow="لكل موظف حساب: اسم مستخدم ورمز"
         actions={manages && <Button variant="primary" icon={<UserPlus size={18} />} onClick={() => setEditing('new')}>حساب جديد</Button>} />
       <div className="af-toolbar">
         <div className="af-search">
@@ -91,8 +91,8 @@ export function Users() {
               <span className="af-badges">
                 {u.status && u.status !== 'active' && <Pill tone={u.status === 'terminated' ? 'danger' : u.status === 'trainee' ? 'info' : 'warn'}>{STATUS_LABEL[u.status]}</Pill>}
                 {!u.is_active && u.status !== 'terminated' && <Pill tone="warn">الحساب موقوف</Pill>}
-                {u.is_locked && <Pill tone="danger"><Lock size={12} /> مقفول</Pill>}
-                {u.must_change_password && u.is_active && <Pill tone="info">ما دخل لسا</Pill>}
+                {u.is_locked && <Pill tone="danger"><Lock size={12} /> مقفل</Pill>}
+                {u.must_change_password && u.is_active && <Pill tone="info">لم يدخل بعد</Pill>}
               </span>
               {canTouch(u) && (
                 <span className="af-row-actions">
@@ -104,7 +104,7 @@ export function Users() {
               )}
             </div>
           ))}
-          {list.length === 0 && <p className="eyebrow af-pad">ما في نتائج.</p>}
+          {list.length === 0 && <p className="eyebrow af-pad">لا توجد نتائج.</p>}
         </div>
       )}
       {editing && (
@@ -141,7 +141,7 @@ function UserDialog({ user, roles, branches, onClose, onSaved }: { user: User | 
     try {
       if (user) {
         await api(`/users/${user.id}`, { method: 'PATCH', body })
-        toast('انحفظ')
+        toast('تم الحفظ')
         onSaved()
       } else {
         const res = await api<{ user: User }>('/users', { method: 'POST', body: { ...body, password: form.password } })
@@ -154,8 +154,8 @@ function UserDialog({ user, roles, branches, onClose, onSaved }: { user: User | 
 
   if (created) {
     return (
-      <Dialog open onClose={onSaved} title="انعمل الحساب" icon={<Plus size={20} />} footer={<Button variant="primary" onClick={onSaved}>تمام</Button>}>
-        <p>أعطِ الموظف هالمعلومات. أول ما يدخل، النظام بيطلب منه يختار رمز خاص فيه.</p>
+      <Dialog open onClose={onSaved} title="تم إنشاء الحساب" icon={<Plus size={20} />} footer={<Button variant="primary" onClick={onSaved}>حسناً</Button>}>
+        <p>سلّم الموظف هذه البيانات. وعند دخوله الأول سيطلب منه النظام اختيار رمز خاص به.</p>
         <div className="af-credentials">
           <div><small>اسم المستخدم</small><b dir="auto">{created.username}</b></div>
           <div><small>الرمز المؤقت</small><b className="num" dir="ltr">{created.password}</b></div>
@@ -169,11 +169,11 @@ function UserDialog({ user, roles, branches, onClose, onSaved }: { user: User | 
       footer={<><Button onClick={onClose}>إلغاء</Button><Button variant="primary" busy={busy} onClick={() => void save()}>حفظ</Button></>}>
       <form className="form-grid" onSubmit={save}>
         <Field label="الاسم الكامل" error={fields.name}>{(id) => <input id={id} className="input" value={form.name} onChange={(e) => set('name', e.target.value)} />}</Field>
-        <Field label="اسم المستخدم" error={fields.username} hint="بدون فراغات. مثلاً: ahmad.h أو احمد_حسن">
+        <Field label="اسم المستخدم" error={fields.username} hint="دون مسافات. مثال: ahmad.h أو احمد_حسن">
           {(id) => <input id={id} className="input" dir="auto" autoCapitalize="none" spellCheck={false} value={form.username} onChange={(e) => set('username', e.target.value.replace(/\s/g, ''))} />}
         </Field>
         {!user && (
-          <Field label="الرمز المؤقت" error={fields.password} hint="بنعطيه للموظف، وهو بيغيّره أول ما يدخل">
+          <Field label="الرمز المؤقت" error={fields.password} hint="يُسلَّم للموظف، ويغيّره عند دخوله الأول">
             {(id) => <PasswordInput id={id} value={form.password} onChange={(v) => set('password', v)} autoComplete="new-password" />}
           </Field>
         )}
@@ -185,11 +185,11 @@ function UserDialog({ user, roles, branches, onClose, onSaved }: { user: User | 
               </select>
             )}
           </Field>
-          <Field label="الفرع" error={fields.branch_id} hint={role && !role.needs_branch ? 'اتركه فاضي إذا بيشتغل على كل الفروع' : undefined}>
+          <Field label="الفرع" error={fields.branch_id} hint={role && !role.needs_branch ? 'اتركه فارغاً إذا كان يعمل على جميع الفروع' : undefined}>
             {(id) => (
               <select id={id} className="input select" value={form.branch_id} onChange={(e) => set('branch_id', e.target.value)} disabled={scopeOf(me, 'users.manage') === 'branch'}>
                 {!role?.needs_branch && <option value="">— كل الفروع —</option>}
-                {role?.needs_branch && !form.branch_id && <option value="">اختار الفرع</option>}
+                {role?.needs_branch && !form.branch_id && <option value="">اختر الفرع</option>}
                 {branches.map((b) => <option key={b.id} value={b.id}>{b.name}</option>)}
               </select>
             )}
@@ -213,11 +213,11 @@ function ResetDialog({ user, onClose, onSaved }: { user: User; onClose(): void; 
       await api(`/users/${user.id}/reset-password`, { method: 'POST', body: { password } })
       toast(`الرمز المؤقت لـ${user.name}: ${password}`)
       onSaved()
-    } catch (e) { setError(e instanceof ApiError ? (Object.values(e.fields)[0] ?? e.message) : 'ما انحفظ') } finally { setBusy(false) }
+    } catch (e) { setError(e instanceof ApiError ? (Object.values(e.fields)[0] ?? e.message) : 'لم يُحفظ') } finally { setBusy(false) }
   }
 
   return (
-    <Dialog open onClose={onClose} title={`رمز مؤقت لـ${user.name}`} subtitle="بيفتح الحساب لو كان مقفول، وبيطلّعه من كل أجهزته" icon={<KeyRound size={20} />}
+    <Dialog open onClose={onClose} title={`رمز مؤقت لـ${user.name}`} subtitle="يفتح الحساب إن كان مقفلاً، ويسجّل خروجه من جميع أجهزته" icon={<KeyRound size={20} />}
       footer={<><Button onClick={onClose}>إلغاء</Button><Button variant="primary" busy={busy} onClick={() => void save()}>حفظ</Button></>}>
       <Field label="الرمز المؤقت">{(id) => <PasswordInput id={id} value={password} onChange={setPassword} autoComplete="new-password" />}</Field>
       <ErrorBanner text={error} />

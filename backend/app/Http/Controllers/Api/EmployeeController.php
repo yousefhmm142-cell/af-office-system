@@ -79,7 +79,7 @@ class EmployeeController extends Controller
     {
         $actor = $request->user();
         UserController::assertCanManage($actor, $user->role, $user->branch_id, 'employees.manage');
-        abort_if($actor->id === $user->id && ! $actor->isSuperAdmin(), 403, 'بياناتك الوظيفية بتحددها شؤون الموظفين.');
+        abort_if($actor->id === $user->id && ! $actor->isSuperAdmin(), 403, 'تحدد شؤون الموظفين بياناتك الوظيفية.');
         $emp = $this->fileOf($user);
 
         $data = $request->validate([
@@ -96,7 +96,7 @@ class EmployeeController extends Controller
         if (! empty($data['work_schedule_id'])) {
             $ok = WorkSchedule::whereKey($data['work_schedule_id'])->where('branch_id', $user->branch_id)->exists();
             if (! $ok) {
-                throw ValidationException::withMessages(['work_schedule_id' => 'الدوام لازم يكون من دوامات فرع الموظف.']);
+                throw ValidationException::withMessages(['work_schedule_id' => 'يجب أن يكون الدوام من دوامات فرع الموظف.']);
             }
         }
 
@@ -113,7 +113,7 @@ class EmployeeController extends Controller
     public function setStatus(Request $request, User $user): JsonResponse
     {
         $actor = $request->user();
-        abort_if($actor->id === $user->id, 403, 'ما بتقدر تغيّر حالتك بنفسك.');
+        abort_if($actor->id === $user->id, 403, 'لا يمكنك تغيير حالتك بنفسك.');
         UserController::assertCanManage($actor, $user->role, $user->branch_id, 'employees.manage');
         $data = $request->validate([
             'status' => ['required', Rule::in(Employee::STATUSES)],
@@ -156,7 +156,7 @@ class EmployeeController extends Controller
         ]);
         $emp = $this->fileOf($user);
         if ($emp->attachments()->count() >= 30) {
-            throw ValidationException::withMessages(['file' => 'وصلت للحد (30 مرفق). احذف القديم أول.']);
+            throw ValidationException::withMessages(['file' => 'بلغت الحد الأقصى (30 مرفقاً). احذف القديم أولاً.']);
         }
         $file = $data['file'];
         $path = $file->store("employees/{$emp->id}", self::DISK);
@@ -206,7 +206,7 @@ class EmployeeController extends Controller
             'branch' => $target->branch_id !== null && $target->branch_id === $actor->branch_id,
             default => false,
         } || $this->canManage($actor, $target);
-        abort_unless($ok, 403, 'ما عندك صلاحية تشوف ملف هاد الموظف.');
+        abort_unless($ok, 403, 'ليست لديك صلاحية لعرض ملف هذا الموظف.');
     }
 
     /** The person themselves, or someone who manages employees above them in rank. */

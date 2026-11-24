@@ -27,8 +27,8 @@ export const STATE: Record<State, { label: string; tone: 'ok' | 'warn' | 'danger
   present: { label: 'حاضر', tone: 'ok' },
   late: { label: 'متأخر', tone: 'warn' },
   left: { label: 'انصرف', tone: 'info' },
-  absent: { label: 'غايب', tone: 'danger' },
-  not_yet: { label: 'لسا ما إجا', tone: 'neutral' },
+  absent: { label: 'غائب', tone: 'danger' },
+  not_yet: { label: 'لم يحضر بعد', tone: 'neutral' },
   off: { label: 'عطلة', tone: 'neutral' },
 }
 

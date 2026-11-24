@@ -41,8 +41,8 @@ class PermissionController extends Controller
     public function updateRole(Request $request, Role $role): JsonResponse
     {
         $actor = $request->user();
-        abort_if($role->key === Role::SUPER_ADMIN, 403, 'صلاحيات السوبر أدمن كاملة دايماً وما بتتغير.');
-        abort_unless($actor->isSuperAdmin() || $role->level < $actor->level(), 403, 'ما بتقدر تعدّل صلاحيات دور بنفس مستواك أو أعلى.');
+        abort_if($role->key === Role::SUPER_ADMIN, 403, 'صلاحيات السوبر أدمن كاملة دائماً ولا تتغير.');
+        abort_unless($actor->isSuperAdmin() || $role->level < $actor->level(), 403, 'لا يمكنك تعديل صلاحيات دور في مستواك أو أعلى منه.');
         $data = $request->validate([
             'grants' => ['present', 'array'],
             'grants.*' => ['nullable', Rule::in(Access::SCOPES)],
@@ -84,9 +84,9 @@ class PermissionController extends Controller
     public function updateUser(Request $request, User $user): JsonResponse
     {
         $actor = $request->user();
-        abort_if($actor->id === $user->id, 403, 'ما بتقدر تعدّل صلاحياتك بنفسك.');
+        abort_if($actor->id === $user->id, 403, 'لا يمكنك تعديل صلاحياتك بنفسك.');
         UserController::assertCanManage($actor, $user->role, $user->branch_id);
-        abort_if($user->isSuperAdmin(), 403, 'السوبر أدمن عنده كل الصلاحيات دايماً.');
+        abort_if($user->isSuperAdmin(), 403, 'يملك السوبر أدمن جميع الصلاحيات دائماً.');
         $data = $request->validate([
             'overrides' => ['present', 'array'],
             'overrides.*.key' => ['required', 'string', 'distinct'],
@@ -101,7 +101,7 @@ class PermissionController extends Controller
         if (! $actor->isSuperAdmin()) {
             $mine = array_keys(Access::effective($actor));
             if ($rows->pluck('key')->diff($mine)->isNotEmpty()) {
-                throw ValidationException::withMessages(['overrides' => 'ما بتقدر تعدّل صلاحية مش عندك.']);
+                throw ValidationException::withMessages(['overrides' => 'لا يمكنك تعديل صلاحية لا تملكها.']);
             }
         }
 
@@ -145,7 +145,7 @@ class PermissionController extends Controller
     {
         $unknown = array_diff(array_keys($byKey), array_keys($known));
         if ($unknown) {
-            throw ValidationException::withMessages(['grants' => 'صلاحية مش معروفة: '.implode('، ', $unknown)]);
+            throw ValidationException::withMessages(['grants' => 'صلاحية غير معروفة: '.implode('، ', $unknown)]);
         }
     }
 
@@ -158,7 +158,7 @@ class PermissionController extends Controller
         $mine = Access::effective($actor);
         foreach ($grants as $key => $scope) {
             if (! isset($mine[$key]) || self::RANK[$scope] > self::RANK[$mine[$key]]) {
-                throw ValidationException::withMessages(['grants' => 'ما بتقدر تعطي صلاحية أوسع من صلاحيتك.']);
+                throw ValidationException::withMessages(['grants' => 'لا يمكنك منح صلاحية أوسع من صلاحيتك.']);
             }
         }
     }

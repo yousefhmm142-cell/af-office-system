@@ -32,9 +32,9 @@ export function Board() {
     setApproving(true)
     try {
       const res = await api<{ approved: number }>('/attendance/approve', { method: 'POST', body: { branch_id: Number(chosen), date } })
-      toast(`انعتمد ${res.approved}`)
+      toast(`اعتُمد ${res.approved}`)
       void reload()
-    } catch (e) { toast(e instanceof ApiError ? e.message : 'ما انعتمد', 'danger') } finally { setApproving(false) }
+    } catch (e) { toast(e instanceof ApiError ? e.message : 'لم يُعتمد', 'danger') } finally { setApproving(false) }
   }
 
   return (
@@ -56,10 +56,10 @@ export function Board() {
       {loading && !data ? <Loading /> : data && (
         <>
           <div className="dash-kpis">
-            <div className="dash-kpi glass"><span className="dash-kpi-l">المطلوبين</span><span className="dash-kpi-n num">{data.summary.expected}</span></div>
-            <div className="dash-kpi glass" data-tone="ok"><span className="dash-kpi-l">حضروا</span><span className="dash-kpi-n num">{data.summary.present}</span></div>
-            <div className="dash-kpi glass" data-tone="warn"><span className="dash-kpi-l">متأخرين</span><span className="dash-kpi-n num">{data.summary.late}</span></div>
-            <div className="dash-kpi glass" data-tone="danger"><span className="dash-kpi-l">غايبين</span><span className="dash-kpi-n num">{data.summary.absent}</span></div>
+            <div className="dash-kpi glass"><span className="dash-kpi-l">المطلوب حضورهم</span><span className="dash-kpi-n num">{data.summary.expected}</span></div>
+            <div className="dash-kpi glass" data-tone="ok"><span className="dash-kpi-l">الحاضرون</span><span className="dash-kpi-n num">{data.summary.present}</span></div>
+            <div className="dash-kpi glass" data-tone="warn"><span className="dash-kpi-l">المتأخرون</span><span className="dash-kpi-n num">{data.summary.late}</span></div>
+            <div className="dash-kpi glass" data-tone="danger"><span className="dash-kpi-l">الغائبون</span><span className="dash-kpi-n num">{data.summary.absent}</span></div>
           </div>
           <div className="card glass rows">
             {data.rows.map((r) => (
@@ -68,7 +68,7 @@ export function Board() {
                 <span className="af-att-times num" dir="ltr">{r.day?.check_in ?? '—'} → {r.day?.check_out ?? '—'}</span>
                 <span className="af-badges">
                   <Pill tone={STATE[r.state].tone}>{STATE[r.state].label}</Pill>
-                  {r.day && r.day.late_minutes > 0 && <Pill tone="warn" dot={false}>{r.day.late_minutes} د</Pill>}
+                  {r.day && r.day.late_minutes > 0 && <Pill tone="warn" dot={false}>{r.day.late_minutes} دقيقة</Pill>}
                   {r.day && r.day.overtime_minutes > 0 && <Pill tone="ok" dot={false}>+{hm(r.day.overtime_minutes)}</Pill>}
                   {r.day?.recorded_offline && <Pill tone="info" dot={false}><WifiOff size={12} /></Pill>}
                   {r.day?.approval_status === 'approved' && <Pill tone="brand" dot={false}>معتمد</Pill>}
@@ -79,7 +79,7 @@ export function Board() {
                 </span>
               </div>
             ))}
-            {data.rows.length === 0 && <p className="eyebrow af-pad">ما في موظفين بيسجّلوا حضور بهاد الفرع.</p>}
+            {data.rows.length === 0 && <p className="eyebrow af-pad">لا يوجد في هذا الفرع موظفون يسجّلون الحضور.</p>}
           </div>
         </>
       )}
@@ -103,7 +103,7 @@ function EditDay({ row, date, onClose, onSaved }: { row: BoardRow; date: string;
     setBusy(true); setFields({}); setError(null)
     try {
       await api('/attendance/days', { method: 'PUT', body: { user_id: row.user.id, date, check_in: inT || null, check_out: outT || null, reason: reason.trim() || null } })
-      toast('انحفظ')
+      toast('تم الحفظ')
       onSaved()
     } catch (err) {
       if (err instanceof ApiError) { setFields(err.fields); setError(Object.keys(err.fields).length ? null : err.message) }
@@ -111,14 +111,14 @@ function EditDay({ row, date, onClose, onSaved }: { row: BoardRow; date: string;
   }
 
   return (
-    <Dialog open onClose={onClose} title={row.user.name} subtitle={`${dayName(date)} · بينحفظ بالسجل مين عدّل ومتى`} icon={<Pencil size={20} />}
+    <Dialog open onClose={onClose} title={row.user.name} subtitle={`${dayName(date)} · يُحفظ في السجل من عدّل ومتى`} icon={<Pencil size={20} />}
       footer={<><Button onClick={onClose}>إلغاء</Button><Button variant="primary" busy={busy} onClick={() => void save()}>حفظ واعتماد</Button></>}>
       <form className="form-grid" onSubmit={save}>
         <div className="af-row2">
           <Field label="الحضور" error={fields.check_in}>{(id) => <input id={id} className="input num" type="time" value={inT} onChange={(e) => setIn(e.target.value)} />}</Field>
           <Field label="الانصراف" error={fields.check_out}>{(id) => <input id={id} className="input num" type="time" value={outT} onChange={(e) => setOut(e.target.value)} />}</Field>
         </div>
-        <Field label="ملاحظة (اختياري)" error={fields.reason}>{(id) => <input id={id} className="input" value={reason} onChange={(e) => setReason(e.target.value)} placeholder="مثلاً: ما معه جوال" />}</Field>
+        <Field label="ملاحظة (اختياري)" error={fields.reason}>{(id) => <input id={id} className="input" value={reason} onChange={(e) => setReason(e.target.value)} placeholder="مثال: لا يملك جوالاً" />}</Field>
         <ErrorBanner text={error ?? fields.date ?? null} />
       </form>
     </Dialog>
@@ -140,7 +140,7 @@ function DayHistory({ row, onClose }: { row: BoardRow; onClose(): void }) {
         <div className="rows">
           {data.punches.map((p, i) => (
             <div key={`p${i}`} className="row">
-              <span className="row-label">{p.kind === 'in' ? 'حضور' : 'انصراف'}<small className="af-sub">{METHOD[p.method] ?? p.method}{p.offline ? ' · انحفظ بدون نت' : ''}{p.by ? ` · ${p.by}` : ''}{p.reason ? ` · ${p.reason}` : ''}</small></span>
+              <span className="row-label">{p.kind === 'in' ? 'حضور' : 'انصراف'}<small className="af-sub">{METHOD[p.method] ?? p.method}{p.offline ? ' · حُفظ دون إنترنت' : ''}{p.by ? ` · ${p.by}` : ''}{p.reason ? ` · ${p.reason}` : ''}</small></span>
               <span className="row-value num">{t(p.at)}</span>
             </div>
           ))}

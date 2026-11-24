@@ -13,7 +13,7 @@ import { Button, Pill } from '../ui/primitives'
 import { useToast } from '../ui/Toast'
 
 const dayNames = (days: number[]) =>
-  days.length === 7 ? 'كل الأسبوع (مع الجمعة)' : DAYS.filter(([d]) => days.includes(d)).map(([, n]) => n).join('، ')
+  days.length === 7 ? 'طوال الأسبوع (بما فيه الجمعة)' : DAYS.filter(([d]) => days.includes(d)).map(([, n]) => n).join('، ')
 
 export function BranchDetail() {
   const { id } = useParams()
@@ -37,7 +37,7 @@ export function BranchDetail() {
       const res = await api<{ branch: Branch }>(`/branches/${branch.id}/modules`, { method: 'PUT', body: { modules: { [key]: on } } })
       setData({ branch: res.branch, schedules })
     } catch (e) {
-      toast(e instanceof ApiError ? e.message : 'ما انحفظ', 'danger')
+      toast(e instanceof ApiError ? e.message : 'لم يُحفظ', 'danger')
     } finally { setBusyModule(null) }
   }
 
@@ -45,17 +45,17 @@ export function BranchDetail() {
     try {
       const res = await api<{ branch: Branch }>(`/branches/${branch.id}`, { method: 'PATCH', body: { manager_user_id: userId ? Number(userId) : null } })
       setData({ branch: res.branch, schedules })
-      toast('انحفظ مدير الفرع')
-    } catch (e) { toast(e instanceof ApiError ? e.message : 'ما انحفظ', 'danger') }
+      toast('حُفظ مدير الفرع')
+    } catch (e) { toast(e instanceof ApiError ? e.message : 'لم يُحفظ', 'danger') }
   }
 
   async function removeSchedule(s: Schedule) {
     if (!(await confirm({ title: `حذف دوام «${s.name}»؟`, danger: true, confirmLabel: 'حذف' }))) return
     try {
       await api(`/schedules/${s.id}`, { method: 'DELETE' })
-      toast('انحذف الدوام')
+      toast('حُذف الدوام')
       void reload()
-    } catch (e) { toast(e instanceof ApiError ? e.message : 'ما انحذف', 'danger') }
+    } catch (e) { toast(e instanceof ApiError ? e.message : 'لم يُحذف', 'danger') }
   }
 
   return (
@@ -64,7 +64,7 @@ export function BranchDetail() {
       <div className="af-grid2">
         <section className="card glass af-pad">
           <h2 className="af-h2">أقسام الفرع</h2>
-          <p className="eyebrow">اللي بتسكّره ما بيظهر لموظفين الفرع.</p>
+          <p className="eyebrow">القسم المغلق لا يظهر لموظفي الفرع.</p>
           <div className="af-switches">
             {branch.modules.map((m) => (
               <Switch key={m.key} label={m.name} on={m.enabled} disabled={!manageBranch || busyModule === m.key} onChange={(v) => void toggleModule(m.key, v)} />
@@ -79,7 +79,7 @@ export function BranchDetail() {
               {staff.data?.users.filter((u) => u.is_active).map((u) => <option key={u.id} value={u.id}>{u.name} ({u.role?.name})</option>)}
             </select>
           ) : <p><b>{branch.manager?.name ?? 'بدون مدير'}</b></p>}
-          <p className="eyebrow" style={{ marginTop: 10 }}>بيظهر هون موظفين الفرع بس. <b className="num">{branch.users_count}</b> مستخدم بالفرع.</p>
+          <p className="eyebrow" style={{ marginTop: 10 }}>تظهر هنا أسماء موظفي الفرع فقط. <b className="num">{branch.users_count}</b> مستخدماً في الفرع.</p>
         </section>
       </div>
 
@@ -93,7 +93,7 @@ export function BranchDetail() {
             <div key={s.id} className="row">
               <span className="row-label">
                 {s.name} {s.is_default && <Pill tone="brand" dot={false}>الأساسي</Pill>}
-                <small className="af-sub">{dayNames(s.work_days)} · سماح {s.grace_minutes} د</small>
+                <small className="af-sub">{dayNames(s.work_days)} · سماح {s.grace_minutes} دقيقة</small>
               </span>
               <span className="row-value num" dir="ltr">{s.start_time} – {s.end_time}</span>
               {manageSchedules && (
@@ -133,7 +133,7 @@ function ScheduleDialog({ branchId, schedule, onClose, onSaved }: { branchId: nu
     try {
       if (schedule) await api(`/schedules/${schedule.id}`, { method: 'PATCH', body })
       else await api('/schedules', { method: 'POST', body: { ...body, branch_id: branchId } })
-      toast('انحفظ الدوام')
+      toast('حُفظ الدوام')
       onSaved()
     } catch (err) {
       if (err instanceof ApiError) { setFields(err.fields); setError(Object.keys(err.fields).length ? null : err.message) }
@@ -144,7 +144,7 @@ function ScheduleDialog({ branchId, schedule, onClose, onSaved }: { branchId: nu
     <Dialog open onClose={onClose} title={schedule ? 'تعديل دوام' : 'دوام جديد'} icon={<CalendarClock size={20} />}
       footer={<><Button onClick={onClose}>إلغاء</Button><Button variant="primary" busy={busy} onClick={() => void save()}>حفظ</Button></>}>
       <form className="form-grid" onSubmit={save}>
-        <Field label="اسم الدوام" error={fields.name}>{(id) => <input id={id} className="input" value={form.name} onChange={(e) => set('name', e.target.value)} placeholder="مثلاً: الدوام العادي" />}</Field>
+        <Field label="اسم الدوام" error={fields.name}>{(id) => <input id={id} className="input" value={form.name} onChange={(e) => set('name', e.target.value)} placeholder="مثال: الدوام العادي" />}</Field>
         <div className="af-row2">
           <Field label="البداية" error={fields.start_time}>{(id) => <input id={id} className="input num" type="time" value={form.start_time} onChange={(e) => set('start_time', e.target.value)} />}</Field>
           <Field label="النهاية" error={fields.end_time}>{(id) => <input id={id} className="input num" type="time" value={form.end_time} onChange={(e) => set('end_time', e.target.value)} />}</Field>

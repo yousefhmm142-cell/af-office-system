@@ -48,43 +48,43 @@ class AttendanceService
         if (! empty($o['uuid'])) {
             $done = AttendancePunch::where('uuid', $o['uuid'])->first();
             if ($done) {
-                abort_unless($done->user_id === $user->id, 409, 'رقم العملية مستعمل.');
+                abort_unless($done->user_id === $user->id, 409, 'رقم العملية مستخدم من قبل.');
 
                 return $this->result('duplicate', $done->kind, AttendanceDay::find($done->attendance_day_id));
             }
         }
 
         if (! $user->branch_id) {
-            return $this->fail('no_branch', 'حسابك مش مربوط بفرع، فما بيسجّل حضور.');
+            return $this->fail('no_branch', 'حسابك غير مرتبط بفرع، لذلك لا يمكنه تسجيل الحضور.');
         }
         if (! $emp || ! $emp->tracks_attendance || $emp->status === 'terminated') {
-            return $this->fail('not_tracked', 'حسابك ما بيسجّل حضور. راجع شؤون الموظفين.');
+            return $this->fail('not_tracked', 'حسابك غير مفعّل لتسجيل الحضور. راجع شؤون الموظفين.');
         }
         if (! $this->moduleOn($user->branch_id)) {
-            return $this->fail('module_off', 'الحضور مسكّر بهاد الفرع.');
+            return $this->fail('module_off', 'قسم الحضور مغلق في هذا الفرع.');
         }
 
         $point = null;
         if ($o['method'] === 'qr') {
             $point = AttendancePoint::where('code', (string) ($o['code'] ?? ''))->first();
             if (! $point || ! $point->is_active) {
-                return $this->fail('bad_code', 'ورقة الـQR هاي مش شغّالة. اطلب الورقة الجديدة من مدير الفرع.');
+                return $this->fail('bad_code', 'ورقة الـQR هذه غير صالحة. اطلب الورقة الجديدة من مدير الفرع.');
             }
             if ($point->branch_id !== $user->branch_id) {
-                return $this->fail('wrong_branch', 'هاي ورقة فرع ثاني. امسح ورقة فرعك.');
+                return $this->fail('wrong_branch', 'هذه ورقة فرع آخر. امسح ورقة فرعك.');
             }
             if (! $emp->punch_anywhere) {
                 $ips = $point->allowed_ips ?? [];
                 if ($point->network_required && $ips && ! in_array($o['ip'] ?? '', $ips, true)) {
-                    return $this->fail('wrong_network', 'لازم تكون على إنترنت المكتب (الواي فاي) عشان الـQR يسجّل.');
+                    return $this->fail('wrong_network', 'يجب أن تكون متصلاً بإنترنت المكتب (الواي فاي) ليُسجَّل الحضور بالـQR.');
                 }
                 if ($point->lat !== null && $point->lng !== null) {
                     if (! isset($o['lat'], $o['lng'])) {
-                        return $this->fail('location_needed', 'اسمح للموقع بالجوال عشان يتأكد إنك بالمكتب.');
+                        return $this->fail('location_needed', 'اسمح بالوصول إلى الموقع في الجوال للتأكد من وجودك في المكتب.');
                     }
                     $slack = min((float) ($o['acc'] ?? $cfg['gps_slack_m']), $cfg['gps_slack_m']);
                     if ($this->distance($point->lat, $point->lng, (float) $o['lat'], (float) $o['lng']) > $point->radius_m + $slack) {
-                        return $this->fail('too_far', 'إنت بعيد عن المكتب. امسح الورقة من جوا المكتب.');
+                        return $this->fail('too_far', 'أنت بعيد عن المكتب. امسح الورقة من داخل المكتب.');
                     }
                 }
             }
@@ -97,7 +97,7 @@ class AttendanceService
             // Stored in UTC like every other time (the phone sends its own offset).
             $device = CarbonImmutable::parse($o['device_time'])->utc();
             if ($device->isAfter($at->addMinutes(2)) || $device->isBefore($at->subHours($cfg['offline_max_hours']))) {
-                return $this->fail('bad_time', 'وقت التسجيل اللي على الجوال مش منطقي. سجّل من جديد.');
+                return $this->fail('bad_time', 'وقت التسجيل المحفوظ في الجوال غير صحيح. سجّل من جديد.');
             }
             $at = $device->min($at);
             $offline = true;
@@ -141,15 +141,15 @@ class AttendanceService
             return ['status' => 'in', 'kind' => 'in', 'message' => 'تسجيل حضور'];
         }
         if ($day->check_out) {
-            return ['status' => 'full', 'message' => 'سجّلت حضورك وانصرافك اليوم. بكرة إن شاء الله.'];
+            return ['status' => 'full', 'message' => 'سجّلت حضورك وانصرافك اليوم. نراك غداً إن شاء الله.'];
         }
         $since = $day->check_in->diffInSeconds($at, false) / 60;
         $until = CarbonImmutable::instance($day->check_in)->addMinutes($cfg['out_after_minutes'])->toIso8601String();
         if ($since < $cfg['repeat_minutes']) {
-            return ['status' => 'repeat', 'message' => 'حضورك مسجّل من شوي.', 'wait_until' => $until];
+            return ['status' => 'repeat', 'message' => 'حضورك مسجّل قبل قليل.', 'wait_until' => $until];
         }
         if ($since < $cfg['out_after_minutes']) {
-            return ['status' => 'wait', 'message' => 'الانصراف بيفتح بعد ساعة من الحضور.', 'wait_until' => $until];
+            return ['status' => 'wait', 'message' => 'يُتاح الانصراف بعد ساعة من الحضور.', 'wait_until' => $until];
         }
 
         return ['status' => 'out', 'kind' => 'out', 'message' => 'تسجيل انصراف'];

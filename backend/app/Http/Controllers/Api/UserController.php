@@ -85,7 +85,7 @@ class UserController extends Controller
         ]);
 
         if ($actor->id === $user->id && array_intersect(array_keys($data), ['role_id', 'branch_id', 'is_active'])) {
-            abort(403, 'ما بتقدر تغيّر دورك أو فرعك أو توقف حسابك بنفسك.');
+            abort(403, 'لا يمكنك تغيير دورك أو فرعك أو إيقاف حسابك بنفسك.');
         }
         if (isset($data['username'])) {
             $data['username'] = User::normalizeUsername($data['username']);
@@ -117,7 +117,7 @@ class UserController extends Controller
     public function resetPassword(Request $request, User $user): JsonResponse
     {
         $actor = $request->user();
-        abort_if($actor->id === $user->id, 403, 'لتغيير رمزك استعمل «تغيير الرمز» من حسابك.');
+        abort_if($actor->id === $user->id, 403, 'لتغيير رمزك استخدم «تغيير الرمز» من صفحة حسابي.');
         $this->assertCanManage($actor, $user->role, $user->branch_id);
         $data = $request->validate([
             'password' => ['required', 'string', 'min:'.config('access.login.password_min'), 'max:100'],
@@ -137,7 +137,7 @@ class UserController extends Controller
     public function destroy(Request $request, User $user): JsonResponse
     {
         $actor = $request->user();
-        abort_if($actor->id === $user->id, 403, 'ما بتقدر تحذف حسابك بنفسك.');
+        abort_if($actor->id === $user->id, 403, 'لا يمكنك حذف حسابك بنفسك.');
         $this->assertCanManage($actor, $user->role, $user->branch_id);
         $user->tokens()->delete();
         \App\Models\Branch::where('manager_user_id', $user->id)->update(['manager_user_id' => null]);
@@ -167,7 +167,7 @@ class UserController extends Controller
             'own' => $target->id === $actor->id,
             default => false,
         };
-        abort_unless($ok || $actor->id === $target->id, 403, 'ما عندك صلاحية على هاد الموظف.');
+        abort_unless($ok || $actor->id === $target->id, 403, 'ليست لديك صلاحية على هذا الموظف.');
     }
 
     /**
@@ -179,14 +179,14 @@ class UserController extends Controller
         if ($actor->isSuperAdmin()) {
             return;
         }
-        abort_unless(Access::allowsBranch($actor, $permission, $branchId), 403, 'ما عندك صلاحية على موظفين هاد الفرع.');
-        abort_unless($role && $role->level < $actor->level(), 403, 'ما بتقدر تدير حساب بنفس مستواك أو أعلى.');
+        abort_unless(Access::allowsBranch($actor, $permission, $branchId), 403, 'ليست لديك صلاحية على موظفي هذا الفرع.');
+        abort_unless($role && $role->level < $actor->level(), 403, 'لا يمكنك إدارة حساب في مستواك أو أعلى منه.');
     }
 
     private function branchFor(Role $role, ?int $branchId): ?int
     {
         if (in_array($role->key, self::BRANCH_ROLES, true) && ! $branchId) {
-            throw ValidationException::withMessages(['branch_id' => 'اختار الفرع لهاد الموظف.']);
+            throw ValidationException::withMessages(['branch_id' => 'اختر فرع هذا الموظف.']);
         }
 
         return $branchId;
@@ -196,7 +196,7 @@ class UserController extends Controller
     {
         $taken = User::withTrashed()->where('username', $username)->when($ignoreId, fn ($q) => $q->where('id', '!=', $ignoreId))->exists();
         if ($taken) {
-            throw ValidationException::withMessages(['username' => 'اسم المستخدم مستعمل. اختار اسم ثاني.']);
+            throw ValidationException::withMessages(['username' => 'اسم المستخدم مستخدم من قبل. اختر اسماً آخر.']);
         }
     }
 }

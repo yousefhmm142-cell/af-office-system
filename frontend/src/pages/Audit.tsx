@@ -17,7 +17,7 @@ export function Audit() {
   const { data, error, loading } = useLoad<{ data: Entry[] }>('/audit')
   return (
     <>
-      <PageHead title="سجل الحركات" eyebrow="كل تعديل حساس: مين ومتى وشو" />
+      <PageHead title="سجل الحركات" eyebrow="كل تعديل مهم: من قام به، ومتى، وما الذي تغيّر" />
       <ErrorBanner text={error} />
       {loading && !data ? <Loading /> : (
         <div className="card glass rows">
@@ -30,7 +30,7 @@ export function Audit() {
               </div>
             )
           })}
-          {data?.data.length === 0 && <p className="eyebrow af-pad">لسا ما في حركات.</p>}
+          {data?.data.length === 0 && <p className="eyebrow af-pad">لا توجد حركات بعد.</p>}
         </div>
       )}
     </>

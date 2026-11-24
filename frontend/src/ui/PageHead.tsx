@@ -15,5 +15,5 @@ export function PageHead({ title, eyebrow, actions }: { title: string; eyebrow?:
 }
 
 export function Loading() {
-  return <div className="loading-block" role="status"><span className="spinner" aria-hidden="true" /> بيحمّل…</div>
+  return <div className="loading-block" role="status"><span className="spinner" aria-hidden="true" /> جارٍ التحميل…</div>
 }

@@ -28,7 +28,7 @@ export function ChangePasswordForm({ forced, onDone }: { forced?: boolean; onDon
     setError(null)
     try {
       const res = await api<{ user: User }>('/me/password', { method: 'POST', body: { current_password: current, password: next, password_confirmation: next2 } })
-      toast('تغيّر الرمز. الأجهزة الثانية طلعت من حسابك.')
+      toast('تم تغيير الرمز، وسُجّل الخروج من أجهزتك الأخرى.')
       setCurrent(''); setNext(''); setNext2('')
       setUser(res.user)
       onDone?.()
@@ -41,10 +41,10 @@ export function ChangePasswordForm({ forced, onDone }: { forced?: boolean; onDon
 
   return (
     <form className="form-grid" onSubmit={submit} noValidate>
-      <Field label={forced ? 'الرمز المؤقت اللي أعطوك إياه' : 'الرمز الحالي'} error={fields.current_password}>
+      <Field label={forced ? 'الرمز المؤقت الذي استلمته' : 'الرمز الحالي'} error={fields.current_password}>
         {(id) => <PasswordInput id={id} value={current} onChange={setCurrent} autoComplete="current-password" disabled={busy} />}
       </Field>
-      <Field label="الرمز الجديد" error={fields.password} hint="6 خانات على الأقل">
+      <Field label="الرمز الجديد" error={fields.password} hint="ست خانات على الأقل">
         {(id) => <PasswordInput id={id} value={next} onChange={setNext} autoComplete="new-password" disabled={busy} />}
       </Field>
       <Field label="أعد كتابة الرمز الجديد" error={fields.password_confirmation}>
@@ -72,7 +72,7 @@ export function ForcedPasswordChange() {
           <div className="login-card-head">
             <span className="entry-badge" aria-hidden="true"><KeyRound size={22} /></span>
             <h2>أهلاً {name}</h2>
-            <p>أول مرة بتدخل: اختار رمز خاص فيك</p>
+            <p>هذا دخولك الأول: اختر رمزاً خاصاً بك</p>
           </div>
           <ChangePasswordForm forced />
           <button type="button" className="link-btn" onClick={() => void signOut()} style={{ marginTop: 12 }}>تسجيل الخروج</button>

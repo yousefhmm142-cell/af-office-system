@@ -20,8 +20,8 @@ export function Brand() {
         <h1>نظام إدارة المكاتب والموظفين</h1>
         <p>شركة أبناء فارس أبو زايد للتجارة والاستيراد</p>
         <ul className="login-modules" aria-label="أقسام النظام">
-          <li style={{ '--d': '.5s' } as CSSProperties}><span className="em-ico"><Building2 size={19} /></span><span><b>الفروع</b><small>كل الفروع بنظام واحد</small></span></li>
-          <li style={{ '--d': '.58s' } as CSSProperties}><span className="em-ico"><CalendarCheck2 size={19} /></span><span><b>الحضور</b><small>من النظام أو بالـQR</small></span></li>
+          <li style={{ '--d': '.5s' } as CSSProperties}><span className="em-ico"><Building2 size={19} /></span><span><b>الفروع</b><small>جميع الفروع في نظام واحد</small></span></li>
+          <li style={{ '--d': '.58s' } as CSSProperties}><span className="em-ico"><CalendarCheck2 size={19} /></span><span><b>الحضور</b><small>من النظام أو عبر رمز QR</small></span></li>
           <li style={{ '--d': '.66s' } as CSSProperties}><span className="em-ico"><Wallet size={19} /></span><span><b>الرواتب</b><small>دفعات وخصومات وسلف</small></span></li>
           <li style={{ '--d': '.74s' } as CSSProperties}><span className="em-ico"><Mail size={19} /></span><span><b>المراسلات</b><small>بين الموظف والإدارة</small></span></li>
         </ul>
@@ -72,7 +72,7 @@ export function Login() {
       if (err instanceof ApiError) {
         setFields(err.fields)
         setError(Object.keys(err.fields).length ? null : err.message)
-      } else setError('صار خطأ. جرّب كمان مرة.')
+      } else setError('حدث خطأ. حاول مرة أخرى.')
       setPassword('')
       setBusy(false)
     }
@@ -89,7 +89,7 @@ export function Login() {
           <div className="login-card-head">
             <span className="entry-badge" aria-hidden="true"><LockKeyhole size={22} /></span>
             <h2>{isSetup ? 'تجهيز النظام' : 'تسجيل الدخول'}</h2>
-            <p>{isSetup ? 'أول حساب: السوبر أدمن (مسؤول النظام)' : 'باسم المستخدم والرمز'}</p>
+            <p>{isSetup ? 'أول حساب: السوبر أدمن (مسؤول النظام)' : 'باستخدام اسم المستخدم والرمز'}</p>
           </div>
           <form onSubmit={onSubmit} noValidate className="login-form">
             {isSetup && (
@@ -103,7 +103,7 @@ export function Login() {
                   onChange={(e) => setUsername(e.target.value.replace(/\s/g, ''))} />
               )}
             </Field>
-            <Field label="الرمز" error={fields.password} hint={isSetup ? '6 خانات على الأقل' : undefined}>
+            <Field label="الرمز" error={fields.password} hint={isSetup ? 'ست خانات على الأقل' : undefined}>
               {(id) => <PasswordInput id={id} value={password} onChange={setPassword} autoComplete={isSetup ? 'new-password' : 'current-password'} disabled={busy} />}
             </Field>
             {isSetup && (

@@ -19,7 +19,7 @@ class SetupController extends Controller
     public function store(Request $request, SetupService $setup): JsonResponse
     {
         if (! $setup->needed()) {
-            return response()->json(['message' => 'النظام متجهّز من قبل.', 'code' => 'already_set_up'], 409);
+            return response()->json(['message' => 'تم تجهيز النظام من قبل.', 'code' => 'already_set_up'], 409);
         }
         $data = $request->validate([
             'name' => ['required', 'string', 'min:2', 'max:120'],
@@ -30,7 +30,7 @@ class SetupController extends Controller
         try {
             $user = $setup->createSuperAdmin($data['name'], $data['username'], $data['password']);
         } catch (RuntimeException) {
-            return response()->json(['message' => 'النظام متجهّز من قبل.', 'code' => 'already_set_up'], 409);
+            return response()->json(['message' => 'تم تجهيز النظام من قبل.', 'code' => 'already_set_up'], 409);
         }
         $token = $user->createToken($request->input('device_name', 'جهاز'))->plainTextToken;
 

@@ -21,7 +21,7 @@ export function Permissions() {
   const [tab, setTab] = useState<'roles' | 'people'>('roles')
   return (
     <>
-      <PageHead title="الصلاحيات" eyebrow="مين بيشوف شو، وبأي فروع" />
+      <PageHead title="الصلاحيات" eyebrow="من يطّلع على ماذا، وفي أي فروع" />
       <div className="segmented af-tabs" role="radiogroup" aria-label="نوع الصلاحيات">
         <button type="button" role="radio" aria-checked={tab === 'roles'} onClick={() => setTab('roles')}>حسب الدور</button>
         <button type="button" role="radio" aria-checked={tab === 'people'} onClick={() => setTab('people')}>لشخص معيّن</button>
@@ -62,9 +62,9 @@ function RolesMatrix() {
     setSaving(r.id)
     try {
       setData(await api<Matrix>(`/roles/${r.id}/permissions`, { method: 'PUT', body: { grants: draft[r.id] ?? {} } }))
-      toast(`انحفظت صلاحيات ${r.name}`)
+      toast(`حُفظت صلاحيات ${r.name}`)
     } catch (e) {
-      toast(e instanceof ApiError ? (Object.values(e.fields)[0] ?? e.message) : 'ما انحفظ', 'danger')
+      toast(e instanceof ApiError ? (Object.values(e.fields)[0] ?? e.message) : 'لم يُحفظ', 'danger')
     } finally { setSaving(null) }
   }
 
@@ -105,7 +105,7 @@ function RolesMatrix() {
             <th />
             {data.roles.map((r) => (
               <td key={r.id}>
-                {r.locked ? <small className="eyebrow">كل شي دايماً</small> : editable(r) && (
+                {r.locked ? <small className="eyebrow">جميع الصلاحيات دائماً</small> : editable(r) && (
                   <Button variant={dirty(r) ? 'primary' : 'secondary'} busy={saving === r.id} disabled={!dirty(r)} icon={<Save size={15} />} onClick={() => void save(r)}>حفظ</Button>
                 )}
               </td>
@@ -113,7 +113,7 @@ function RolesMatrix() {
           </tr>
         </tfoot>
       </table>
-      <p className="eyebrow af-pad">«فرعه» = بيشوف فرعه بس. «كل الفروع» = كل الشركة. «إله بس» = بياناته هو بس.</p>
+      <p className="eyebrow af-pad">«فرعه فقط»: يطّلع على فرعه فقط. «كل الفروع»: الشركة كلها. «بياناته فقط»: بياناته الشخصية فقط.</p>
     </div>
   )
 }
@@ -134,7 +134,7 @@ function PersonOverrides() {
     api<NonNullable<typeof payload>>(`/users/${userId}/permissions`).then((p) => {
       setPayload(p)
       setDraft(Object.fromEntries(p.overrides.map((o) => [o.key, o.effect === 'deny' ? 'deny' : (o.scope ?? 'branch')])))
-    }).catch((e) => { setPayload(null); setError(e instanceof ApiError ? e.message : 'صار خطأ') })
+    }).catch((e) => { setPayload(null); setError(e instanceof ApiError ? e.message : 'حدث خطأ') })
   }, [userId])
 
   const people = useMemo(() => (users.data?.users ?? []).filter((u) => u.role?.key !== 'super_admin'), [users.data])
@@ -145,17 +145,17 @@ function PersonOverrides() {
       const overrides = Object.entries(draft).filter(([, v]) => v).map(([key, v]) => (v === 'deny' ? { key, effect: 'deny' } : { key, effect: 'allow', scope: v }))
       const p = await api<NonNullable<typeof payload>>(`/users/${userId}/permissions`, { method: 'PUT', body: { overrides } })
       setPayload(p)
-      toast('انحفظت صلاحياته الخاصة')
+      toast('حُفظت الصلاحيات الخاصة')
     } catch (e) {
-      toast(e instanceof ApiError ? (Object.values(e.fields)[0] ?? e.message) : 'ما انحفظ', 'danger')
+      toast(e instanceof ApiError ? (Object.values(e.fields)[0] ?? e.message) : 'لم يُحفظ', 'danger')
     } finally { setBusy(false) }
   }
 
   return (
     <div className="card glass af-pad">
-      <p className="eyebrow">استثناء لشخص: بتعطيه صلاحية زيادة عن دوره، أو بتمنعه من صلاحية بدوره. الاستثناء بيغلب الدور.</p>
-      <select className="input select" value={userId} onChange={(e) => setUserId(e.target.value)} aria-label="اختار الموظف" style={{ maxWidth: 420 }}>
-        <option value="">اختار الموظف…</option>
+      <p className="eyebrow">الاستثناء الشخصي: تمنح الموظف صلاحية إضافية على دوره، أو تمنعه من صلاحية في دوره. والاستثناء مقدَّم على الدور.</p>
+      <select className="input select" value={userId} onChange={(e) => setUserId(e.target.value)} aria-label="اختر الموظف" style={{ maxWidth: 420 }}>
+        <option value="">اختر الموظف…</option>
         {people.map((u) => <option key={u.id} value={u.id}>{u.name} · {u.role?.name}{u.branch ? ` · ${u.branch.name}` : ''}</option>)}
       </select>
       <ErrorBanner text={error} />
@@ -192,7 +192,7 @@ function PersonOverrides() {
           </div>
         </>
       )}
-      {!userId && <p className="eyebrow" style={{ marginTop: 12 }}><KeyRound size={14} /> السوبر أدمن ما بيظهر هون لأنه عنده كل شي.</p>}
+      {!userId && <p className="eyebrow" style={{ marginTop: 12 }}><KeyRound size={14} /> لا يظهر السوبر أدمن هنا لأنه يملك جميع الصلاحيات.</p>}
     </div>
   )
 }

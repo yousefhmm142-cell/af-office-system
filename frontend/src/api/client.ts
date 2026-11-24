@@ -56,14 +56,14 @@ export async function api<T = unknown>(path: string, options: { method?: string;
       body: options.body === undefined ? undefined : isForm ? (options.body as FormData) : JSON.stringify(options.body),
     })
   } catch {
-    throw new ApiError(0, 'ما في اتصال بالسيرفر. تأكد من الإنترنت وجرّب كمان مرة.', 'offline')
+    throw new ApiError(0, 'تعذّر الاتصال بالخادم. تأكد من الإنترنت وحاول مرة أخرى.', 'offline')
   }
 
   const data = await res.json().catch(() => ({}))
   if (!res.ok) {
     const fields: Record<string, string> = {}
     for (const [k, v] of Object.entries((data.errors ?? {}) as Record<string, string[]>)) fields[k] = v[0] ?? ''
-    const err = new ApiError(res.status, data.message || 'صار خطأ. جرّب كمان مرة.', data.code, fields)
+    const err = new ApiError(res.status, data.message || 'حدث خطأ. حاول مرة أخرى.', data.code, fields)
     listeners.forEach((fn) => fn(res.status, data.code))
     throw err
   }
@@ -76,7 +76,7 @@ export async function openFile(path: string) {
   const res = await fetch(config.apiBase + path, { headers: { Authorization: `Bearer ${getToken() ?? ''}` } })
   if (!res.ok) {
     tab?.close()
-    throw new ApiError(res.status, 'ما قدرنا نفتح الملف.')
+    throw new ApiError(res.status, 'تعذّر فتح الملف.')
   }
   const url = URL.createObjectURL(await res.blob())
   if (tab) tab.location.href = url

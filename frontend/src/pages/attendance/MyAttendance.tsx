@@ -20,20 +20,20 @@ export function MyAttendance() {
 
   return (
     <>
-      <PageHead title="حضوري" eyebrow="أيامي، والتأخير، والإضافي" />
+      <PageHead title="حضوري" eyebrow="أيام الحضور، والتأخير، والوقت الإضافي" />
       <PunchCard />
       <div className="af-month">
-        <button type="button" className="icon-btn" aria-label="الشهر الجاي" onClick={() => current && setMonth(shift(current, 1))}><ChevronRight size={18} /></button>
+        <button type="button" className="icon-btn" aria-label="الشهر التالي" onClick={() => current && setMonth(shift(current, 1))}><ChevronRight size={18} /></button>
         <b>{current ? monthName(current) : '…'}</b>
-        <button type="button" className="icon-btn" aria-label="الشهر اللي قبل" onClick={() => current && setMonth(shift(current, -1))}><ChevronLeft size={18} /></button>
+        <button type="button" className="icon-btn" aria-label="الشهر السابق" onClick={() => current && setMonth(shift(current, -1))}><ChevronLeft size={18} /></button>
       </div>
       <ErrorBanner text={error} />
       {loading && !data ? <Loading /> : data && (
         <>
           <div className="dash-kpis">
             <div className="dash-kpi glass"><span className="dash-kpi-l">أيام الحضور</span><span className="dash-kpi-n num">{data.totals.days}</span></div>
-            <div className="dash-kpi glass" data-tone="ok"><span className="dash-kpi-l">ساعات الشغل</span><span className="dash-kpi-n num">{hm(data.totals.worked_minutes)}</span></div>
-            <div className="dash-kpi glass" data-tone="warn"><span className="dash-kpi-l">التأخير</span><span className="dash-kpi-n num">{hm(data.totals.late_minutes)}</span><small>{data.totals.late_days} يوم</small></div>
+            <div className="dash-kpi glass" data-tone="ok"><span className="dash-kpi-l">ساعات العمل</span><span className="dash-kpi-n num">{hm(data.totals.worked_minutes)}</span></div>
+            <div className="dash-kpi glass" data-tone="warn"><span className="dash-kpi-l">التأخير</span><span className="dash-kpi-n num">{hm(data.totals.late_minutes)}</span><small>{data.totals.late_days} يوماً</small></div>
             <div className="dash-kpi glass" data-tone="info"><span className="dash-kpi-l">الإضافي</span><span className="dash-kpi-n num">{hm(data.totals.overtime_minutes)}</span></div>
           </div>
           <div className="card glass rows">
@@ -46,13 +46,13 @@ export function MyAttendance() {
                 </span>
                 <span className="af-att-times num" dir="ltr">{d.check_in ?? '—'} → {d.check_out ?? '—'}</span>
                 <span className="af-badges">
-                  {d.recorded_offline && <Pill tone="info" dot={false}><WifiOff size={12} /> بدون نت</Pill>}
-                  {d.late_minutes > 0 && <Pill tone="warn">تأخير {d.late_minutes} د</Pill>}
+                  {d.recorded_offline && <Pill tone="info" dot={false}><WifiOff size={12} /> دون إنترنت</Pill>}
+                  {d.late_minutes > 0 && <Pill tone="warn">تأخير {d.late_minutes} دقيقة</Pill>}
                   {d.overtime_minutes > 0 && <Pill tone="ok">إضافي {hm(d.overtime_minutes)}</Pill>}
                 </span>
               </div>
             ))}
-            {data.days.length === 0 && <p className="eyebrow af-pad">ما في أيام مسجّلة بهاد الشهر.</p>}
+            {data.days.length === 0 && <p className="eyebrow af-pad">لا توجد أيام مسجّلة في هذا الشهر.</p>}
           </div>
         </>
       )}

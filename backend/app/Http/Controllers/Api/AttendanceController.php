@@ -73,7 +73,7 @@ class AttendanceController extends Controller
         $actor = $request->user();
         $data = $request->validate(['branch_id' => ['nullable', 'integer'], 'date' => ['nullable', 'date_format:Y-m-d']]);
         $branchId = $data['branch_id'] ?? $actor->branch_id;
-        abort_unless($branchId && Access::allowsBranch($actor, 'attendance.view', (int) $branchId), 403, 'ما عندك صلاحية على حضور هاد الفرع.');
+        abort_unless($branchId && Access::allowsBranch($actor, 'attendance.view', (int) $branchId), 403, 'ليست لديك صلاحية على حضور هذا الفرع.');
         $date = $data['date'] ?? $this->svc->now()->toDateString();
         $d = CarbonImmutable::parse($date, $this->svc->tz());
         $now = $this->svc->now();
@@ -130,7 +130,7 @@ class AttendanceController extends Controller
             'to' => ['required', 'date_format:Y-m-d', 'after_or_equal:from'],
         ]);
         if (CarbonImmutable::parse($data['from'])->diffInDays(CarbonImmutable::parse($data['to'])) > 92) {
-            throw ValidationException::withMessages(['to' => 'أقصى مدة 3 شهور.']);
+            throw ValidationException::withMessages(['to' => 'أقصى مدة ثلاثة أشهر.']);
         }
         $q = Access::limit(AttendanceDay::query(), $actor, 'attendance.view', 'branch_id', 'user_id')
             ->with('user:id,name')
@@ -155,19 +155,19 @@ class AttendanceController extends Controller
             'reason' => ['nullable', 'string', 'max:300'],
         ]);
         $target = User::with('role', 'employee')->findOrFail($data['user_id']);
-        abort_if($actor->id === $target->id && ! $actor->isSuperAdmin(), 403, 'ما بتقدر تعدّل حضورك بنفسك.');
+        abort_if($actor->id === $target->id && ! $actor->isSuperAdmin(), 403, 'لا يمكنك تعديل حضورك بنفسك.');
         UserController::assertCanManage($actor, $target->role, $target->branch_id, 'attendance.manage');
         if ($data['date'] > $this->svc->now()->toDateString()) {
-            throw ValidationException::withMessages(['date' => 'ما بينفع تسجّل يوم لسا ما إجا.']);
+            throw ValidationException::withMessages(['date' => 'لا يمكن تسجيل يوم لم يأتِ بعد.']);
         }
         if (! $data['check_in'] && $data['check_out']) {
-            throw ValidationException::withMessages(['check_in' => 'اكتب وقت الحضور قبل الانصراف.']);
+            throw ValidationException::withMessages(['check_in' => 'أدخل وقت الحضور قبل الانصراف.']);
         }
         $tz = $this->svc->tz();
         $in = $data['check_in'] ? CarbonImmutable::parse("{$data['date']} {$data['check_in']}", $tz)->utc() : null;
         $out = $data['check_out'] ? CarbonImmutable::parse("{$data['date']} {$data['check_out']}", $tz)->utc() : null;
         if ($in && $out && $out->lessThanOrEqualTo($in)) {
-            throw ValidationException::withMessages(['check_out' => 'الانصراف لازم يكون بعد الحضور.']);
+            throw ValidationException::withMessages(['check_out' => 'يجب أن يكون الانصراف بعد الحضور.']);
         }
 
         $day = DB::transaction(function () use ($target, $data, $in, $out, $actor, $tz) {
@@ -231,7 +231,7 @@ class AttendanceController extends Controller
     {
         abort_unless(
             $day->user_id === $request->user()->id || Access::allowsBranch($request->user(), 'attendance.view', $day->branch_id),
-            403, 'ما عندك صلاحية.'
+            403, 'ليست لديك صلاحية.'
         );
         $punches = $day->punches()->orderBy('at')->get()->map(fn ($p) => [
             'kind' => $p->kind, 'at' => $p->at->toIso8601String(), 'method' => $p->method, 'offline' => $p->recorded_offline,
