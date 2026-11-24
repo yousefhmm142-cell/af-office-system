@@ -40,10 +40,15 @@ function cacheUser(user: User | null) {
 export function AuthProvider({ children }: { children: ReactNode }) {
   const [state, setState] = useState<State>({ status: 'loading' })
 
+  /** Signed out: a brand-new database opens on «تجهيز النظام» instead of the sign-in form. */
+  const signedOut = useCallback(async () => {
+    const s = await api<{ needed: boolean }>('/setup').catch(() => ({ needed: false }))
+    setState(s.needed ? { status: 'setup' } : { status: 'signed_out' })
+  }, [])
+
   const refresh = useCallback(async () => {
     if (!getToken()) {
-      const s = await api<{ needed: boolean }>('/setup').catch(() => ({ needed: false }))
-      setState(s.needed ? { status: 'setup' } : { status: 'signed_out' })
+      await signedOut()
       return
     }
     try {
@@ -65,10 +70,10 @@ export function AuthProvider({ children }: { children: ReactNode }) {
       if (status === 401) {
         setToken(null)
         cacheUser(null)
-        setState({ status: 'signed_out' })
+        void signedOut()
       }
     })
-  }, [refresh])
+  }, [refresh, signedOut])
 
   const value = useMemo<Auth>(() => ({
     state,
@@ -88,13 +93,13 @@ export function AuthProvider({ children }: { children: ReactNode }) {
       await api('/auth/logout', { method: 'POST' }).catch(() => undefined)
       setToken(null)
       cacheUser(null)
-      setState({ status: 'signed_out' })
+      await signedOut()
     },
     setUser(user) {
       cacheUser(user)
       setState({ status: 'signed_in', user })
     },
-  }), [state, refresh])
+  }), [state, refresh, signedOut])
 
   return <AuthContext.Provider value={value}>{children}</AuthContext.Provider>
 }
