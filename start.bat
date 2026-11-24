@@ -1,5 +1,7 @@
 @echo off
 rem Keep this window open whatever happens, so any error stays readable.
+rem php, composer and npm run in their own cmd (cmd /c): some installs (Herd) ship them as
+rem .bat files that end the whole window, which used to stop this script half way.
 if not "%~1"=="run" (
   cmd /k ""%~f0" run"
   exit /b
@@ -21,24 +23,24 @@ git pull --ff-only >> "%LOG%" 2>&1
 if errorlevel 1 goto pullfailed
 
 echo [2/7] Settings and MySQL...
-php tools\prepare.php >> "%LOG%" 2>&1
+cmd /c php tools\prepare.php >> "%LOG%" 2>&1
 if errorlevel 2 goto nomysql
 if errorlevel 1 goto failed
 
 echo [3/7] Server libraries (composer), this can take a few minutes...
 cd /d "%~dp0backend"
-call composer install --no-interaction >> "%LOG%" 2>&1
+cmd /c composer install --no-interaction >> "%LOG%" 2>&1
 if errorlevel 1 goto failed
 findstr /r /c:"^APP_KEY=base64" .env >nul
-if errorlevel 1 php artisan key:generate --force >> "%LOG%" 2>&1
+if errorlevel 1 cmd /c php artisan key:generate --force >> "%LOG%" 2>&1
 
 echo [4/7] Database tables...
-php artisan migrate --force >> "%LOG%" 2>&1
+cmd /c php artisan migrate --force >> "%LOG%" 2>&1
 if errorlevel 1 goto failed
 
 echo [5/7] Interface libraries (npm), this can take a few minutes...
 cd /d "%~dp0frontend"
-call npm install --no-audit --no-fund >> "%LOG%" 2>&1
+cmd /c npm install --no-audit --no-fund >> "%LOG%" 2>&1
 if errorlevel 1 goto failed
 
 echo [6/7] Starting the server and the interface...
