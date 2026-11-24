@@ -2,7 +2,7 @@
 
 نظام واحد لكل الفروع: الفروع، والموظفين، والصلاحيات المتسلسلة، ولاحقاً الحضور والرواتب والمراسلات وكل أقسام نظام «مخيم 2».
 
-- `backend/`: Laravel 13 (PHP 8.2+) + MySQL/MariaDB. الـAPI تحت `/api`.
+- `backend/`: Laravel 13 (PHP 8.3+) + MySQL/MariaDB. الـAPI تحت `/api`.
 - `frontend/`: React + TypeScript (Vite)، بنفس شكل نظام مخيم 2.
 - `docs/01-database-design.md`: مخطط قاعدة البيانات والقرارات.
 
