@@ -1,67 +1,76 @@
 @echo off
-setlocal
+rem Keep this window open whatever happens, so any error stays readable.
+if not "%~1"=="run" (
+  cmd /k ""%~f0" run"
+  exit /b
+)
 chcp 65001 >nul
 title AF Office - start
 cd /d "%~dp0"
+set LOG=%~dp0start-log.txt
+echo AF Office start %date% %time% > "%LOG%"
 
 echo.
 echo ===== AF Office: update and start =====
+echo (everything is also written to start-log.txt)
 echo.
 
 echo [1/7] Getting the latest updates from GitHub...
-git pull --ff-only
-if errorlevel 1 (
-  echo.
-  echo ERROR: could not get the updates. Send a photo of this window.
-  pause
-  exit /b 1
-)
+git checkout -- frontend/package-lock.json >> "%LOG%" 2>&1
+git pull --ff-only >> "%LOG%" 2>&1
+if errorlevel 1 goto pullfailed
 
-echo [2/7] Settings file...
+echo [2/7] Settings and MySQL...
+php tools\prepare.php >> "%LOG%" 2>&1
+if errorlevel 2 goto nomysql
+if errorlevel 1 goto failed
+
+echo [3/7] Server libraries (composer), this can take a few minutes...
 cd /d "%~dp0backend"
-if not exist .env copy .env.example .env >nul
-powershell -NoProfile -Command "$f='.env'; $c=Get-Content $f; $set=@{'DB_CONNECTION'='mysql';'DB_HOST'='127.0.0.1';'DB_PORT'='3306';'DB_DATABASE'='af_office';'DB_USERNAME'='root';'DB_PASSWORD'=''}; foreach($k in $set.Keys){ $line=$k+'='+$set[$k]; if($c -match ('^#?\s*'+$k+'=')){ $c=$c -replace ('^#?\s*'+$k+'=.*'),$line } else { $c+=$line } }; Set-Content $f $c"
-
-echo [3/7] Server libraries (composer)...
-call composer install --no-interaction
+call composer install --no-interaction >> "%LOG%" 2>&1
 if errorlevel 1 goto failed
-
 findstr /r /c:"^APP_KEY=base64" .env >nul
-if errorlevel 1 php artisan key:generate --force
+if errorlevel 1 php artisan key:generate --force >> "%LOG%" 2>&1
 
-echo [4/7] Checking MySQL...
-php -r "try { $p = new PDO('mysql:host=127.0.0.1;port=3306', 'root', ''); $p->exec('CREATE DATABASE IF NOT EXISTS af_office CHARACTER SET utf8mb4 COLLATE utf8mb4_unicode_ci'); } catch (Exception $e) { exit(1); }"
-if errorlevel 1 (
-  echo.
-  echo ERROR: MySQL is not running. Open Laragon, press "Start All", then run this file again.
-  pause
-  exit /b 1
-)
-
-echo [5/7] Database tables...
-php artisan migrate --force
+echo [4/7] Database tables...
+php artisan migrate --force >> "%LOG%" 2>&1
 if errorlevel 1 goto failed
 
-echo [6/7] Interface libraries (npm)...
+echo [5/7] Interface libraries (npm), this can take a few minutes...
 cd /d "%~dp0frontend"
-call npm install --no-audit --no-fund
+call npm install --no-audit --no-fund >> "%LOG%" 2>&1
 if errorlevel 1 goto failed
 
-echo [7/7] Starting...
-start "AF Office - server (keep open)" /d "%~dp0backend" cmd /k php artisan serve
-start "AF Office - interface (keep open)" /d "%~dp0frontend" cmd /k npm run dev
-timeout /t 6 /nobreak >nul
+echo [6/7] Starting the server and the interface...
+start "AF Office - server - keep open" /d "%~dp0backend" cmd /k php artisan serve
+start "AF Office - interface - keep open" /d "%~dp0frontend" cmd /k npm run dev
+
+echo [7/7] Opening the browser...
+timeout /t 8 /nobreak >nul
 start "" http://localhost:5173
 
 echo.
-echo Done. Two windows opened: keep them open while you work.
+echo Done. Two new windows are open: keep them open while you work.
 echo To stop the system, close those two windows.
+echo You can close this window.
+goto :eof
+
+:pullfailed
 echo.
-pause
-exit /b 0
+echo ERROR: could not get the updates from GitHub.
+echo Send a photo of this window, or send the file start-log.txt
+type "%LOG%"
+goto :eof
+
+:nomysql
+echo.
+echo ERROR: MySQL is not running.
+echo Open Laragon, press "Start All", then run start.bat again.
+goto :eof
 
 :failed
 echo.
-echo ERROR: a step failed. Send a photo of this window.
-pause
-exit /b 1
+echo ERROR: a step failed. Send a photo of this window, or send the file start-log.txt
+echo ---- last lines of the log ----
+powershell -NoProfile -Command "Get-Content '%LOG%' -Tail 25"
+goto :eof
