@@ -1,0 +1,42 @@
+/* Pieces the new system adds on top of the old look (same tokens, same feel). */
+.af-head { justify-content: space-between; margin-bottom: 18px; }
+.af-actions { display: flex; gap: 10px; align-items: center; }
+.af-pad { padding: 18px 20px; }
+.af-h2 { display: flex; align-items: center; gap: 8px; margin: 0 0 6px; font-size: var(--fs-lg); font-weight: 800; }
+.af-sub { display: block; font-weight: 400; color: var(--muted); font-size: 0.84rem; margin-top: 2px; }
+.af-grid2 { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 16px; }
+.af-row2 { display: grid; grid-template-columns: 1fr 1fr; gap: 12px; }
+.af-row-between { display: flex; align-items: center; justify-content: space-between; gap: 12px; margin-bottom: 8px; }
+.af-cards { display: grid; grid-template-columns: repeat(auto-fill, minmax(260px, 1fr)); gap: 14px; }
+.af-card { display: grid; gap: 12px; padding: 18px; text-decoration: none; color: inherit; transition: transform .15s var(--ease), box-shadow .15s; }
+.af-card:hover { transform: translateY(-2px); box-shadow: var(--shadow-lg); }
+.af-card-top { display: flex; align-items: center; gap: 12px; font-size: var(--fs-lg); }
+.af-meta { display: flex; flex-wrap: wrap; gap: 14px; color: var(--muted); font-size: .9rem; }
+.af-meta span { display: inline-flex; align-items: center; gap: 6px; }
+.af-mods { display: flex; flex-wrap: wrap; gap: 6px; }
+.af-tag { padding: 3px 10px; border-radius: 999px; background: var(--brand-soft); color: var(--brand-text); font-size: .78rem; font-weight: 700; }
+.af-switches { display: flex; flex-wrap: wrap; gap: 10px; margin-top: 10px; }
+.af-toolbar { display: flex; flex-wrap: wrap; gap: 10px; margin-bottom: 14px; }
+.af-toolbar .select { width: auto; min-width: 180px; }
+.af-search { position: relative; flex: 1; min-width: 220px; }
+.af-search svg { position: absolute; inset-inline-start: 14px; top: 50%; transform: translateY(-50%); color: var(--muted); }
+.af-search .input { padding-inline-start: 42px; }
+.af-user { flex-wrap: wrap; }
+.af-badges { display: flex; gap: 6px; flex-wrap: wrap; }
+.af-row-actions { display: flex; align-items: center; gap: 4px; }
+.af-credentials { display: grid; gap: 10px; margin-top: 14px; }
+.af-credentials div { display: flex; justify-content: space-between; align-items: center; padding: 14px 16px; border-radius: var(--r-md, 14px); background: var(--surface-2); border: 1.5px dashed var(--line); }
+.af-credentials b { font-size: 1.35rem; letter-spacing: .5px; }
+.af-tabs { margin-bottom: 14px; }
+.af-matrix-wrap { overflow-x: auto; }
+.af-matrix { width: 100%; border-collapse: collapse; min-width: 760px; }
+.af-matrix th, .af-matrix td { padding: 8px 10px; text-align: start; border-bottom: 1px solid var(--line-2); vertical-align: middle; }
+.af-matrix thead th { font-weight: 800; color: var(--muted); font-size: .85rem; }
+.af-matrix tbody th { font-weight: 700; }
+.af-matrix .af-group th { background: var(--surface-2); color: var(--brand-text); font-size: .82rem; font-weight: 800; }
+.af-scope { height: 40px; min-width: 120px; font-size: .88rem; }
+.af-scope[data-on] { border-color: var(--brand); background: var(--brand-soft); color: var(--brand-text); }
+@media (max-width: 760px) {
+  .af-grid2, .af-row2 { grid-template-columns: 1fr; }
+  .af-row-actions { width: 100%; justify-content: flex-end; }
+}

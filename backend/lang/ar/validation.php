@@ -1,0 +1,57 @@
+<?php
+
+// Plain Arabic messages for the rules this system uses.
+return [
+    'required' => 'خانة :attribute مطلوبة.',
+    'present' => 'خانة :attribute مطلوبة.',
+    'prohibited' => 'ما بينفع تغيّر :attribute هون.',
+    'string' => 'خانة :attribute لازم تكون نص.',
+    'integer' => 'خانة :attribute لازم تكون رقم.',
+    'boolean' => 'قيمة :attribute غلط.',
+    'array' => 'قيمة :attribute غلط.',
+    'distinct' => 'في تكرار بـ:attribute.',
+    'in' => 'اختيار :attribute غلط.',
+    'exists' => ':attribute مش موجود.',
+    'unique' => ':attribute مستعمل من قبل.',
+    'confirmed' => 'تأكيد :attribute مش مطابق.',
+    'different' => ':attribute الجديد لازم يختلف عن القديم.',
+    'regex' => 'صيغة :attribute غلط.',
+    'date_format' => 'صيغة :attribute غلط.',
+    'between' => [
+        'numeric' => ':attribute لازم يكون بين :min و:max.',
+        'string' => ':attribute لازم يكون بين :min و:max حرف.',
+    ],
+    'min' => [
+        'numeric' => ':attribute لازم يكون :min أو أكثر.',
+        'string' => ':attribute لازم يكون :min خانات على الأقل.',
+        'array' => 'اختار :min على الأقل من :attribute.',
+    ],
+    'max' => [
+        'numeric' => ':attribute لازم ما يزيد عن :max.',
+        'string' => ':attribute لازم ما يزيد عن :max حرف.',
+        'array' => ':attribute لازم ما يزيد عن :max.',
+    ],
+    'custom' => [
+        'username' => ['regex' => 'اسم المستخدم من 3 لـ40 خانة: حروف وأرقام ونقطة أو شحطة، بدون فراغات.'],
+    ],
+    'attributes' => [
+        'name' => 'الاسم',
+        'username' => 'اسم المستخدم',
+        'password' => 'الرمز',
+        'current_password' => 'الرمز الحالي',
+        'role_id' => 'الدور',
+        'branch_id' => 'الفرع',
+        'code' => 'الرمز المختصر',
+        'start_time' => 'بداية الدوام',
+        'end_time' => 'نهاية الدوام',
+        'work_hours' => 'ساعات الدوام',
+        'work_days' => 'أيام الدوام',
+        'grace_minutes' => 'دقائق السماح',
+        'absent_after' => 'وقت اعتبار الغياب',
+        'date' => 'التاريخ',
+        'manager_user_id' => 'مدير الفرع',
+        'modules' => 'الأقسام',
+        'grants' => 'الصلاحيات',
+        'overrides' => 'الصلاحيات الخاصة',
+    ],
+];
