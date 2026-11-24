@@ -34,6 +34,8 @@ return [
         'attendance.view' => ['عرض حضور الموظفين', 'الحضور'],
         'attendance.manage' => ['اعتماد الحضور وتعديله وإدخاله يدوياً', 'الحضور'],
         'attendance.points' => ['أوراق الـQR وشبكة المكتب', 'الحضور'],
+        'tasks.view' => ['عرض المهام الميدانية', 'المهام'],
+        'tasks.manage' => ['إنشاء المهام وإرسالها وإدارتها (والأنواع والمناطق)', 'المهام'],
         'payroll.view' => ['عرض دفعات الرواتب', 'الرواتب'],
         'payroll.manage' => ['إعداد الرواتب والخصومات والسلف والدفعات', 'الرواتب'],
         'payroll.approve' => ['اعتماد دفعات الرواتب', 'الرواتب'],
@@ -46,6 +48,7 @@ return [
     // The super admin always has everything in every branch, whatever is stored.
     'defaults' => [
         'management' => [
+            'tasks.view' => 'all',
             'payroll.view' => 'all',
             'payroll.approve' => 'all',
             'messages.groups' => 'all',
@@ -81,6 +84,8 @@ return [
             'attendance.view' => 'branch',
             'attendance.manage' => 'branch',
             'attendance.points' => 'branch',
+            'tasks.view' => 'branch',
+            'tasks.manage' => 'branch',
         ],
         'employee' => [],
     ],

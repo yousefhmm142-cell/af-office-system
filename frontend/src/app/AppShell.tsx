@@ -8,6 +8,7 @@ import { useConfirm } from '../ui/Confirm'
 import { useAuth, useUser } from './auth'
 import { navFor } from './nav'
 import { useUnread } from '../pages/messages/lib'
+import { useNewTasks } from '../pages/tasks/useNewTasks'
 
 const MINI_KEY = 'af-sidebar-mini'
 
@@ -25,7 +26,11 @@ export function AppShell() {
   const confirm = useConfirm()
   const items = navFor(user)
   const unread = useUnread()
-  const badge = (to: string) => (to === '/messages' && unread > 0 ? <span className="af-nav-badge num" aria-label={`${unread} غير مقروءة`}>{unread > 99 ? '99+' : unread}</span> : null)
+  const newTasks = useNewTasks(!!user.branch && !!user.modules?.includes('tasks'))
+  const badge = (to: string) => {
+    const n = to === '/messages' ? unread : to === '/my-tasks' ? newTasks : 0
+    return n > 0 ? <span className="af-nav-badge num" aria-label={`${n} جديدة`}>{n > 99 ? '99+' : n}</span> : null
+  }
   const { pathname } = useLocation()
   const [mini, setMini] = useState(readMini)
   const toggleMini = () => setMini((m) => {

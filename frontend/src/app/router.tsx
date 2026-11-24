@@ -2,6 +2,10 @@ import { Navigate, Outlet, createBrowserRouter } from 'react-router'
 import { Account } from '../pages/Account'
 import { Audit } from '../pages/Audit'
 import { Inbox } from '../pages/messages/Inbox'
+import { TasksBoard } from '../pages/tasks/Board'
+import { LinkPage } from '../pages/tasks/LinkPage'
+import { MyTasks } from '../pages/tasks/MyTasks'
+import { TaskSettings } from '../pages/tasks/Settings'
 import { BatchPage } from '../pages/payroll/BatchPage'
 import { Extras } from '../pages/payroll/Extras'
 import { MyPay } from '../pages/payroll/MyPay'
@@ -46,6 +50,8 @@ function NeedAny({ permissions, children }: { permissions: string[]; children: R
 }
 
 export const router = createBrowserRouter([
+  // A technician's private task link: opens without signing in.
+  { path: 't/:token', element: <LinkPage /> },
   {
     element: <Gate />,
     children: [
@@ -62,6 +68,9 @@ export const router = createBrowserRouter([
           { path: 'account', element: <Account /> },
           { path: 'me', element: <EmployeeFile /> },
           { path: 'attendance/me', element: <MyAttendance /> },
+          { path: 'my-tasks', element: <MyTasks /> },
+          { path: 'tasks', element: <NeedAny permissions={['tasks.view', 'tasks.manage']}><TasksBoard /></NeedAny> },
+          { path: 'tasks/settings', element: <Need permission="tasks.manage"><TaskSettings /></Need> },
           { path: 'messages', element: <Inbox /> },
           { path: 'messages/:id', element: <Inbox /> },
           { path: 'my-pay', element: <MyPay /> },

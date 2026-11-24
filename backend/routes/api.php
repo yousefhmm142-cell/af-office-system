@@ -12,6 +12,8 @@ use App\Http\Controllers\Api\MessageController;
 use App\Http\Controllers\Api\PayrollController;
 use App\Http\Controllers\Api\PermissionController;
 use App\Http\Controllers\Api\SetupController;
+use App\Http\Controllers\Api\TaskController;
+use App\Http\Controllers\Api\TaskLinkController;
 use App\Http\Controllers\Api\UserController;
 use App\Http\Controllers\Api\WorkScheduleController;
 use Illuminate\Support\Facades\Route;
@@ -20,6 +22,9 @@ use Illuminate\Support\Facades\Route;
 Route::get('setup', [SetupController::class, 'status']);
 Route::post('setup', [SetupController::class, 'store'])->middleware('throttle:10,1');
 Route::post('auth/login', [AuthController::class, 'login'])->middleware('throttle:30,1');
+// A technician's private task link (from WhatsApp), without signing in.
+Route::get('t/{token}', [TaskLinkController::class, 'show'])->middleware('throttle:60,1');
+Route::post('t/{token}/{action}', [TaskLinkController::class, 'act'])->middleware('throttle:30,1');
 
 Route::middleware(['auth:sanctum', 'active'])->group(function () {
     // Always reachable, even before the first password change.
@@ -108,6 +113,20 @@ Route::middleware(['auth:sanctum', 'active'])->group(function () {
         Route::post('payroll/batches/{batch}/paid', [PayrollController::class, 'markPaid'])->middleware('perm:payroll.manage');
         Route::delete('payroll/batches/{batch}', [PayrollController::class, 'destroyBatch'])->middleware('perm:payroll.manage');
         Route::get('payroll/batches/{batch}/export', [PayrollController::class, 'export'])->middleware('perm:payroll.view,payroll.manage');
+
+        // Field tasks: the office plans and follows; technicians start and finish their own.
+        Route::get('tasks/mine', [TaskController::class, 'mine']);
+        Route::get('tasks/options', [TaskController::class, 'options'])->middleware('perm:tasks.view,tasks.manage');
+        Route::get('tasks', [TaskController::class, 'index'])->middleware('perm:tasks.view,tasks.manage');
+        Route::post('tasks', [TaskController::class, 'store'])->middleware('perm:tasks.manage');
+        Route::post('task-types', [TaskController::class, 'saveType'])->middleware('perm:tasks.manage');
+        Route::patch('task-types/{type}', [TaskController::class, 'saveType'])->middleware('perm:tasks.manage');
+        Route::post('zones', [TaskController::class, 'saveZone'])->middleware('perm:tasks.manage');
+        Route::patch('zones/{zone}', [TaskController::class, 'saveZone'])->middleware('perm:tasks.manage');
+        Route::get('tasks/{task}', [TaskController::class, 'show']);
+        Route::patch('tasks/{task}', [TaskController::class, 'update'])->middleware('perm:tasks.manage');
+        Route::get('tasks/{task}/photo', [TaskController::class, 'photo']);
+        Route::post('tasks/{task}/{action}', [TaskController::class, 'act'])->middleware('throttle:60,1');
 
         // Internal mail: everyone, within who-may-write-to-whom.
         Route::get('messages', [MessageController::class, 'index']);
