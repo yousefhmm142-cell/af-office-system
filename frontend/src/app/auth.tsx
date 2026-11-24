@@ -1,5 +1,5 @@
 import { createContext, useCallback, useContext, useEffect, useMemo, useState, type ReactNode } from 'react'
-import { api, getToken, onApiStatus, setToken } from '../api/client'
+import { api, ApiError, getToken, onApiStatus, setToken } from '../api/client'
 import type { Scope, User } from '../api/types'
 
 type State =
@@ -19,6 +19,24 @@ interface Auth {
 
 const AuthContext = createContext<Auth | null>(null)
 
+// The last known account, so the app opens signed in even without internet.
+const USER_KEY = 'af-user'
+function cachedUser(): User | null {
+  try {
+    return JSON.parse(localStorage.getItem(USER_KEY) ?? 'null') as User | null
+  } catch {
+    return null
+  }
+}
+function cacheUser(user: User | null) {
+  try {
+    if (user) localStorage.setItem(USER_KEY, JSON.stringify(user))
+    else localStorage.removeItem(USER_KEY)
+  } catch {
+    // Not kept.
+  }
+}
+
 export function AuthProvider({ children }: { children: ReactNode }) {
   const [state, setState] = useState<State>({ status: 'loading' })
 
@@ -30,9 +48,13 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     }
     try {
       const { user } = await api<{ user: User }>('/me')
+      cacheUser(user)
       setState({ status: 'signed_in', user })
-    } catch {
-      if (!getToken()) setState({ status: 'signed_out' })
+    } catch (e) {
+      const cached = cachedUser()
+      if (getToken() && cached && e instanceof ApiError && (e.status === 0 || e.status >= 500)) setState({ status: 'signed_in', user: cached })
+      else if (!getToken()) setState({ status: 'signed_out' })
+      else if (e instanceof ApiError && e.status === 403) setState(cached ? { status: 'signed_in', user: cached } : { status: 'signed_out' })
     }
   }, [])
 
@@ -42,6 +64,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     return onApiStatus((status) => {
       if (status === 401) {
         setToken(null)
+        cacheUser(null)
         setState({ status: 'signed_out' })
       }
     })
@@ -53,6 +76,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     async signIn(username, password) {
       const res = await api<{ token: string; user: User }>('/auth/login', { method: 'POST', body: { username, password, device_name: navigator.userAgent.slice(0, 80) } })
       setToken(res.token)
+      cacheUser(res.user)
       setState({ status: 'signed_in', user: res.user })
     },
     async setup(body) {
@@ -63,9 +87,11 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     async signOut() {
       await api('/auth/logout', { method: 'POST' }).catch(() => undefined)
       setToken(null)
+      cacheUser(null)
       setState({ status: 'signed_out' })
     },
     setUser(user) {
+      cacheUser(user)
       setState({ status: 'signed_in', user })
     },
   }), [state, refresh])

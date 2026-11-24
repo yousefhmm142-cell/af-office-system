@@ -28,7 +28,12 @@ return [
         'holidays.manage' => ['العطل الرسمية', 'الدوام'],
         'departments.manage' => ['الأقسام (محصّلين، فنيين…)', 'الموظفين'],
         'users.view' => ['عرض المستخدمين', 'الموظفين'],
+        'employees.view' => ['عرض ملفات الموظفين (مع الراتب)', 'الموظفين'],
+        'employees.manage' => ['تعديل ملفات الموظفين وحالتهم', 'الموظفين'],
         'users.manage' => ['إضافة وتعديل المستخدمين وتغيير رموزهم', 'الموظفين'],
+        'attendance.view' => ['عرض حضور الموظفين', 'الحضور'],
+        'attendance.manage' => ['اعتماد وتعديل الحضور وإدخاله يدوي', 'الحضور'],
+        'attendance.points' => ['أوراق الـQR وشبكة المكتب', 'الحضور'],
         'permissions.manage' => ['توزيع الصلاحيات', 'النظام'],
         'audit.view' => ['سجل الحركات', 'النظام'],
     ],
@@ -37,6 +42,8 @@ return [
     // The super admin always has everything in every branch, whatever is stored.
     'defaults' => [
         'management' => [
+            'attendance.view' => 'all',
+            'employees.view' => 'all',
             'branches.view' => 'all',
             'schedules.view' => 'all',
             'users.view' => 'all',
@@ -50,11 +57,19 @@ return [
             'departments.manage' => 'all',
             'users.view' => 'all',
             'users.manage' => 'all',
+            'employees.view' => 'all',
+            'employees.manage' => 'all',
+            'attendance.view' => 'all',
+            'attendance.manage' => 'all',
         ],
         'branch_manager' => [
             'branches.view' => 'branch',
             'schedules.view' => 'branch',
             'users.view' => 'branch',
+            'employees.view' => 'branch',
+            'attendance.view' => 'branch',
+            'attendance.manage' => 'branch',
+            'attendance.points' => 'branch',
         ],
         'employee' => [],
     ],
@@ -74,5 +89,15 @@ return [
         'max_failures' => 5,
         'lock_minutes' => 15,
         'password_min' => 6,
+    ],
+
+    // Attendance rules (the same as Mukhayyam 2).
+    'attendance' => [
+        'max_punches' => 2,          // in and out, once each per day
+        'out_after_minutes' => 60,   // leaving is not recorded before an hour after arriving
+        'repeat_minutes' => 2,       // a second scan within two minutes is the same scan
+        'offline_max_hours' => 48,   // a punch saved on a phone without internet is accepted up to two days later
+        'max_ips' => 5,
+        'gps_slack_m' => 50,         // the phone's own accuracy allowance
     ],
 ];

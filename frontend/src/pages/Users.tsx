@@ -1,7 +1,8 @@
 import { KeyRound, Lock, Pencil, Plus, Search, Trash2, UserPlus } from 'lucide-react'
 import { useMemo, useState, type FormEvent } from 'react'
+import { Link } from 'react-router'
 import { api, ApiError } from '../api/client'
-import type { Branch, Role, User } from '../api/types'
+import { STATUS_LABEL, type Branch, type Role, type User } from '../api/types'
 import { can, scopeOf, useUser } from '../app/auth'
 import { useLoad } from '../lib/useLoad'
 import { useConfirm } from '../ui/Confirm'
@@ -83,12 +84,13 @@ export function Users() {
           {list.map((u) => (
             <div key={u.id} className="row af-user">
               <Avatar name={u.name} />
-              <span className="row-label">
+              <Link to={u.id === me.id ? '/me' : `/employees/${u.id}`} className="row-label af-link">
                 {u.name}
-                <small className="af-sub"><span dir="auto">@{u.username}</span> · {u.role?.name}{u.branch ? ` · ${u.branch.name}` : ''}</small>
-              </span>
+                <small className="af-sub"><span dir="auto">@{u.username}</span> · {u.job_title ?? u.role?.name}{u.branch ? ` · ${u.branch.name}` : ''}</small>
+              </Link>
               <span className="af-badges">
-                {!u.is_active && <Pill tone="warn">موقوف</Pill>}
+                {u.status && u.status !== 'active' && <Pill tone={u.status === 'terminated' ? 'danger' : u.status === 'trainee' ? 'info' : 'warn'}>{STATUS_LABEL[u.status]}</Pill>}
+                {!u.is_active && u.status !== 'terminated' && <Pill tone="warn">الحساب موقوف</Pill>}
                 {u.is_locked && <Pill tone="danger"><Lock size={12} /> مقفول</Pill>}
                 {u.must_change_password && u.is_active && <Pill tone="info">ما دخل لسا</Pill>}
               </span>

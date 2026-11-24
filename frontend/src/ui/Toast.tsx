@@ -33,8 +33,8 @@ export function ToastProvider({ children }: { children: ReactNode }) {
       const d = (e as CustomEvent<{ text: string; tone?: ToastTone }>).detail
       if (d?.text) show(d.text, d.tone)
     }
-    window.addEventListener('m2-toast', on)
-    return () => window.removeEventListener('m2-toast', on)
+    window.addEventListener('af-toast', on)
+    return () => window.removeEventListener('af-toast', on)
   }, [show])
 
   const value = useMemo(() => show, [show])

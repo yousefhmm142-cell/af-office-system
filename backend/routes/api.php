@@ -1,9 +1,12 @@
 <?php
 
+use App\Http\Controllers\Api\AttendanceController;
+use App\Http\Controllers\Api\AttendancePointController;
 use App\Http\Controllers\Api\AuditController;
 use App\Http\Controllers\Api\AuthController;
 use App\Http\Controllers\Api\BranchController;
 use App\Http\Controllers\Api\DepartmentController;
+use App\Http\Controllers\Api\EmployeeController;
 use App\Http\Controllers\Api\HolidayController;
 use App\Http\Controllers\Api\PermissionController;
 use App\Http\Controllers\Api\SetupController;
@@ -58,5 +61,30 @@ Route::middleware(['auth:sanctum', 'active'])->group(function () {
         Route::put('users/{user}/permissions', [PermissionController::class, 'updateUser'])->middleware('perm:permissions.manage');
 
         Route::get('audit', [AuditController::class, 'index'])->middleware('perm:audit.view');
+
+        // The employee file: the person themselves, or within the viewer's permissions (checked inside).
+        Route::get('employees/{user}', [EmployeeController::class, 'show']);
+        Route::patch('employees/{user}/personal', [EmployeeController::class, 'updatePersonal']);
+        Route::patch('employees/{user}/job', [EmployeeController::class, 'updateJob'])->middleware('perm:employees.manage');
+        Route::post('employees/{user}/status', [EmployeeController::class, 'setStatus'])->middleware('perm:employees.manage');
+        Route::post('employees/{user}/attachments', [EmployeeController::class, 'uploadAttachment'])->middleware('throttle:30,1');
+        Route::get('employees/{user}/attachments/{attachment}', [EmployeeController::class, 'downloadAttachment']);
+        Route::delete('employees/{user}/attachments/{attachment}', [EmployeeController::class, 'deleteAttachment']);
+
+        // Attendance: everyone punches and sees their own; managers see and fix their branch.
+        Route::post('attendance/punch', [AttendanceController::class, 'punch'])->middleware('throttle:30,1');
+        Route::get('attendance/me', [AttendanceController::class, 'me']);
+        Route::get('attendance/days/{day}/history', [AttendanceController::class, 'history']);
+        Route::get('attendance/board', [AttendanceController::class, 'board'])->middleware('perm:attendance.view');
+        Route::get('attendance/days', [AttendanceController::class, 'days'])->middleware('perm:attendance.view');
+        Route::put('attendance/days', [AttendanceController::class, 'setDay'])->middleware('perm:attendance.manage');
+        Route::post('attendance/approve', [AttendanceController::class, 'approve'])->middleware('perm:attendance.manage');
+        Route::get('attendance/points', [AttendancePointController::class, 'index'])->middleware('perm:attendance.points');
+        Route::post('attendance/points', [AttendancePointController::class, 'store'])->middleware('perm:attendance.points');
+        Route::patch('attendance/points/{point}', [AttendancePointController::class, 'update'])->middleware('perm:attendance.points');
+        Route::post('attendance/points/{point}/network', [AttendancePointController::class, 'addNetwork'])->middleware('perm:attendance.points');
+        Route::delete('attendance/points/{point}/network', [AttendancePointController::class, 'removeNetwork'])->middleware('perm:attendance.points');
+        Route::put('attendance/points/{point}/location', [AttendancePointController::class, 'setLocation'])->middleware('perm:attendance.points');
+        Route::post('attendance/points/{point}/rotate', [AttendancePointController::class, 'rotate'])->middleware('perm:attendance.points');
     });
 });

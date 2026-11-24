@@ -45,14 +45,15 @@ export async function api<T = unknown>(path: string, options: { method?: string;
   const headers: Record<string, string> = { Accept: 'application/json' }
   const token = getToken()
   if (token) headers.Authorization = `Bearer ${token}`
-  if (options.body !== undefined) headers['Content-Type'] = 'application/json'
+  const isForm = options.body instanceof FormData
+  if (options.body !== undefined && !isForm) headers['Content-Type'] = 'application/json'
 
   let res: Response
   try {
     res = await fetch(config.apiBase + path, {
       method: options.method ?? 'GET',
       headers,
-      body: options.body === undefined ? undefined : JSON.stringify(options.body),
+      body: options.body === undefined ? undefined : isForm ? (options.body as FormData) : JSON.stringify(options.body),
     })
   } catch {
     throw new ApiError(0, 'ما في اتصال بالسيرفر. تأكد من الإنترنت وجرّب كمان مرة.', 'offline')
@@ -67,4 +68,18 @@ export async function api<T = unknown>(path: string, options: { method?: string;
     throw err
   }
   return data as T
+}
+
+/** A protected file (an attachment), opened in a new tab without putting the token in a link. */
+export async function openFile(path: string) {
+  const tab = window.open('', '_blank')
+  const res = await fetch(config.apiBase + path, { headers: { Authorization: `Bearer ${getToken() ?? ''}` } })
+  if (!res.ok) {
+    tab?.close()
+    throw new ApiError(res.status, 'ما قدرنا نفتح الملف.')
+  }
+  const url = URL.createObjectURL(await res.blob())
+  if (tab) tab.location.href = url
+  else window.location.href = url
+  setTimeout(() => URL.revokeObjectURL(url), 60_000)
 }

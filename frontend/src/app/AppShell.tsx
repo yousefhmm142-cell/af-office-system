@@ -3,6 +3,7 @@ import { useState } from 'react'
 import { Link, NavLink, Outlet, useLocation } from 'react-router'
 import { Avatar, Logo } from '../ui/primitives'
 import { ThemeToggle } from '../ui/ThemeToggle'
+import { OfflineBar, UpdateBar } from '../ui/NetBars'
 import { useConfirm } from '../ui/Confirm'
 import { useAuth, useUser } from './auth'
 import { navFor } from './nav'
@@ -95,6 +96,8 @@ export function AppShell() {
             </div>
           </header>
         </div>
+        <OfflineBar />
+        <UpdateBar />
         <main className="page stage glass" id="main">
           <div key={pathname} className="page-enter"><Outlet /></div>
         </main>

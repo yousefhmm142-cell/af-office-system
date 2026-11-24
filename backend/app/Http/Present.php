@@ -21,6 +21,8 @@ class Present
             'role' => $u->role ? ['id' => $u->role->id, 'key' => $u->role->key, 'name' => $u->role->name, 'level' => $u->role->level] : null,
             'branch' => $u->branch ? ['id' => $u->branch->id, 'name' => $u->branch->name] : null,
             'is_active' => $u->is_active,
+            'status' => $u->relationLoaded('employee') ? $u->employee?->status : null,
+            'job_title' => $u->relationLoaded('employee') ? $u->employee?->job_title : null,
             'must_change_password' => $u->must_change_password,
             'is_locked' => $u->locked_until?->isFuture() ?? false,
             'last_login_at' => $u->last_login_at?->toIso8601String(),

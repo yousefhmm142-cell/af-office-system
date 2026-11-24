@@ -5,6 +5,7 @@ import { can, useUser } from '../app/auth'
 import { firstName, formatLongDate, formatWeekday, greeting } from '../lib/format'
 import { useLoad } from '../lib/useLoad'
 import { PageHead } from '../ui/PageHead'
+import { PunchCard } from './attendance/PunchCard'
 
 export function Home() {
   const user = useUser()
@@ -16,6 +17,7 @@ export function Home() {
   return (
     <div className="home">
       <PageHead title={`${greeting(now)}، ${firstName(user.name)}`} eyebrow={`${formatWeekday(now)} · ${formatLongDate(now)}`} />
+      {user.branch && user.modules?.includes('attendance') && <PunchCard />}
       <div className="dash-kpis">
         {can(user, 'branches.view') && (
           <Link to="/branches" className="dash-kpi glass">
@@ -41,7 +43,7 @@ export function Home() {
       </div>
       <section className="card glass af-pad">
         <h2 className="af-h2">شو في بالنظام لهلأ</h2>
-        <p className="eyebrow">هاي المرحلة الأولى: الفروع، والمستخدمين، والصلاحيات، والدخول. باقي الأقسام (الحضور، الرواتب، المراسلات، التوليد…) جاي بالمراحل الجاية.</p>
+        <p className="eyebrow">هلأ في: الفروع، والموظفين وملفاتهم، والصلاحيات، والحضور. باقي الأقسام (الرواتب، المراسلات، التوليد…) جاي بالمراحل الجاية.</p>
         <p className="eyebrow">حسابك: <b>{user.role?.name}</b>{user.branch ? <> · فرع <b>{user.branch.name}</b></> : <> · كل الفروع</>}</p>
       </section>
     </div>

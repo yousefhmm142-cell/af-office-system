@@ -30,7 +30,7 @@ class UserController extends Controller
             'status' => ['nullable', Rule::in(['active', 'inactive'])],
         ]);
         $q = Access::limit(User::query(), $request->user(), 'users.view', 'branch_id', 'id')
-            ->with('role', 'branch')
+            ->with('role', 'branch', 'employee')
             ->when($data['branch_id'] ?? null, fn ($q, $v) => $q->where('branch_id', $v))
             ->when($data['role'] ?? null, fn ($q, $v) => $q->whereHas('role', fn ($r) => $r->where('key', $v)))
             ->when(($data['status'] ?? null) === 'active', fn ($q) => $q->where('is_active', true))
@@ -174,12 +174,12 @@ class UserController extends Controller
      * The actor needs users.manage for the branch, and may only manage roles below their own
      * (the super admin manages everyone). Company-wide accounts need an "all" grant.
      */
-    public static function assertCanManage(User $actor, ?Role $role, ?int $branchId): void
+    public static function assertCanManage(User $actor, ?Role $role, ?int $branchId, string $permission = 'users.manage'): void
     {
         if ($actor->isSuperAdmin()) {
             return;
         }
-        abort_unless(Access::allowsBranch($actor, 'users.manage', $branchId), 403, 'ما عندك صلاحية على موظفين هاد الفرع.');
+        abort_unless(Access::allowsBranch($actor, $permission, $branchId), 403, 'ما عندك صلاحية على موظفين هاد الفرع.');
         abort_unless($role && $role->level < $actor->level(), 403, 'ما بتقدر تدير حساب بنفس مستواك أو أعلى.');
     }
 

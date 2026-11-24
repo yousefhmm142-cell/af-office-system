@@ -1,8 +1,13 @@
 import { Navigate, Outlet, createBrowserRouter } from 'react-router'
 import { Account } from '../pages/Account'
 import { Audit } from '../pages/Audit'
+import { Board } from '../pages/attendance/Board'
+import { MyAttendance } from '../pages/attendance/MyAttendance'
+import { Points } from '../pages/attendance/Points'
+import { Scan } from '../pages/attendance/Scan'
 import { BranchDetail } from '../pages/BranchDetail'
 import { Branches } from '../pages/Branches'
+import { EmployeeFile } from '../pages/EmployeeFile'
 import { ForcedPasswordChange } from '../pages/ChangePassword'
 import { Home } from '../pages/Home'
 import { Login } from '../pages/Login'
@@ -33,6 +38,7 @@ export const router = createBrowserRouter([
   {
     element: <Gate />,
     children: [
+      { path: 'a/:code', element: <Scan /> },
       {
         element: <AppShell />,
         children: [
@@ -43,6 +49,11 @@ export const router = createBrowserRouter([
           { path: 'permissions', element: <Need permission="permissions.manage"><Permissions /></Need> },
           { path: 'audit', element: <Need permission="audit.view"><Audit /></Need> },
           { path: 'account', element: <Account /> },
+          { path: 'me', element: <EmployeeFile /> },
+          { path: 'attendance/me', element: <MyAttendance /> },
+          { path: 'attendance', element: <Need permission="attendance.view"><Board /></Need> },
+          { path: 'attendance/points', element: <Need permission="attendance.points"><Points /></Need> },
+          { path: 'employees/:id', element: <EmployeeFile /> },
           { path: '*', element: <Navigate to="/" replace /> },
         ],
       },
