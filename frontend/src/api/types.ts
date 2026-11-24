@@ -17,6 +17,7 @@ export interface User {
   created_at: string | null
   permissions?: Record<string, Scope>
   modules?: string[]
+  field_worker?: boolean
 }
 
 export interface BranchModule { key: string; name: string; enabled: boolean }

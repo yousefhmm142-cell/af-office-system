@@ -29,6 +29,12 @@ class Present
             'created_at' => $u->created_at?->toIso8601String(),
         ];
         if ($withAccess) {
+            // The signed-in person: their own record decides which personal pages they get.
+            $u->loadMissing('employee');
+            $out['status'] = $u->employee?->status;
+            $out['job_title'] = $u->employee?->job_title;
+            $out['field_worker'] = $u->employee && (str_contains((string) $u->employee->job_title, 'فني')
+                || \Illuminate\Support\Facades\DB::table('task_assignees')->where('user_id', $u->id)->exists());
             $out['permissions'] = Access::effective($u);
             $out['modules'] = $u->branch
                 ? $u->branch->modules()->where('is_enabled', true)->pluck('module')->values()->all()

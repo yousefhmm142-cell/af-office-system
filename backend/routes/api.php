@@ -29,6 +29,7 @@ Route::post('t/{token}/{action}', [TaskLinkController::class, 'act'])->middlewar
 Route::middleware(['auth:sanctum', 'active'])->group(function () {
     // Always reachable, even before the first password change.
     Route::get('me', [AuthController::class, 'me']);
+    Route::get('dashboard', [App\Http\Controllers\Api\DashboardController::class, 'show']);
     Route::post('me/password', [AuthController::class, 'changePassword'])->middleware('throttle:10,1');
     Route::post('auth/logout', [AuthController::class, 'logout']);
 

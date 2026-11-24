@@ -6,9 +6,11 @@ export interface NavItem { to: string; label: string; icon: typeof House }
 
 export function navFor(user: User): NavItem[] {
   const items: NavItem[] = [{ to: '/', label: 'الرئيسية', icon: House }]
-  if (user.branch && user.modules?.includes('tasks')) items.push({ to: '/my-tasks', label: 'مهامي', icon: ListTodo })
+  if (user.branch && user.modules?.includes('tasks') && user.field_worker) items.push({ to: '/my-tasks', label: 'مهامي', icon: ListTodo })
   if (user.branch && user.modules?.includes('attendance')) items.push({ to: '/attendance/me', label: 'حضوري', icon: CalendarCheck2 })
-  items.push({ to: '/messages', label: 'المراسلات', icon: Mail }, { to: '/my-pay', label: 'رواتبي', icon: Wallet }, { to: '/me', label: 'ملفي', icon: IdCard })
+  items.push({ to: '/messages', label: 'المراسلات', icon: Mail })
+  // Personal pay and file only for people who have an employee record.
+  if (user.status) items.push({ to: '/my-pay', label: 'رواتبي', icon: Wallet }, { to: '/me', label: 'ملفي', icon: IdCard })
   if (can(user, 'tasks.view') || can(user, 'tasks.manage')) items.push({ to: '/tasks', label: 'المهام الميدانية', icon: ClipboardList })
   if (can(user, 'payroll.view') || can(user, 'payroll.manage')) items.push({ to: '/payroll', label: 'الرواتب', icon: WalletCards })
   if (can(user, 'attendance.view')) items.push({ to: '/attendance', label: 'حضور الفرع', icon: ClipboardCheck })

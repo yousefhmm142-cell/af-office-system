@@ -20,9 +20,13 @@ export function PayrollHome() {
   const manage = can(me, 'payroll.manage')
 
   const months = useMemo(() => {
+    // One card per month and branch (a company-wide batch has its own card).
     const map = new Map<string, Batch[]>()
-    for (const b of data?.batches ?? []) map.set(b.month, [...(map.get(b.month) ?? []), b])
-    return [...map.entries()]
+    for (const b of data?.batches ?? []) {
+      const key = `${b.month}|${b.branch?.id ?? 'all'}`
+      map.set(key, [...(map.get(key) ?? []), b])
+    }
+    return [...map.entries()].map(([key, list]) => [key.split('|')[0]!, list, key] as const)
   }, [data])
   const pending = (data?.batches ?? []).filter((b) => b.status === 'draft')
   const toPay = (data?.batches ?? []).filter((b) => b.status === 'approved')
@@ -43,10 +47,10 @@ export function PayrollHome() {
       {(pending.length > 0 || toPay.length > 0) && (
         <div className="af-attention">
           {pending.map((b) => (
-            <Link key={b.id} to={`/payroll/${b.id}`} className="af-attn warn"><Sparkles size={18} /><span><b>{b.title}</b> بانتظار المراجعة والاعتماد</span><ArrowLeft size={16} /></Link>
+            <Link key={b.id} to={`/payroll/${b.id}`} className="af-attn warn"><Sparkles size={18} /><span><b>{b.title}</b> · {b.branch?.name ?? 'جميع الفروع'} بانتظار المراجعة والاعتماد</span><ArrowLeft size={16} /></Link>
           ))}
           {toPay.map((b) => (
-            <Link key={b.id} to={`/payroll/${b.id}`} className="af-attn info"><CircleDollarSign size={18} /><span><b>{b.title}</b> معتمدة وجاهزة للصرف</span><ArrowLeft size={16} /></Link>
+            <Link key={b.id} to={`/payroll/${b.id}`} className="af-attn info"><CircleDollarSign size={18} /><span><b>{b.title}</b> · {b.branch?.name ?? 'جميع الفروع'} معتمدة وجاهزة للصرف</span><ArrowLeft size={16} /></Link>
           ))}
         </div>
       )}
@@ -61,11 +65,11 @@ export function PayrollHome() {
         </section>
       ) : (
         <div className="af-months">
-          {months.map(([month, batches]) => {
+          {months.map(([month, batches, key]) => {
             const done = batches.reduce((s, b) => s + b.percent, 0)
             const total = batches.reduce((s, b) => s + b.total_net, 0)
             return (
-              <section key={month} className="card glass af-month-card">
+              <section key={key} className="card glass af-month-card">
                 <header className="af-month-head">
                   <div><p className="eyebrow">{batches[0]?.branch?.name ?? 'جميع الفروع'}</p><h2>{monthLabel(month)}</h2></div>
                   <div className="af-month-total"><small>المجموع</small><b className="num">{fmt(total)}</b><small>شيكل</small></div>
