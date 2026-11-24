@@ -1,12 +1,14 @@
-import { Building2, CalendarCheck2, ClipboardCheck, History, House, IdCard, KeyRound, UserRound, Users } from 'lucide-react'
+import { Building2, CalendarCheck2, ClipboardCheck, History, House, IdCard, KeyRound, Mail, UserRound, Users, Wallet, WalletCards } from 'lucide-react'
 import type { User } from '../api/types'
 import { can } from './auth'
 
 export interface NavItem { to: string; label: string; icon: typeof House }
 
 export function navFor(user: User): NavItem[] {
-  const items: NavItem[] = [{ to: '/', label: 'الرئيسية', icon: House }, { to: '/me', label: 'ملفي', icon: IdCard }]
+  const items: NavItem[] = [{ to: '/', label: 'الرئيسية', icon: House }, { to: '/messages', label: 'المراسلات', icon: Mail }]
   if (user.branch && user.modules?.includes('attendance')) items.push({ to: '/attendance/me', label: 'حضوري', icon: CalendarCheck2 })
+  items.push({ to: '/my-pay', label: 'رواتبي', icon: Wallet }, { to: '/me', label: 'ملفي', icon: IdCard })
+  if (can(user, 'payroll.view') || can(user, 'payroll.manage')) items.push({ to: '/payroll', label: 'الرواتب', icon: WalletCards })
   if (can(user, 'attendance.view')) items.push({ to: '/attendance', label: 'حضور الفرع', icon: ClipboardCheck })
   if (can(user, 'branches.view')) items.push({ to: '/branches', label: 'الفروع', icon: Building2 })
   if (can(user, 'users.view')) items.push({ to: '/users', label: 'الموظفين', icon: Users })

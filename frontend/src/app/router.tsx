@@ -1,6 +1,12 @@
 import { Navigate, Outlet, createBrowserRouter } from 'react-router'
 import { Account } from '../pages/Account'
 import { Audit } from '../pages/Audit'
+import { Inbox } from '../pages/messages/Inbox'
+import { BatchPage } from '../pages/payroll/BatchPage'
+import { Extras } from '../pages/payroll/Extras'
+import { MyPay } from '../pages/payroll/MyPay'
+import { PayrollHome } from '../pages/payroll/PayrollHome'
+import { PayrollSettings } from '../pages/payroll/SettingsPage'
 import { Board } from '../pages/attendance/Board'
 import { MyAttendance } from '../pages/attendance/MyAttendance'
 import { Points } from '../pages/attendance/Points'
@@ -34,6 +40,11 @@ function Need({ permission, children }: { permission: string; children: React.Re
   return can(user, permission) ? <>{children}</> : <Navigate to="/" replace />
 }
 
+function NeedAny({ permissions, children }: { permissions: string[]; children: React.ReactNode }) {
+  const user = useUser()
+  return permissions.some((p) => can(user, p)) ? <>{children}</> : <Navigate to="/" replace />
+}
+
 export const router = createBrowserRouter([
   {
     element: <Gate />,
@@ -51,6 +62,13 @@ export const router = createBrowserRouter([
           { path: 'account', element: <Account /> },
           { path: 'me', element: <EmployeeFile /> },
           { path: 'attendance/me', element: <MyAttendance /> },
+          { path: 'messages', element: <Inbox /> },
+          { path: 'messages/:id', element: <Inbox /> },
+          { path: 'my-pay', element: <MyPay /> },
+          { path: 'payroll', element: <NeedAny permissions={['payroll.view', 'payroll.manage']}><PayrollHome /></NeedAny> },
+          { path: 'payroll/extras', element: <Need permission="payroll.manage"><Extras /></Need> },
+          { path: 'payroll/settings', element: <Need permission="payroll.manage"><PayrollSettings /></Need> },
+          { path: 'payroll/:id', element: <NeedAny permissions={['payroll.view', 'payroll.manage']}><BatchPage /></NeedAny> },
           { path: 'attendance', element: <Need permission="attendance.view"><Board /></Need> },
           { path: 'attendance/points', element: <Need permission="attendance.points"><Points /></Need> },
           { path: 'employees/:id', element: <EmployeeFile /> },

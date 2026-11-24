@@ -7,6 +7,7 @@ import { OfflineBar, UpdateBar } from '../ui/NetBars'
 import { useConfirm } from '../ui/Confirm'
 import { useAuth, useUser } from './auth'
 import { navFor } from './nav'
+import { useUnread } from '../pages/messages/lib'
 
 const MINI_KEY = 'af-sidebar-mini'
 
@@ -23,6 +24,8 @@ export function AppShell() {
   const { signOut } = useAuth()
   const confirm = useConfirm()
   const items = navFor(user)
+  const unread = useUnread()
+  const badge = (to: string) => (to === '/messages' && unread > 0 ? <span className="af-nav-badge num" aria-label={`${unread} غير مقروءة`}>{unread > 99 ? '99+' : unread}</span> : null)
   const { pathname } = useLocation()
   const [mini, setMini] = useState(readMini)
   const toggleMini = () => setMini((m) => {
@@ -32,9 +35,10 @@ export function AppShell() {
   const tabs = items.slice(0, 5)
 
   const link = ({ to, label, icon: Icon }: (typeof items)[number]) => (
-    <NavLink key={to} to={to} end={to === '/'} className="sb-item" data-tip={label} aria-label={mini ? label : undefined}>
+    <NavLink key={to} to={to} end={to === "/"} className="sb-item" data-tip={label} aria-label={mini ? label : undefined}>
       <Icon size={21} aria-hidden="true" />
       <span className="sb-t">{label}</span>
+      {badge(to)}
     </NavLink>
   )
 
@@ -107,7 +111,7 @@ export function AppShell() {
         <nav className="tabbar glass" aria-label="الأقسام">
           {tabs.map(({ to, label, icon: Icon }) => (
             <NavLink key={to} to={to} end={to === '/'} className="tab">
-              <span className="tab-icon"><Icon size={21} aria-hidden="true" /></span>
+              <span className="tab-icon"><Icon size={21} aria-hidden="true" />{badge(to)}</span>
               <span className="tab-label">{label}</span>
             </NavLink>
           ))}

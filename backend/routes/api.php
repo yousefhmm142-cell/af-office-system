@@ -8,6 +8,8 @@ use App\Http\Controllers\Api\BranchController;
 use App\Http\Controllers\Api\DepartmentController;
 use App\Http\Controllers\Api\EmployeeController;
 use App\Http\Controllers\Api\HolidayController;
+use App\Http\Controllers\Api\MessageController;
+use App\Http\Controllers\Api\PayrollController;
 use App\Http\Controllers\Api\PermissionController;
 use App\Http\Controllers\Api\SetupController;
 use App\Http\Controllers\Api\UserController;
@@ -86,5 +88,35 @@ Route::middleware(['auth:sanctum', 'active'])->group(function () {
         Route::delete('attendance/points/{point}/network', [AttendancePointController::class, 'removeNetwork'])->middleware('perm:attendance.points');
         Route::put('attendance/points/{point}/location', [AttendancePointController::class, 'setLocation'])->middleware('perm:attendance.points');
         Route::post('attendance/points/{point}/rotate', [AttendancePointController::class, 'rotate'])->middleware('perm:attendance.points');
+
+        // Payroll: settings, deductions and bonuses, advances, pay batches; everyone sees their own pay.
+        Route::get('payroll/mine', [PayrollController::class, 'mine']);
+        Route::get('payroll/settings', [PayrollController::class, 'settings'])->middleware('perm:payroll.manage');
+        Route::post('payroll/settings', [PayrollController::class, 'storeSetting'])->middleware('perm:payroll.manage');
+        Route::get('payroll/adjustments', [PayrollController::class, 'adjustments'])->middleware('perm:payroll.manage');
+        Route::post('payroll/adjustments', [PayrollController::class, 'storeAdjustment'])->middleware('perm:payroll.manage');
+        Route::delete('payroll/adjustments/{adjustment}', [PayrollController::class, 'destroyAdjustment'])->middleware('perm:payroll.manage');
+        Route::get('payroll/advances', [PayrollController::class, 'advances'])->middleware('perm:payroll.manage');
+        Route::post('payroll/advances', [PayrollController::class, 'storeAdvance'])->middleware('perm:payroll.manage');
+        Route::delete('payroll/advances/{advance}', [PayrollController::class, 'destroyAdvance'])->middleware('perm:payroll.manage');
+        Route::get('payroll/plan', [PayrollController::class, 'plan'])->middleware('perm:payroll.manage');
+        Route::get('payroll/batches', [PayrollController::class, 'batches'])->middleware('perm:payroll.view,payroll.manage');
+        Route::post('payroll/batches', [PayrollController::class, 'storeBatch'])->middleware('perm:payroll.manage');
+        Route::get('payroll/batches/{batch}', [PayrollController::class, 'showBatch'])->middleware('perm:payroll.view,payroll.manage');
+        Route::post('payroll/batches/{batch}/recalculate', [PayrollController::class, 'recalculate'])->middleware('perm:payroll.manage');
+        Route::post('payroll/batches/{batch}/approve', [PayrollController::class, 'approve'])->middleware('perm:payroll.approve');
+        Route::post('payroll/batches/{batch}/paid', [PayrollController::class, 'markPaid'])->middleware('perm:payroll.manage');
+        Route::delete('payroll/batches/{batch}', [PayrollController::class, 'destroyBatch'])->middleware('perm:payroll.manage');
+        Route::get('payroll/batches/{batch}/export', [PayrollController::class, 'export'])->middleware('perm:payroll.view,payroll.manage');
+
+        // Internal mail: everyone, within who-may-write-to-whom.
+        Route::get('messages', [MessageController::class, 'index']);
+        Route::get('messages/unread', [MessageController::class, 'unread']);
+        Route::get('messages/recipients', [MessageController::class, 'recipients']);
+        Route::post('messages', [MessageController::class, 'store'])->middleware('throttle:60,1');
+        Route::get('messages/{message}', [MessageController::class, 'show']);
+        Route::post('messages/{message}/archive', [MessageController::class, 'archive']);
+        Route::post('messages/{message}/unread', [MessageController::class, 'markUnread']);
+        Route::get('messages/{message}/attachments/{attachment}', [MessageController::class, 'attachment']);
     });
 });
