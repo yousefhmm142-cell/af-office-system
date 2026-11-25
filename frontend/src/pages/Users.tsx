@@ -1,6 +1,6 @@
 import { KeyRound, Lock, Pencil, Plus, Search, Trash2, UserPlus } from 'lucide-react'
 import { useMemo, useState, type FormEvent } from 'react'
-import { Link } from 'react-router'
+import { Link, useSearchParams } from 'react-router'
 import { api, ApiError } from '../api/client'
 import { STATUS_LABEL, type Branch, type Role, type User } from '../api/types'
 import { can, scopeOf, useUser } from '../app/auth'
@@ -10,6 +10,7 @@ import { Dialog } from '../ui/Dialog'
 import { ErrorBanner, Field, Switch } from '../ui/Field'
 import { Loading, PageHead } from '../ui/PageHead'
 import { Avatar, Button, Pill } from '../ui/primitives'
+import { ScrollTable } from '../ui/ScrollTable'
 import { useToast } from '../ui/Toast'
 import { PasswordInput } from './Login'
 
@@ -29,6 +30,8 @@ export function Users() {
   const roles = useLoad<{ roles: Role[] }>('/roles')
   const [search, setSearch] = useState('')
   const [branchFilter, setBranchFilter] = useState('')
+  const [filters, setFilters] = useSearchParams()
+  const incompleteOnly = filters.get('profile') === 'incomplete'
   const [editing, setEditing] = useState<User | 'new' | null>(null)
   const [resetting, setResetting] = useState<User | null>(null)
   const manages = can(me, 'users.manage')
@@ -36,8 +39,9 @@ export function Users() {
   const list = useMemo(() => {
     const q = search.trim().toLowerCase()
     return (data?.users ?? []).filter((u) =>
-      (!q || u.name.toLowerCase().includes(q) || u.username.includes(q)) && (!branchFilter || String(u.branch?.id ?? 'none') === branchFilter))
-  }, [data, search, branchFilter])
+      (!q || u.name.toLowerCase().includes(q) || u.username.includes(q)) && (!branchFilter || String(u.branch?.id ?? 'none') === branchFilter)
+      && (!incompleteOnly || (u.is_active && u.needs_profile_completion)))
+  }, [data, search, branchFilter, incompleteOnly])
 
   const canTouch = (u: User) => manages && u.id !== me.id && (me.role?.key === 'super_admin' || (u.role?.level ?? 0) < (me.role?.level ?? 0))
     && (scopeOf(me, 'users.manage') === 'all' || u.branch?.id === me.branch?.id)
@@ -63,8 +67,8 @@ export function Users() {
 
   return (
     <>
-      <PageHead title="الموظفين" eyebrow="لكل موظف حساب: اسم مستخدم ورمز"
-        actions={manages && <Button variant="primary" icon={<UserPlus size={18} />} onClick={() => setEditing('new')}>حساب جديد</Button>} />
+      <PageHead title="الموظفون" eyebrow="الحسابات والملفات الشخصية"
+        actions={manages && <Button variant="primary" icon={<UserPlus size={18} />} disabled={!roles.data} onClick={() => setEditing('new')}>حساب جديد</Button>} />
       <div className="af-toolbar">
         <div className="af-search">
           <Search size={17} aria-hidden="true" />
@@ -77,33 +81,46 @@ export function Users() {
             {branches.data?.branches.map((b) => <option key={b.id} value={b.id}>{b.name}</option>)}
           </select>
         )}
+        <select className="input select" value={incompleteOnly ? 'incomplete' : ''} aria-label="حالة الملف الشخصي"
+          onChange={(event) => setFilters(event.target.value ? { profile: event.target.value } : {}, { replace: true })}>
+          <option value="">جميع الملفات</option>
+          <option value="incomplete">ملفات تحتاج إلى استكمال</option>
+        </select>
       </div>
       <ErrorBanner text={error} />
       {loading && !data ? <Loading /> : (
-        <div className="card glass rows">
-          {list.map((u) => (
-            <div key={u.id} className="row af-user">
-              <Avatar name={u.name} />
-              <Link to={u.id === me.id ? '/me' : `/employees/${u.id}`} className="row-label af-link">
-                {u.name}
-                <small className="af-sub"><span dir="auto">@{u.username}</span> · {u.job_title ?? u.role?.name}{u.branch ? ` · ${u.branch.name}` : ''}</small>
-              </Link>
-              <span className="af-badges">
-                {u.status && u.status !== 'active' && <Pill tone={u.status === 'terminated' ? 'danger' : u.status === 'trainee' ? 'info' : 'warn'}>{STATUS_LABEL[u.status]}</Pill>}
-                {!u.is_active && u.status !== 'terminated' && <Pill tone="warn">الحساب موقوف</Pill>}
-                {u.is_locked && <Pill tone="danger"><Lock size={12} /> مقفل</Pill>}
-                {u.must_change_password && u.is_active && <Pill tone="info">لم يدخل بعد</Pill>}
-              </span>
-              {canTouch(u) && (
-                <span className="af-row-actions">
-                  <button type="button" className="icon-btn" title="تعديل" aria-label={`تعديل ${u.name}`} onClick={() => setEditing(u)}><Pencil size={16} /></button>
-                  <button type="button" className="icon-btn" title="رمز مؤقت" aria-label={`رمز مؤقت لـ${u.name}`} onClick={() => setResetting(u)}><KeyRound size={16} /></button>
-                  <Switch label={u.is_active ? 'فعّال' : 'موقوف'} on={u.is_active} onChange={() => void toggleActive(u)} />
-                  <button type="button" className="icon-btn" title="حذف" aria-label={`حذف ${u.name}`} onClick={() => void remove(u)}><Trash2 size={16} /></button>
-                </span>
-              )}
-            </div>
-          ))}
+        <div className="card glass af-directory">
+          <ScrollTable label="الموظفون">
+            <table className="tbl">
+              <thead><tr><th scope="col">الموظف</th><th scope="col">الدور والفرع</th><th scope="col">الحالة</th>{manages && <th scope="col">الإجراءات</th>}</tr></thead>
+              <tbody>{list.map((u) => (
+                <tr key={u.id}>
+                  <th scope="row">
+                    <Link to={u.id === me.id ? '/me' : `/employees/${u.id}`} className="af-directory-name af-link">
+                      <Avatar name={u.name} /><span>{u.name}<small className="af-sub" dir="auto">@{u.username}</small></span>
+                    </Link>
+                  </th>
+                  <td>{u.role?.name ?? '—'}<small className="af-sub">{[u.branch?.name ?? 'الإدارة العامة', u.job_title].filter(Boolean).join(' · ')}</small></td>
+                  <td><span className="af-badges">
+                    {u.is_active && u.status === 'active' && <Pill tone="ok">فعّال</Pill>}
+                    {u.status && u.status !== 'active' && <Pill tone={u.status === 'terminated' ? 'danger' : u.status === 'trainee' ? 'info' : 'warn'}>{STATUS_LABEL[u.status]}</Pill>}
+                    {!u.is_active && u.status !== 'terminated' && <Pill tone="warn">الحساب موقوف</Pill>}
+                    {u.is_locked && <Pill tone="danger"><Lock size={12} /> مقفل</Pill>}
+                    {u.must_change_password && u.is_active && <Pill tone="info">كلمة مرور مؤقتة</Pill>}
+                    {u.needs_profile_completion && <Pill tone="warn">ملف شخصي غير مكتمل</Pill>}
+                  </span></td>
+                  {manages && <td>{canTouch(u) ? (
+                    <span className="af-row-actions">
+                      <button type="button" className="icon-btn" title="تعديل" aria-label={`تعديل ${u.name}`} onClick={() => setEditing(u)}><Pencil size={16} /></button>
+                      <button type="button" className="icon-btn" title="رمز مؤقت" aria-label={`رمز مؤقت لـ${u.name}`} onClick={() => setResetting(u)}><KeyRound size={16} /></button>
+                      <Switch label={u.is_active ? 'فعّال' : 'موقوف'} on={u.is_active} onChange={() => void toggleActive(u)} />
+                      <button type="button" className="icon-btn" title="حذف" aria-label={`حذف ${u.name}`} onClick={() => void remove(u)}><Trash2 size={16} /></button>
+                    </span>
+                  ) : '—'}</td>}
+                </tr>
+              ))}</tbody>
+            </table>
+          </ScrollTable>
           {list.length === 0 && <p className="eyebrow af-pad">لا توجد نتائج.</p>}
         </div>
       )}
@@ -155,7 +172,7 @@ function UserDialog({ user, roles, branches, onClose, onSaved }: { user: User | 
   if (created) {
     return (
       <Dialog open onClose={onSaved} title="تم إنشاء الحساب" icon={<Plus size={20} />} footer={<Button variant="primary" onClick={onSaved}>حسناً</Button>}>
-        <p>سلّم الموظف هذه البيانات. وعند دخوله الأول سيطلب منه النظام اختيار رمز خاص به.</p>
+        <p>سلّم الموظف هذه البيانات. سيختار كلمة مرور خاصة به عند أول دخول، ثم يستكمل ملفه الشخصي.</p>
         <div className="af-credentials">
           <div><small>اسم المستخدم</small><b dir="auto">{created.username}</b></div>
           <div><small>الرمز المؤقت</small><b className="num" dir="ltr">{created.password}</b></div>

@@ -24,6 +24,7 @@ class Present
             'status' => $u->relationLoaded('employee') ? $u->employee?->status : null,
             'job_title' => $u->relationLoaded('employee') ? $u->employee?->job_title : null,
             'must_change_password' => $u->must_change_password,
+            'needs_profile_completion' => (bool) $u->needs_profile_completion,
             'is_locked' => $u->locked_until?->isFuture() ?? false,
             'last_login_at' => $u->last_login_at?->toIso8601String(),
             'created_at' => $u->created_at?->toIso8601String(),

@@ -69,6 +69,9 @@ class DashboardController extends Controller
             $out['company'] = [
                 'branches' => Branch::where('is_active', true)->count(),
                 'employees' => (int) $statuses->sum(),
+                'profiles_pending' => Access::scope($me, 'users.manage') === 'all'
+                    ? User::where('is_active', true)->where('needs_profile_completion', true)->count()
+                    : null,
                 'by_status' => ['active' => (int) ($statuses['active'] ?? 0), 'trainee' => (int) ($statuses['trainee'] ?? 0), 'suspended' => (int) ($statuses['suspended'] ?? 0), 'terminated' => (int) ($statuses['terminated'] ?? 0)],
             ];
         }

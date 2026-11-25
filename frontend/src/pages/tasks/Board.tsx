@@ -1,6 +1,6 @@
 import { ChevronLeft, ChevronRight, ClipboardPlus, Clock, MapPin, Search, Settings2, Users } from 'lucide-react'
 import { useEffect, useMemo, useState } from 'react'
-import { Link } from 'react-router'
+import { Link, useSearchParams } from 'react-router'
 import type { Branch } from '../../api/types'
 import { scopeOf, useUser } from '../../app/auth'
 import { useLoad } from '../../lib/useLoad'
@@ -34,7 +34,16 @@ export function TasksBoard() {
   const [q, setQ] = useState('')
   const { data, error, loading, reload } = useLoad<{ tasks: Task[]; can_manage: boolean }>(chosen ? `/tasks?branch_id=${chosen}&day=${day}${q ? `&search=${encodeURIComponent(q)}` : ''}` : null)
   const options = useLoad<Options>(chosen ? `/tasks/options?branch_id=${chosen}` : null)
-  const [creating, setCreating] = useState(false)
+  const [params, setParams] = useSearchParams()
+  const creating = params.get('new') === '1'
+  function setCreating(open: boolean) {
+    setParams((current) => {
+      const next = new URLSearchParams(current)
+      if (open) next.set('new', '1')
+      else next.delete('new')
+      return next
+    }, { replace: true })
+  }
   const [open, setOpen] = useState<number | null>(null)
 
   useEffect(() => { const t = window.setTimeout(() => setQ(search.trim()), 300); return () => window.clearTimeout(t) }, [search])
@@ -49,10 +58,11 @@ export function TasksBoard() {
   return (
     <>
       <PageHead title="المهام الميدانية" eyebrow={dayLabel(day)}
-        actions={data?.can_manage && (
+        actions={data && (
           <>
-            <Link to={`/tasks/settings?branch_id=${chosen}`} className="btn"><Settings2 size={18} /> الأنواع والمناطق</Link>
-            <Button variant="primary" size="lg" icon={<ClipboardPlus size={20} />} disabled={!options.data} onClick={() => setCreating(true)}>مهمة جديدة</Button>
+            <Link to="/tasks/daily" className="btn">كشف إنجاز الفنيين</Link>
+            {data.can_manage && <Link to={`/tasks/settings?branch_id=${chosen}`} className="btn"><Settings2 size={18} /> الأنواع والمناطق</Link>}
+            {data.can_manage && <Button variant="primary" size="lg" icon={<ClipboardPlus size={20} />} disabled={!options.data} onClick={() => setCreating(true)}>مهمة جديدة</Button>}
           </>
         )} />
 
@@ -92,7 +102,7 @@ export function TasksBoard() {
         </div>
       )}
 
-      {creating && options.data && <NewTask options={options.data} onClose={() => setCreating(false)} onSaved={(t) => { setCreating(false); void reload(); void options.reload(); setOpen(t.id) }} />}
+      {creating && data?.can_manage && options.data && <NewTask options={options.data} onClose={() => setCreating(false)} onSaved={(t) => { setCreating(false); void reload(); void options.reload(); setOpen(t.id) }} />}
       {open && <TaskSheet id={open} options={options.data} onClose={() => setOpen(null)} onChanged={() => { void reload(); void options.reload() }} />}
     </>
   )

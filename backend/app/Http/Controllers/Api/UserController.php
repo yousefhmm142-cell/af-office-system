@@ -10,6 +10,7 @@ use App\Support\Access;
 use App\Support\Audit;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Http\Request;
+use Illuminate\Support\Facades\DB;
 use Illuminate\Validation\Rule;
 use Illuminate\Validation\ValidationException;
 
@@ -66,8 +67,15 @@ class UserController extends Controller
         $this->assertCanManage($actor, $role, $data['branch_id']);
 
         // The person sets their own password the first time they sign in.
-        $user = User::create($data + ['must_change_password' => true]);
-        Audit::log('user.created', $user, null, $user->only('name', 'username', 'role_id', 'branch_id', 'is_active'));
+        $user = DB::transaction(function () use ($data, $role) {
+            $user = User::create($data + [
+                'must_change_password' => true,
+                'needs_profile_completion' => $role->key !== Role::SUPER_ADMIN,
+            ]);
+            Audit::log('user.created', $user, null, $user->only('name', 'username', 'role_id', 'branch_id', 'is_active'));
+
+            return $user;
+        });
 
         return response()->json(['user' => Present::user($user->fresh())], 201);
     }

@@ -13,10 +13,10 @@ import { useToast } from '../../ui/Toast'
 import { position, type Point } from './lib'
 
 /** QR sheets of a branch: print, approve the office internet, optional distance check, new code. */
-export function Points() {
+export function Points({ embeddedBranch }: { embeddedBranch?: string }) {
   const me = useUser()
   const [params] = useSearchParams()
-  const branchId = params.get('branch_id') ?? String(me.branch?.id ?? '')
+  const branchId = embeddedBranch ?? params.get('branch_id') ?? String(me.branch?.id ?? '')
   const toast = useToast()
   const { data, error, loading, reload, setData } = useLoad<{ points: Point[]; my_ip: string }>(branchId ? `/attendance/points?branch_id=${branchId}` : null)
   const [busy, setBusy] = useState(false)
@@ -31,10 +31,15 @@ export function Points() {
 
   const replace = (p: Point) => data && setData({ ...data, points: data.points.map((x) => (x.id === p.id ? p : x)) })
 
+  const addButton = <Button variant="primary" icon={<Plus size={18} />} busy={busy} onClick={() => void add()}>ورقة جديدة</Button>
+
   return (
     <>
-      <PageHead title="أوراق الـQR" eyebrow="الورقة المعلّقة في المكتب، يمسحها الموظف بجواله"
-        actions={<Button variant="primary" icon={<Plus size={18} />} busy={busy} onClick={() => void add()}>ورقة جديدة</Button>} />
+      {embeddedBranch ? (
+        <div className="af-toolbar"><h2 className="af-h2">أوراق الحضور في المكتب</h2>{addButton}</div>
+      ) : (
+        <PageHead title="أوراق الـQR" eyebrow="الورقة المعلّقة في المكتب، يمسحها الموظف بجواله" actions={addButton} />
+      )}
       <ErrorBanner text={error} />
       {loading && !data ? <Loading /> : data && (
         <div className="af-cards af-points">

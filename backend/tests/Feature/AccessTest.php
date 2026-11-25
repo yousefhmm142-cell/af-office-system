@@ -74,6 +74,20 @@ class AccessTest extends TestCase
         $this->assertSame('all', $access['users.view']);
     }
 
+    public function test_changing_one_role_permission_retains_the_other_grants(): void
+    {
+        $this->actAs(Role::SUPER_ADMIN);
+        $role = Role::where('key', Role::FINANCE)->firstOrFail();
+        $attendance = Permission::where('key', 'attendance.view')->firstOrFail();
+
+        $this->patchJson("/api/roles/{$role->id}/permissions", ['grants' => ['attendance.view' => 'all']])->assertOk();
+        $this->assertDatabaseHas('role_permissions', ['role_id' => $role->id, 'permission_id' => $attendance->id, 'scope' => 'all']);
+
+        $this->patchJson("/api/roles/{$role->id}/permissions", ['grants' => ['attendance.view' => null]])->assertOk();
+        $this->assertDatabaseMissing('role_permissions', ['role_id' => $role->id, 'permission_id' => $attendance->id]);
+        $this->assertSame(['payroll.view' => 'all'], $role->permissions()->pluck('scope', 'key')->all());
+    }
+
     public function test_permissions_screen_cannot_hand_out_more_than_you_have(): void
     {
         // HR gets the permissions screen with a branch-less "all" on users only.

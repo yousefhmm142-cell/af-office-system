@@ -16,7 +16,7 @@ class User extends Authenticatable
     use HasApiTokens, HasFactory, HasUuid, SoftDeletes;
 
     protected $fillable = [
-        'uuid', 'name', 'username', 'password', 'role_id', 'branch_id', 'is_active', 'must_change_password',
+        'uuid', 'name', 'username', 'password', 'role_id', 'branch_id', 'is_active', 'must_change_password', 'needs_profile_completion',
     ];
 
     protected $hidden = ['password', 'failed_logins', 'locked_until'];
@@ -30,6 +30,7 @@ class User extends Authenticatable
             'password' => 'hashed',
             'is_active' => 'boolean',
             'must_change_password' => 'boolean',
+            'needs_profile_completion' => 'boolean',
             'failed_logins' => 'integer',
             'locked_until' => 'datetime',
             'last_login_at' => 'datetime',

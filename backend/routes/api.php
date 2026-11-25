@@ -29,11 +29,16 @@ Route::post('t/{token}/{action}', [TaskLinkController::class, 'act'])->middlewar
 Route::middleware(['auth:sanctum', 'active'])->group(function () {
     // Always reachable, even before the first password change.
     Route::get('me', [AuthController::class, 'me']);
-    Route::get('dashboard', [App\Http\Controllers\Api\DashboardController::class, 'show']);
     Route::post('me/password', [AuthController::class, 'changePassword'])->middleware('throttle:10,1');
     Route::post('auth/logout', [AuthController::class, 'logout']);
 
+    Route::middleware('password.changed:profile')->group(function () {
+        Route::get('employees/{user}', [EmployeeController::class, 'show']);
+        Route::patch('employees/{user}/personal', [EmployeeController::class, 'updatePersonal']);
+    });
+
     Route::middleware('password.changed')->group(function () {
+        Route::get('dashboard', [App\Http\Controllers\Api\DashboardController::class, 'show']);
         Route::get('branches', [BranchController::class, 'index'])->middleware('perm:branches.view');
         Route::post('branches', [BranchController::class, 'store'])->middleware('perm:branches.manage');
         Route::get('branches/{branch}', [BranchController::class, 'show'])->middleware('perm:branches.view');
@@ -64,15 +69,13 @@ Route::middleware(['auth:sanctum', 'active'])->group(function () {
         Route::delete('users/{user}', [UserController::class, 'destroy'])->middleware('perm:users.manage');
 
         Route::get('permissions', [PermissionController::class, 'index'])->middleware('perm:permissions.manage');
-        Route::put('roles/{role}/permissions', [PermissionController::class, 'updateRole'])->middleware('perm:permissions.manage');
+        Route::match(['put', 'patch'], 'roles/{role}/permissions', [PermissionController::class, 'updateRole'])->middleware('perm:permissions.manage');
         Route::get('users/{user}/permissions', [PermissionController::class, 'showUser'])->middleware('perm:permissions.manage');
         Route::put('users/{user}/permissions', [PermissionController::class, 'updateUser'])->middleware('perm:permissions.manage');
 
         Route::get('audit', [AuditController::class, 'index'])->middleware('perm:audit.view');
 
         // The employee file: the person themselves, or within the viewer's permissions (checked inside).
-        Route::get('employees/{user}', [EmployeeController::class, 'show']);
-        Route::patch('employees/{user}/personal', [EmployeeController::class, 'updatePersonal']);
         Route::patch('employees/{user}/job', [EmployeeController::class, 'updateJob'])->middleware('perm:employees.manage');
         Route::post('employees/{user}/status', [EmployeeController::class, 'setStatus'])->middleware('perm:employees.manage');
         Route::post('employees/{user}/attachments', [EmployeeController::class, 'uploadAttachment'])->middleware('throttle:30,1');
@@ -83,6 +86,7 @@ Route::middleware(['auth:sanctum', 'active'])->group(function () {
         Route::post('attendance/punch', [AttendanceController::class, 'punch'])->middleware('throttle:30,1');
         Route::get('attendance/me', [AttendanceController::class, 'me']);
         Route::get('attendance/days/{day}/history', [AttendanceController::class, 'history']);
+        Route::get('attendance/overview', [AttendanceController::class, 'overview'])->middleware('perm:attendance.view');
         Route::get('attendance/board', [AttendanceController::class, 'board'])->middleware('perm:attendance.view');
         Route::get('attendance/days', [AttendanceController::class, 'days'])->middleware('perm:attendance.view');
         Route::put('attendance/days', [AttendanceController::class, 'setDay'])->middleware('perm:attendance.manage');

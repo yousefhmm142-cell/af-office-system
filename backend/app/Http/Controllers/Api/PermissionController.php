@@ -49,15 +49,21 @@ class PermissionController extends Controller
         ]);
         $perms = Permission::pluck('id', 'key');
         $grants = array_filter($data['grants']);
-        $this->assertKnown($grants, $perms->all());
+        $this->assertKnown($data['grants'], $perms->all());
+        $editable = $actor->isSuperAdmin() ? $perms->keys()->all() : array_keys(Access::effective($actor));
+        if ($request->isMethod('PATCH')) {
+            $editable = array_keys($data['grants']);
+            if (! $actor->isSuperAdmin() && array_diff($editable, array_keys(Access::effective($actor)))) {
+                throw ValidationException::withMessages(['grants' => 'لا يمكنك تعديل صلاحية لا تملكها.']);
+            }
+        }
         $this->assertWithinOwn($actor, $grants);
 
         $old = DB::table('role_permissions')->join('permissions', 'permissions.id', '=', 'permission_id')
             ->where('role_id', $role->id)->pluck('scope', 'permissions.key')->all();
 
-        DB::transaction(function () use ($role, $grants, $perms, $actor) {
-            // A limited editor only changes the permissions they hold themselves; others stay as they were.
-            $editable = $actor->isSuperAdmin() ? $perms->keys()->all() : array_keys(Access::effective($actor));
+        DB::transaction(function () use ($role, $grants, $perms, $editable) {
+            Role::whereKey($role->id)->lockForUpdate()->firstOrFail();
             DB::table('role_permissions')->where('role_id', $role->id)
                 ->whereIn('permission_id', $perms->only($editable)->values())->delete();
             foreach ($grants as $key => $scope) {

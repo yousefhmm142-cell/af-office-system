@@ -6,13 +6,18 @@ use App\Http\Controllers\Controller;
 use App\Models\AttendanceDay;
 use App\Models\AttendanceEdit;
 use App\Models\AttendancePunch;
+use App\Models\Branch;
+use App\Models\BranchModule;
+use App\Models\Holiday;
 use App\Models\User;
+use App\Models\WorkSchedule;
 use App\Services\AttendanceService;
 use App\Support\Access;
 use App\Support\Audit;
 use Carbon\CarbonImmutable;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Http\Request;
+use Illuminate\Support\Collection;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Validation\Rule;
 use Illuminate\Validation\ValidationException;
@@ -75,48 +80,85 @@ class AttendanceController extends Controller
         $branchId = $data['branch_id'] ?? $actor->branch_id;
         abort_unless($branchId && Access::allowsBranch($actor, 'attendance.view', (int) $branchId), 403, 'ليست لديك صلاحية على حضور هذا الفرع.');
         $date = $data['date'] ?? $this->svc->now()->toDateString();
-        $d = CarbonImmutable::parse($date, $this->svc->tz());
-        $now = $this->svc->now();
-
-        $people = User::where('branch_id', $branchId)->where('is_active', true)->with('employee', 'role')
-            ->whereHas('employee', fn ($q) => $q->where('tracks_attendance', true)->where('status', '!=', 'terminated'))
-            ->orderBy('name')->get();
-        $days = AttendanceDay::where('date', $date)->whereIn('user_id', $people->pluck('id'))->get()->keyBy('user_id');
-
-        $rows = $people->map(function (User $u) use ($days, $d, $now) {
-            $day = $days[$u->id] ?? null;
-            $schedule = $this->svc->scheduleFor($u);
-            $work = $schedule ? $this->svc->isWorkDay($schedule, $d, $u->branch_id) : true;
-            $state = match (true) {
-                $day && $day->check_out !== null => 'left',
-                $day && $day->check_in !== null => $day->late_minutes > 0 ? 'late' : 'present',
-                ! $work => 'off',
-                $this->isAbsent($d, $now, $schedule) => 'absent',
-                default => 'not_yet',
-            };
-
-            return [
-                'user' => ['id' => $u->id, 'name' => $u->name, 'job_title' => $u->employee?->job_title ?? $u->role?->name],
-                'state' => $state,
-                'schedule' => $schedule ? substr((string) $schedule->start_time, 0, 5).'–'.substr((string) $schedule->end_time, 0, 5) : null,
-                'day' => $day ? $this->day($day) : null,
-            ];
-        });
-        $count = fn ($s) => $rows->where('state', $s)->count();
+        $rows = $this->boardRows([(int) $branchId], $date)->get((int) $branchId, collect());
 
         return response()->json([
             'date' => $date,
             'branch_id' => (int) $branchId,
             'rows' => $rows->values(),
-            'summary' => [
-                'expected' => $rows->where('state', '!=', 'off')->count(),
-                'present' => $count('present') + $count('late') + $count('left'),
-                'late' => $rows->filter(fn ($r) => ($r['day']['late_minutes'] ?? 0) > 0)->count(),
-                'absent' => $count('absent'),
-                'pending' => $rows->filter(fn ($r) => ($r['day']['approval_status'] ?? null) === 'pending')->count(),
-            ],
+            'summary' => $this->boardSummary($rows),
             'can_manage' => Access::allowsBranch($actor, 'attendance.manage', (int) $branchId),
         ]);
+    }
+
+    public function overview(Request $request): JsonResponse
+    {
+        abort_unless(Access::scope($request->user(), 'attendance.view') === 'all', 403, 'تتطلب هذه الصفحة صلاحية عرض حضور جميع الفروع.');
+        $data = $request->validate(['date' => ['nullable', 'date_format:Y-m-d']]);
+        $date = $data['date'] ?? $this->svc->now()->toDateString();
+        $closed = BranchModule::where('module', 'attendance')->where('is_enabled', false)->select('branch_id');
+        $branches = Branch::where('is_active', true)->whereNotIn('id', $closed)->orderBy('name')->get(['id', 'name']);
+        $rows = $this->boardRows($branches->modelKeys(), $date);
+
+        return response()->json([
+            'date' => $date,
+            'branches' => $branches->map(fn (Branch $branch) => [
+                'id' => $branch->id,
+                'name' => $branch->name,
+            ] + $this->boardSummary($rows->get($branch->id, collect()))),
+        ]);
+    }
+
+    private function boardRows(array $branchIds, string $date): Collection
+    {
+        $dayDate = CarbonImmutable::parse($date, $this->svc->tz());
+        $now = $this->svc->now();
+        $people = User::whereIn('branch_id', $branchIds)->where('is_active', true)->with('employee.schedule', 'role')
+            ->whereHas('employee', fn ($q) => $q->where('tracks_attendance', true)->where('status', '!=', 'terminated')
+                ->where(fn ($employment) => $employment->whereNull('hire_date')->orWhere('hire_date', '<=', $date)))
+            ->orderBy('name')->get();
+        $days = AttendanceDay::where('date', $date)->whereIn('user_id', $people->modelKeys())->get()->keyBy('user_id');
+        $defaultSchedules = WorkSchedule::whereIn('branch_id', $branchIds)->orderByDesc('is_default')->orderBy('id')->get()
+            ->groupBy('branch_id')->map(fn ($schedules) => $schedules->first());
+        $holidayBranches = Holiday::where('date', $date)
+            ->where(fn ($query) => $query->whereNull('branch_id')->orWhereIn('branch_id', $branchIds))
+            ->pluck('branch_id');
+        $companyHoliday = $holidayBranches->containsStrict(null);
+
+        return $people->groupBy('branch_id')->map(fn ($branchPeople) => $branchPeople->map(function (User $user) use (
+            $days, $dayDate, $now, $defaultSchedules, $holidayBranches, $companyHoliday
+        ) {
+            $day = $days->get($user->id);
+            $schedule = $user->employee?->schedule ?? $defaultSchedules->get($user->branch_id);
+            $work = ! $companyHoliday && ! $holidayBranches->contains($user->branch_id)
+                && (! $schedule || in_array($dayDate->dayOfWeekIso, $schedule->work_days ?? [], true));
+            $state = match (true) {
+                $day && $day->check_out !== null => 'left',
+                $day && $day->check_in !== null => $day->late_minutes > 0 ? 'late' : 'present',
+                ! $work => 'off',
+                $this->isAbsent($dayDate, $now, $schedule) => 'absent',
+                default => 'not_yet',
+            };
+
+            return [
+                'user' => ['id' => $user->id, 'name' => $user->name, 'job_title' => $user->employee?->job_title ?? $user->role?->name],
+                'state' => $state,
+                'schedule_name' => $schedule?->name,
+                'schedule' => $schedule ? substr((string) $schedule->start_time, 0, 5).'–'.substr((string) $schedule->end_time, 0, 5) : null,
+                'day' => $day ? $this->day($day) : null,
+            ];
+        }));
+    }
+
+    private function boardSummary(Collection $rows): array
+    {
+        return [
+            'expected' => $rows->where('state', '!=', 'off')->count(),
+            'present' => $rows->whereIn('state', ['present', 'late', 'left'])->count(),
+            'late' => $rows->filter(fn ($row) => ($row['day']['late_minutes'] ?? 0) > 0)->count(),
+            'absent' => $rows->where('state', 'absent')->count(),
+            'pending' => $rows->filter(fn ($row) => ($row['day']['approval_status'] ?? null) === 'pending')->count(),
+        ];
     }
 
     /** A table of days, filtered by branch, person and dates. */

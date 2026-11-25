@@ -1,5 +1,5 @@
 import { KeyRound, Save, UserCog } from 'lucide-react'
-import { Fragment, useEffect, useMemo, useState } from 'react'
+import { useEffect, useMemo, useState } from 'react'
 import { api, ApiError } from '../api/client'
 import { SCOPE_LABEL, type Override, type PermissionDef, type RoleGrants, type Scope, type User } from '../api/types'
 import { useUser } from '../app/auth'
@@ -7,6 +7,7 @@ import { useLoad } from '../lib/useLoad'
 import { ErrorBanner } from '../ui/Field'
 import { Loading, PageHead } from '../ui/PageHead'
 import { Button } from '../ui/primitives'
+import { ScrollTable } from '../ui/ScrollTable'
 import { useToast } from '../ui/Toast'
 
 interface Matrix { permissions: PermissionDef[]; roles: RoleGrants[]; scopes: Scope[] }
@@ -31,95 +32,109 @@ export function Permissions() {
   )
 }
 
-function ScopeSelect({ value, onChange, disabled, label }: { value: Scope | ''; onChange(v: Scope | ''): void; disabled?: boolean; label: string }) {
+function RolesMatrix() {
+  const { data, error, loading, setData } = useLoad<Matrix>('/permissions')
+  const [roleId, setRoleId] = useState('')
+  const [blocked, setBlocked] = useState(false)
+  if (loading && !data) return <Loading />
+  if (!data) return <ErrorBanner text={error} />
+  const role = data.roles.find((entry) => String(entry.id) === roleId)
+    ?? data.roles.find((entry) => !entry.locked)
+    ?? data.roles[0]
+  if (!role) return null
+
   return (
-    <select className="input select af-scope" data-on={value || undefined} value={value} disabled={disabled} aria-label={label} onChange={(e) => onChange(e.target.value as Scope | '')}>
-      <option value="">—</option>
-      <option value="own">{SCOPE_LABEL.own}</option>
-      <option value="branch">{SCOPE_LABEL.branch}</option>
-      <option value="all">{SCOPE_LABEL.all}</option>
-    </select>
+    <section className="card glass af-pad af-permissions">
+      <label className="af-permission-picker">
+        الدور الوظيفي
+        <select className="input select" value={role.id} disabled={blocked} onChange={(event) => setRoleId(event.target.value)}>
+          {data.roles.map((entry) => <option key={entry.id} value={entry.id}>{entry.name}</option>)}
+        </select>
+      </label>
+      <RoleEditor key={role.id} role={role} permissions={data.permissions} onSaved={setData} onBlocked={setBlocked} />
+    </section>
   )
 }
 
-function RolesMatrix() {
+function RoleEditor({ role, permissions, onSaved, onBlocked }: { role: RoleGrants; permissions: PermissionDef[]; onSaved(data: Matrix): void; onBlocked(blocked: boolean): void }) {
   const me = useUser()
   const toast = useToast()
-  const { data, error, loading, setData } = useLoad<Matrix>('/permissions')
-  const [draft, setDraft] = useState<Record<number, Record<string, Scope>>>({})
-  const [saving, setSaving] = useState<number | null>(null)
+  const [draft, setDraft] = useState(role.grants)
+  const [saving, setSaving] = useState(false)
+  const [error, setError] = useState<string | null>(null)
+  const admin = me.role?.key === 'super_admin'
+  const editable = !role.locked && (admin || role.level < (me.role?.level ?? 0))
+  const scopeRank: Scope[] = ['own', 'branch', 'all']
+  const permitted = (key: string) => admin || !!me.permissions?.[key]
+  const changed = permissions.filter(({ key }) => draft[key] !== role.grants[key])
+  const dirty = changed.length > 0
+  useEffect(() => { onBlocked(dirty || saving) }, [dirty, saving, onBlocked])
 
-  useEffect(() => {
-    if (data) setDraft(Object.fromEntries(data.roles.map((r) => [r.id, { ...r.grants }])))
-  }, [data])
-
-  if (loading && !data) return <Loading />
-  if (!data) return <ErrorBanner text={error} />
-  const editable = (r: RoleGrants) => !r.locked && (me.role?.key === 'super_admin' || r.level < (me.role?.level ?? 0))
-  const dirty = (r: RoleGrants) => JSON.stringify(Object.entries(draft[r.id] ?? {}).sort()) !== JSON.stringify(Object.entries(r.grants).sort())
-
-  async function save(r: RoleGrants) {
-    setSaving(r.id)
+  async function save() {
+    setSaving(true)
+    setError(null)
     try {
-      setData(await api<Matrix>(`/roles/${r.id}/permissions`, { method: 'PUT', body: { grants: draft[r.id] ?? {} } }))
-      toast(`حُفظت صلاحيات ${r.name}`)
+      const grants = Object.fromEntries(changed.map(({ key }) => [key, draft[key] ?? null]))
+      const updated = await api<Matrix>(`/roles/${role.id}/permissions`, { method: 'PATCH', body: { grants } })
+      setDraft(updated.roles.find((other) => other.id === role.id)?.grants ?? {})
+      onSaved(updated)
+      toast(`حُفظت صلاحيات ${role.name}`)
     } catch (e) {
-      toast(e instanceof ApiError ? (Object.values(e.fields)[0] ?? e.message) : 'لم يُحفظ', 'danger')
-    } finally { setSaving(null) }
+      setError(e instanceof ApiError ? (Object.values(e.fields)[0] ?? e.message) : 'تعذّر حفظ الصلاحيات.')
+    } finally {
+      setSaving(false)
+    }
   }
 
   return (
-    <div className="card glass af-matrix-wrap">
-      <table className="tbl af-matrix">
-        <thead>
-          <tr>
-            <th scope="col">الصلاحية</th>
-            {data.roles.map((r) => <th key={r.id} scope="col">{r.name}</th>)}
-          </tr>
-        </thead>
-        <tbody>
-          {groupsOf(data.permissions).map(([group, perms]) => (
-            <Fragment key={group}>
-              <tr className="af-group"><th colSpan={data.roles.length + 1} scope="colgroup">{group}</th></tr>
-              {perms.map((p) => (
-                <tr key={p.key}>
-                  <th scope="row">{p.name}</th>
-                  {data.roles.map((r) => (
-                    <td key={r.id}>
-                      <ScopeSelect label={`${p.name} · ${r.name}`} value={draft[r.id]?.[p.key] ?? ''} disabled={!editable(r)}
-                        onChange={(v) => setDraft((d) => {
-                          const next = { ...(d[r.id] ?? {}) }
-                          if (v) next[p.key] = v
-                          else delete next[p.key]
-                          return { ...d, [r.id]: next }
-                        })} />
-                    </td>
-                  ))}
-                </tr>
-              ))}
-            </Fragment>
-          ))}
-        </tbody>
-        <tfoot>
-          <tr>
-            <th />
-            {data.roles.map((r) => (
-              <td key={r.id}>
-                {r.locked ? <small className="eyebrow">جميع الصلاحيات دائماً</small> : editable(r) && (
-                  <Button variant={dirty(r) ? 'primary' : 'secondary'} busy={saving === r.id} disabled={!dirty(r)} icon={<Save size={15} />} onClick={() => void save(r)}>حفظ</Button>
-                )}
-              </td>
+    <>
+      <form onSubmit={(event) => { event.preventDefault(); if (dirty && !saving) void save() }}>
+        {role.locked ? <p>يملك هذا الدور جميع الصلاحيات تلقائيًا.</p> : (
+          <div className="af-permission-groups">
+            {groupsOf(permissions).map(([group, items]) => (
+              <fieldset key={group}>
+                <legend>{group}</legend>
+                {items.map(({ key, name }) => {
+                  const cap = me.permissions?.[key]
+                  return (
+                    <label className="af-permission-row" key={key}>
+                      <span>{name}</span>
+                      <select className="input select" value={draft[key] ?? ''} disabled={saving || !editable || !permitted(key)}
+                        onChange={(event) => {
+                          const value = event.target.value as Scope | ''
+                          setDraft((current) => {
+                            const next = { ...current }
+                            if (value) next[key] = value
+                            else delete next[key]
+                            return next
+                          })
+                        }}>
+                        <option value="">غير ممنوحة</option>
+                        {scopeRank.map((scope) => (
+                          <option key={scope} value={scope} disabled={!admin && (!cap || scopeRank.indexOf(scope) > scopeRank.indexOf(cap))}>{SCOPE_LABEL[scope]}</option>
+                        ))}
+                      </select>
+                    </label>
+                  )
+                })}
+              </fieldset>
             ))}
-          </tr>
-        </tfoot>
-      </table>
-      <p className="eyebrow af-pad">«فرعه فقط»: يطّلع على فرعه فقط. «كل الفروع»: الشركة كلها. «بياناته فقط»: بياناته الشخصية فقط.</p>
-    </div>
+          </div>
+        )}
+        <ErrorBanner text={error} />
+        {editable && <div className="af-permission-save">
+          <span role="status">{dirty ? 'لديك تغييرات غير محفوظة' : 'جميع التغييرات محفوظة'}</span>
+          <Button disabled={!dirty || saving} onClick={() => { setDraft(role.grants); setError(null) }}>تراجع</Button>
+          <Button type="submit" variant="primary" busy={saving} disabled={!dirty} icon={<Save size={16} />}>حفظ صلاحيات الدور</Button>
+        </div>}
+      </form>
+    </>
   )
 }
 
 function PersonOverrides() {
   const toast = useToast()
+  const me = useUser()
   const users = useLoad<{ users: User[] }>('/users')
   const matrix = useLoad<Matrix>('/permissions')
   const [userId, setUserId] = useState('')
@@ -129,20 +144,30 @@ function PersonOverrides() {
   const [error, setError] = useState<string | null>(null)
 
   useEffect(() => {
-    if (!userId) { setPayload(null); return }
-    setError(null)
+    if (!userId) return
+    let current = true
     api<NonNullable<typeof payload>>(`/users/${userId}/permissions`).then((p) => {
+      if (!current) return
       setPayload(p)
       setDraft(Object.fromEntries(p.overrides.map((o) => [o.key, o.effect === 'deny' ? 'deny' : (o.scope ?? 'branch')])))
-    }).catch((e) => { setPayload(null); setError(e instanceof ApiError ? e.message : 'حدث خطأ') })
+    }).catch((e) => {
+      if (current) setError(e instanceof ApiError ? e.message : 'تعذّر تحميل صلاحيات الموظف.')
+    })
+    return () => { current = false }
   }, [userId])
 
-  const people = useMemo(() => (users.data?.users ?? []).filter((u) => u.role?.key !== 'super_admin'), [users.data])
+  const admin = me.role?.key === 'super_admin'
+  const people = useMemo(() => (users.data?.users ?? []).filter((u) => u.id !== me.id && u.role &&
+    u.role.key !== 'super_admin' && (admin || u.role.level < (me.role?.level ?? 0))), [users.data, me, admin])
+  const dirty = matrix.data?.permissions.some(({ key }) => {
+    const saved = payload?.overrides.find((override) => override.key === key)
+    return (draft[key] || '') !== (saved?.effect === 'deny' ? 'deny' : (saved?.scope ?? ''))
+  })
 
   async function save() {
     setBusy(true)
     try {
-      const overrides = Object.entries(draft).filter(([, v]) => v).map(([key, v]) => (v === 'deny' ? { key, effect: 'deny' } : { key, effect: 'allow', scope: v }))
+      const overrides = Object.entries(draft).filter(([key, v]) => v && (admin || me.permissions?.[key])).map(([key, v]) => (v === 'deny' ? { key, effect: 'deny' } : { key, effect: 'allow', scope: v }))
       const p = await api<NonNullable<typeof payload>>(`/users/${userId}/permissions`, { method: 'PUT', body: { overrides } })
       setPayload(p)
       toast('حُفظت الصلاحيات الخاصة')
@@ -154,31 +179,34 @@ function PersonOverrides() {
   return (
     <div className="card glass af-pad">
       <p className="eyebrow">الاستثناء الشخصي: تمنح الموظف صلاحية إضافية على دوره، أو تمنعه من صلاحية في دوره. والاستثناء مقدَّم على الدور.</p>
-      <select className="input select" value={userId} onChange={(e) => setUserId(e.target.value)} aria-label="اختر الموظف" style={{ maxWidth: 420 }}>
+      <select className="input select" value={userId} disabled={busy} onChange={(e) => { setPayload(null); setDraft({}); setError(null); setUserId(e.target.value) }} aria-label="اختر الموظف" style={{ maxWidth: 420 }}>
         <option value="">اختر الموظف…</option>
         {people.map((u) => <option key={u.id} value={u.id}>{u.name} · {u.role?.name}{u.branch ? ` · ${u.branch.name}` : ''}</option>)}
       </select>
       <ErrorBanner text={error} />
       {payload && matrix.data && (
         <>
-          <table className="tbl af-matrix" style={{ marginTop: 16 }}>
+          <div className="af-permission-overrides"><ScrollTable label="الاستثناءات الفردية"><table className="tbl af-matrix">
             <thead><tr><th>الصلاحية</th><th>من دوره</th><th>استثناء</th><th>النتيجة</th></tr></thead>
             <tbody>
               {matrix.data.permissions.map((p) => {
                 const fromRole = payload.role_grants[p.key]
-                const result = payload.effective[p.key]
+                const choice = draft[p.key]
+                const result = choice === 'deny' ? null : choice || fromRole
+                const cap = me.permissions?.[p.key]
+                const rank: Scope[] = ['own', 'branch', 'all']
                 return (
                   <tr key={p.key}>
                     <th scope="row">{p.name}</th>
                     <td>{fromRole ? SCOPE_LABEL[fromRole] : '—'}</td>
                     <td>
-                      <select className="input select af-scope" value={draft[p.key] ?? ''} aria-label={`استثناء ${p.name}`} data-on={draft[p.key] || undefined}
+                      <select className="input select af-scope" value={draft[p.key] ?? ''} aria-label={`استثناء ${p.name}`} disabled={busy || (!admin && !cap)} data-on={draft[p.key] || undefined}
                         onChange={(e) => setDraft((d) => ({ ...d, [p.key]: e.target.value as '' | 'deny' | Scope }))}>
                         <option value="">بدون استثناء</option>
                         <option value="deny">ممنوع</option>
-                        <option value="own">{SCOPE_LABEL.own}</option>
-                        <option value="branch">{SCOPE_LABEL.branch}</option>
-                        <option value="all">{SCOPE_LABEL.all}</option>
+                        <option value="own" disabled={!admin && (!cap || rank.indexOf('own') > rank.indexOf(cap))}>{SCOPE_LABEL.own}</option>
+                        <option value="branch" disabled={!admin && (!cap || rank.indexOf('branch') > rank.indexOf(cap))}>{SCOPE_LABEL.branch}</option>
+                        <option value="all" disabled={!admin && (!cap || rank.indexOf('all') > rank.indexOf(cap))}>{SCOPE_LABEL.all}</option>
                       </select>
                     </td>
                     <td><b>{result ? SCOPE_LABEL[result] : '—'}</b></td>
@@ -186,9 +214,9 @@ function PersonOverrides() {
                 )
               })}
             </tbody>
-          </table>
+          </table></ScrollTable></div>
           <div style={{ marginTop: 14 }}>
-            <Button variant="primary" busy={busy} icon={<UserCog size={16} />} onClick={() => void save()}>حفظ الاستثناءات</Button>
+            <Button variant="primary" busy={busy} disabled={!dirty} icon={<UserCog size={16} />} onClick={() => void save()}>حفظ الاستثناءات</Button>
           </div>
         </>
       )}

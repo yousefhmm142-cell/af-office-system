@@ -29,6 +29,50 @@ class UsersTest extends TestCase
         $this->assertStringNotContainsString('temp1234', (string) DB::table('audit_logs')->value('new_values'));
     }
 
+    public function test_new_account_completes_own_profile_after_changing_password(): void
+    {
+        $branch = $this->makeBranch();
+        $this->actAs(Role::HR);
+        $id = $this->postJson('/api/users', [
+            'name' => 'موظف جديد', 'username' => 'employee.onboarding', 'password' => 'temporary123',
+            'role_id' => $this->roleId(Role::EMPLOYEE), 'branch_id' => $branch->id,
+        ])->assertCreated()->assertJsonPath('user.needs_profile_completion', true)->json('user.id');
+
+        $this->getJson("/api/employees/{$id}")->assertOk()->assertJsonPath('personal.national_id', null);
+        $this->patchJson("/api/employees/{$id}/personal", ['address' => 'غزة'])->assertForbidden();
+
+        $this->app['auth']->forgetGuards();
+        $token = $this->postJson('/api/auth/login', [
+            'username' => 'employee.onboarding', 'password' => 'temporary123',
+        ])->assertOk()->assertJsonPath('user.must_change_password', true)->json('token');
+        $this->withToken($token)->getJson("/api/employees/{$id}")->assertForbidden()->assertJsonPath('code', 'must_change_password');
+        $this->postJson('/api/me/password', [
+            'current_password' => 'temporary123', 'password' => 'employee123', 'password_confirmation' => 'employee123',
+        ])->assertOk()->assertJsonPath('user.needs_profile_completion', true);
+
+        $this->app['auth']->forgetGuards();
+        $this->getJson('/api/dashboard')->assertForbidden()->assertJsonPath('code', 'needs_profile_completion');
+        $this->patchJson("/api/employees/{$id}/personal", ['name' => 'موظف جديد'])->assertUnprocessable()->assertJsonValidationErrors('national_id');
+        $this->patchJson("/api/employees/{$id}/personal", [
+            'name' => 'نادر أحمد سعيد حسن', 'national_id' => '000000123', 'phone' => '0500000000',
+            'address' => 'غزة', 'education_level' => 'secondary', 'gender' => 'male', 'salary_amount' => 5000,
+        ])->assertOk()->assertJsonPath('user.needs_profile_completion', false)->assertJsonPath('job.salary_amount', null);
+
+        $this->app['auth']->forgetGuards();
+        $this->getJson('/api/dashboard')->assertOk();
+        $this->assertDatabaseHas('audit_logs', ['action' => 'employee.profile_completed', 'subject_id' => $id]);
+    }
+
+    public function test_finance_can_read_payroll_without_hr_or_approval_access(): void
+    {
+        $this->actAs(Role::FINANCE);
+
+        $this->getJson('/api/payroll/batches')->assertOk();
+        $this->getJson('/api/payroll/settings')->assertForbidden();
+        $this->getJson('/api/users')->assertForbidden();
+        $this->getJson('/api/me')->assertOk()->assertJsonMissingPath('user.permissions.payroll.approve');
+    }
+
     public function test_arabic_usernames_and_duplicates(): void
     {
         $branch = $this->makeBranch();

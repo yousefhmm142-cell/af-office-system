@@ -38,6 +38,38 @@ class AttendanceTest extends TestCase
         return $this->postJson('/api/attendance/punch', ['method' => 'app'] + $extra)->assertOk();
     }
 
+    public function test_company_overview_uses_the_selected_day_and_branch_attendance_rules(): void
+    {
+        $holidayBranch = $this->makeBranch('فرع العطلة');
+        $closedBranch = $this->makeBranch('فرع بلا حضور');
+        BranchModule::create(['branch_id' => $closedBranch->id, 'module' => 'attendance', 'is_enabled' => false]);
+        Holiday::create(['branch_id' => $holidayBranch->id, 'date' => '2026-11-26', 'name' => 'عطلة الفرع']);
+        $this->makeUser(Role::EMPLOYEE, $holidayBranch);
+        $this->makeUser(Role::EMPLOYEE, $closedBranch);
+        $this->makeUser(Role::EMPLOYEE, $this->branch);
+        $laterHire = $this->makeUser(Role::EMPLOYEE, $this->branch);
+        $laterHire->employee->update(['hire_date' => '2026-11-27']);
+
+        $this->actAs(Role::EMPLOYEE, $this->branch);
+        $this->at('2026-11-26 08:00');
+        $this->press()->assertJsonPath('status', 'in');
+        $this->at('2026-11-27 10:00');
+        $manager = $this->actAs(Role::BRANCH_MANAGER, $this->branch);
+        $manager->employee->update(['tracks_attendance' => false]);
+        $this->getJson('/api/attendance/overview?date=2026-11-26')->assertForbidden();
+
+        $this->actAs(Role::HR);
+        $overview = $this->getJson('/api/attendance/overview?date=2026-11-26')
+            ->assertOk()->assertJsonPath('date', '2026-11-26')->assertJsonCount(2, 'branches');
+        $branches = collect($overview->json('branches'))->keyBy('id');
+        $this->assertEquals([
+            'expected' => 2, 'present' => 1, 'late' => 1, 'absent' => 1, 'pending' => 1,
+        ], collect($branches->get($this->branch->id))->except(['id', 'name'])->all());
+        $this->assertSame(0, $branches->get($holidayBranch->id)['expected']);
+        $this->assertFalse($branches->has($closedBranch->id));
+        $this->getJson('/api/attendance/overview?date=invalid')->assertUnprocessable();
+    }
+
     public function test_button_in_then_out_with_the_rules(): void
     {
         $this->actAs(Role::EMPLOYEE, $this->branch);

@@ -14,6 +14,7 @@ return [
     'roles' => [
         'super_admin' => ['name' => 'السوبر أدمن', 'level' => 100],
         'management' => ['name' => 'الإدارة', 'level' => 80],
+        'finance' => ['name' => 'المالية', 'level' => 50],
         'hr' => ['name' => 'شؤون الموظفين', 'level' => 60],
         'branch_manager' => ['name' => 'مدير فرع', 'level' => 40],
         'employee' => ['name' => 'موظف', 'level' => 10],
@@ -87,6 +88,7 @@ return [
             'tasks.view' => 'branch',
             'tasks.manage' => 'branch',
         ],
+        'finance' => ['payroll.view' => 'all'],
         'employee' => [],
     ],
 

@@ -28,6 +28,7 @@ class EmployeeController extends Controller
 
     public function show(Request $request, User $user): JsonResponse
     {
+        $this->authorizeProfileStep($request->user(), $user);
         $this->authorizeView($request->user(), $user);
 
         return response()->json($this->payload($request->user(), $user));
@@ -36,18 +37,22 @@ class EmployeeController extends Controller
     public function updatePersonal(Request $request, User $user): JsonResponse
     {
         $actor = $request->user();
+        $this->authorizeProfileStep($actor, $user);
         $this->authorizeEdit($actor, $user);
+        $completing = $user->needs_profile_completion;
+        abort_if($completing && $actor->id !== $user->id, 403, 'يجب أن يستكمل الموظف بياناته بنفسه.');
         $emp = $this->fileOf($user);
+        $required = $completing ? ['required'] : ['sometimes', 'nullable'];
 
         $data = $request->validate([
-            'name' => ['sometimes', 'string', 'min:2', 'max:120'],
-            'national_id' => ['sometimes', 'nullable', 'string', 'regex:/^[0-9]{9}$/', Rule::unique('employees', 'national_id')->ignore($emp->id)],
-            'phone' => ['sometimes', 'nullable', 'string', 'regex:/^05[0-9]{8}$/'],
+            'name' => [$completing ? 'required' : 'sometimes', 'string', 'min:2', 'max:120'],
+            'national_id' => [...$required, 'string', 'regex:/^[0-9]{9}$/', Rule::unique('employees', 'national_id')->ignore($emp->id)],
+            'phone' => [...$required, 'string', 'regex:/^05[0-9]{8}$/'],
             'wa_code' => ['sometimes', Rule::in([970, 972])],
-            'address' => ['sometimes', 'nullable', 'string', 'max:200'],
-            'education_level' => ['sometimes', 'nullable', Rule::in(['none', 'primary', 'preparatory', 'secondary', 'diploma', 'bachelor', 'master', 'phd'])],
+            'address' => [...$required, 'string', 'max:200'],
+            'education_level' => [...$required, Rule::in(['none', 'primary', 'preparatory', 'secondary', 'diploma', 'bachelor', 'master', 'phd'])],
             'specialty' => ['sometimes', 'nullable', 'string', 'max:100'],
-            'gender' => ['sometimes', 'nullable', Rule::in(['male', 'female'])],
+            'gender' => [...$required, Rule::in(['male', 'female'])],
             'payment_method' => ['sometimes', 'nullable', Rule::in(['wallet', 'bank'])],
             'provider' => ['sometimes', 'nullable', 'string', 'max:60'],
             'account_number' => ['sometimes', 'nullable', 'string', 'max:40'],
@@ -56,7 +61,7 @@ class EmployeeController extends Controller
             'account_holder_phone' => ['sometimes', 'nullable', 'string', 'regex:/^05[0-9]{8}$/'],
         ]);
 
-        DB::transaction(function () use ($data, $user, $emp) {
+        DB::transaction(function () use ($data, $user, $emp, $completing) {
             if (array_key_exists('name', $data)) {
                 $user->fill(['name' => trim($data['name'])])->save();
                 [$old, $new] = Audit::diff($user);
@@ -69,6 +74,13 @@ class EmployeeController extends Controller
             [$old, $new] = Audit::diff($emp);
             if ($new) {
                 Audit::log('employee.personal', $user, $old, $new);
+            }
+            if ($completing) {
+                $completed = User::query()->whereKey($user->id)->where('needs_profile_completion', true)
+                    ->update(['needs_profile_completion' => false]);
+                if ($completed) {
+                    Audit::log('employee.profile_completed', $user);
+                }
             }
         });
 
@@ -191,6 +203,11 @@ class EmployeeController extends Controller
         return response()->json(['ok' => true]);
     }
 
+    private function authorizeProfileStep(User $actor, User $target): void
+    {
+        abort_if($actor->needs_profile_completion && $actor->id !== $target->id, 403, 'استكمل بياناتك الشخصية قبل المتابعة.');
+    }
+
     private function fileOf(User $user): Employee
     {
         return $user->employee ?? Employee::firstOrCreate(['user_id' => $user->id]);
@@ -250,7 +267,7 @@ class EmployeeController extends Controller
                 'by' => $l->changer?->name, 'at' => $l->changed_at?->toIso8601String(),
             ]),
             'can' => [
-                'edit_personal' => $actor->id === $user->id || $manage,
+                'edit_personal' => $actor->id === $user->id || ($manage && ! $user->needs_profile_completion),
                 'edit_job' => $manage,
                 'set_status' => $manage && $actor->id !== $user->id,
             ],

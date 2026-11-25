@@ -8,6 +8,7 @@ import { useConfirm } from '../../ui/Confirm'
 import { ErrorBanner } from '../../ui/Field'
 import { Loading, PageHead } from '../../ui/PageHead'
 import { Button, Pill } from '../../ui/primitives'
+import { ScrollTable } from '../../ui/ScrollTable'
 import { useToast } from '../../ui/Toast'
 import { fmt, monthLabel, STATUS, type Batch, type Item } from './lib'
 
@@ -112,6 +113,7 @@ export function BatchPage() {
       </div>
 
       <div className="card glass af-table-wrap">
+        <ScrollTable label="كشف الرواتب">
         <table className="tbl af-pay-table">
           <thead>
             <tr><th>الموظف</th><th>طريقة الصرف</th><th>الأساسي</th><th>إضافي ومكافآت</th><th>خصومات</th><th>سلفة</th><th>الصافي</th><th className="no-print" /></tr>
@@ -149,6 +151,7 @@ export function BatchPage() {
           </tbody>
           <tfoot><tr><th colSpan={6}>المجموع</th><th className="num af-net">{fmt(sum('net'))}</th><th className="no-print" /></tr></tfoot>
         </table>
+        </ScrollTable>
         {items.length === 0 && <p className="eyebrow af-pad">لا يوجد موظفون في هذه الدفعة. تأكد من إدخال الراتب في ملف كل موظف.</p>}
       </div>
       <p className="af-print-foot">أعدّها: {batch.created_by ?? '—'}{batch.approved_by ? ` · اعتمدها: ${batch.approved_by}` : ''}</p>

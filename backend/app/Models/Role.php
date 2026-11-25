@@ -9,6 +9,7 @@ class Role extends Model
 {
     public const SUPER_ADMIN = 'super_admin';
     public const MANAGEMENT = 'management';
+    public const FINANCE = 'finance';
     public const HR = 'hr';
     public const BRANCH_MANAGER = 'branch_manager';
     public const EMPLOYEE = 'employee';

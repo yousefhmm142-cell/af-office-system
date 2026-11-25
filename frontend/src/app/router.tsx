@@ -1,7 +1,8 @@
-import { Navigate, Outlet, createBrowserRouter } from 'react-router'
+import { Navigate, Outlet, createBrowserRouter, useLocation } from 'react-router'
 import { Account } from '../pages/Account'
 import { Audit } from '../pages/Audit'
 import { Inbox } from '../pages/messages/Inbox'
+import { DailyTasks } from '../pages/tasks/DailyTasks'
 import { TasksBoard } from '../pages/tasks/Board'
 import { LinkPage } from '../pages/tasks/LinkPage'
 import { MyTasks } from '../pages/tasks/MyTasks'
@@ -33,9 +34,11 @@ function Splash() {
 /** Signed out → login (or first setup); temporary password → choose your own first. */
 function Gate() {
   const { state } = useAuth()
+  const { pathname } = useLocation()
   if (state.status === 'loading') return <Splash />
   if (state.status !== 'signed_in') return <Login />
   if (state.user.must_change_password) return <ForcedPasswordChange />
+  if (state.user.needs_profile_completion && pathname !== "/me") return <Navigate to="/me" replace />
   return <Outlet />
 }
 
@@ -70,6 +73,7 @@ export const router = createBrowserRouter([
           { path: 'attendance/me', element: <MyAttendance /> },
           { path: 'my-tasks', element: <MyTasks /> },
           { path: 'tasks', element: <NeedAny permissions={['tasks.view', 'tasks.manage']}><TasksBoard /></NeedAny> },
+          { path: 'tasks/daily', element: <NeedAny permissions={['tasks.view', 'tasks.manage']}><DailyTasks /></NeedAny> },
           { path: 'tasks/settings', element: <Need permission="tasks.manage"><TaskSettings /></Need> },
           { path: 'messages', element: <Inbox /> },
           { path: 'messages/:id', element: <Inbox /> },

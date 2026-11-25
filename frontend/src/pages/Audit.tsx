@@ -18,6 +18,7 @@ const ACTIONS: Record<string, string> = {
   'branch.deleted': 'حذف فرع', 'schedule.created': 'إضافة دوام', 'schedule.updated': 'تعديل دوام', 'schedule.deleted': 'حذف دوام',
   'holiday.created': 'إضافة عطلة', 'holiday.deleted': 'حذف عطلة', 'department.created': 'إضافة قسم', 'department.updated': 'تعديل قسم',
   'department.deleted': 'حذف قسم', 'permissions.role': 'تعديل صلاحيات دور', 'permissions.user': 'تعديل صلاحيات شخص',
+  'employee.profile_completed': 'استكمال الملف الشخصي',
   'employee.personal': 'تعديل البيانات الشخصية', 'employee.job': 'تعديل بيانات العمل', 'employee.status': 'تغيير حالة موظف',
   'employee.attachment_added': 'إضافة مرفق', 'employee.attachment_deleted': 'حذف مرفق',
   'attendance.edited': 'تعديل حضور يدوياً', 'attendance.approved': 'اعتماد أيام حضور', 'attendance.point_created': 'إضافة نقطة حضور',

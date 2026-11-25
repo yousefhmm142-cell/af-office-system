@@ -12,6 +12,7 @@ export interface User {
   status?: EmployeeStatus | null
   job_title?: string | null
   must_change_password: boolean
+  needs_profile_completion?: boolean
   is_locked: boolean
   last_login_at: string | null
   created_at: string | null

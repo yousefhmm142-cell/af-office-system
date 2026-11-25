@@ -35,7 +35,7 @@ use Illuminate\Support\Facades\DB;
  */
 class DemoData extends Command
 {
-    protected $signature = 'app:demo';
+    protected $signature = 'app:demo {--all-roles : Include a demo administrator in a dedicated demo database}';
 
     protected $description = 'Fill the system with invented demo data (branches, people, attendance, payroll, tasks, messages)';
 
@@ -53,6 +53,18 @@ class DemoData extends Command
 
     public function handle(AttendanceService $attendance, PayrollService $payroll, TaskService $tasks): int
     {
+        if (! app()->environment('local', 'testing')) {
+            $this->error('تتوفر البيانات التجريبية في بيئة التطوير والاختبار فقط.');
+
+            return self::FAILURE;
+        }
+        $allRoles = (bool) $this->option('all-roles');
+        if ($allRoles && (! str_ends_with(DB::connection()->getDatabaseName(), '_demo') || User::withTrashed()->exists())) {
+            $this->error('استخدم قاعدة بيانات تجريبية فارغة ينتهي اسمها بـ _demo.');
+
+            return self::FAILURE;
+        }
+
         if (User::where('username', 'hr.demo')->exists()) {
             $this->warn('البيانات التجريبية موجودة من قبل.');
 
@@ -68,12 +80,16 @@ class DemoData extends Command
         $months = ['يناير', 'فبراير', 'مارس', 'أبريل', 'مايو', 'يونيو', 'يوليو', 'أغسطس', 'سبتمبر', 'أكتوبر', 'نوفمبر', 'ديسمبر'];
         $monthName = $months[$prevMonth->month - 1].' '.$prevMonth->year;
 
-        DB::transaction(function () use ($role, $attendance, $payroll, $tasks, $today, $prevMonth, $monthName) {
+        DB::transaction(function () use ($role, $attendance, $payroll, $tasks, $today, $prevMonth, $monthName, $allRoles) {
             $deps = collect(['المحصّلون', 'الفنيون', 'الإدارة'])->mapWithKeys(fn ($n, $i) => [$n => Department::firstOrCreate(['name' => $n], ['sort_order' => $i])->id]);
 
             $hr = $this->person('هبة أبو شمالة', 'hr.demo', $role(Role::HR), null, 'شؤون الموظفين', 2200, $deps['الإدارة']);
             $mgmt = $this->person('رامي أبو عجوة', 'mgmt.demo', $role(Role::MANAGEMENT), null, 'مدير المكاتب', 3500, $deps['الإدارة']);
-            $this->line('✓ شؤون الموظفين والإدارة');
+            $this->person('مسؤول المالية التجريبي', 'finance.demo', $role(Role::FINANCE), null, 'المالية', 0, $deps['الإدارة']);
+            if ($allRoles) {
+                $this->person('مدير النظام التجريبي', 'admin.demo', $role(Role::SUPER_ADMIN), null, 'مدير النظام', 0, $deps['الإدارة']);
+            }
+            $this->line('✓ شؤون الموظفين والإدارة والمالية');
 
             // Rules for payroll, from the beginning of the year.
             PayrollSetting::firstOrCreate(['branch_id' => null, 'effective_from' => $today->startOfYear()->toDateString()], [
@@ -232,6 +248,8 @@ class DemoData extends Command
         $this->newLine();
         $this->info('تمت إضافة البيانات التجريبية. كلمة السر لجميع الحسابات التجريبية: '.self::PASSWORD);
         $this->table(['الدور', 'اسم المستخدم'], [
+            ...($allRoles ? [['مدير النظام', 'admin.demo']] : []),
+            ['المالية', 'finance.demo'],
             ['شؤون الموظفين', 'hr.demo'], ['الإدارة', 'mgmt.demo'], ['مدير فرع مخيم 2', 'camp2.manager'],
             ['محصّل (مخيم 2)', 'camp2.c1'], ['فني (مخيم 2)', 'camp2.t1'], ['مدير فرع غزة', 'gaza.manager'],
             ['باقي الفروع', 'nuseirat / newcamp / sawarha / zawayda / maghazi / deir / bureij + .manager .c1 .c2 .t1 .t2 .t3 .trainee'],

@@ -1,4 +1,4 @@
-import { useCallback, useEffect, useState } from 'react'
+import { useCallback, useEffect, useRef, useState } from 'react'
 import { api, ApiError } from '../api/client'
 
 /** Fetch once, with loading and error states, and a reload() after changes. */
@@ -6,20 +6,27 @@ export function useLoad<T>(path: string | null) {
   const [data, setData] = useState<T | null>(null)
   const [error, setError] = useState<string | null>(null)
   const [loading, setLoading] = useState(true)
+  const request = useRef(0)
 
   const reload = useCallback(async () => {
     if (!path) return
+    const id = ++request.current
     setLoading(true)
     try {
-      setData(await api<T>(path))
+      const result = await api<T>(path)
+      if (id !== request.current) return
+      setData(result)
       setError(null)
     } catch (e) {
-      setError(e instanceof ApiError ? e.message : 'حدث خطأ.')
+      if (id === request.current) setError(e instanceof ApiError ? e.message : 'حدث خطأ.')
     } finally {
-      setLoading(false)
+      if (id === request.current) setLoading(false)
     }
   }, [path])
 
-  useEffect(() => { void reload() }, [reload])
+  useEffect(() => {
+    void reload()
+    return () => { request.current++ }
+  }, [reload])
   return { data, error, loading, reload, setData }
 }

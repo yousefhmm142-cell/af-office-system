@@ -8,6 +8,8 @@ import { useLoad } from '../lib/useLoad'
 import { useConfirm } from '../ui/Confirm'
 import { Dialog } from '../ui/Dialog'
 import { ErrorBanner, Field, Switch } from '../ui/Field'
+import { ScrollTable } from '../ui/ScrollTable'
+import { TimeField } from '../ui/TimeField'
 import { Loading, PageHead } from '../ui/PageHead'
 import { Button, Pill } from '../ui/primitives'
 import { useToast } from '../ui/Toast'
@@ -88,23 +90,25 @@ export function BranchDetail() {
           <h2 className="af-h2"><CalendarClock size={18} /> الدوامات</h2>
           {manageSchedules && <Button icon={<Plus size={16} />} onClick={() => setEditing('new')}>دوام جديد</Button>}
         </div>
-        <div className="rows">
-          {schedules.map((s) => (
-            <div key={s.id} className="row">
-              <span className="row-label">
-                {s.name} {s.is_default && <Pill tone="brand" dot={false}>الأساسي</Pill>}
-                <small className="af-sub">{dayNames(s.work_days)} · سماح {s.grace_minutes} دقيقة</small>
-              </span>
-              <span className="row-value num" dir="ltr">{s.start_time} – {s.end_time}</span>
-              {manageSchedules && (
-                <>
-                  <button type="button" className="icon-btn" aria-label={`تعديل ${s.name}`} onClick={() => setEditing(s)}><Pencil size={16} /></button>
-                  {!s.is_default && <button type="button" className="icon-btn" aria-label={`حذف ${s.name}`} onClick={() => void removeSchedule(s)}><Trash2 size={16} /></button>}
-                </>
-              )}
-            </div>
-          ))}
-        </div>
+        {schedules.length > 0 ? (
+          <ScrollTable label="دوامات الفرع">
+            <table className="tbl af-schedule-table">
+              <thead><tr><th scope="col">الدوام</th><th scope="col">أيام العمل</th><th scope="col">الساعات</th><th scope="col">السماح</th>{manageSchedules && <th scope="col">الإجراءات</th>}</tr></thead>
+              <tbody>{schedules.map((schedule) => (
+                <tr key={schedule.id}>
+                  <th scope="row">{schedule.name} {schedule.is_default && <Pill tone="brand" dot={false}>الأساسي</Pill>}</th>
+                  <td>{dayNames(schedule.work_days)}</td>
+                  <td><bdi className="num" dir="ltr">{schedule.start_time} – {schedule.end_time}</bdi></td>
+                  <td>{schedule.grace_minutes} دقيقة</td>
+                  {manageSchedules && <td><span className="af-row-actions">
+                    <button type="button" className="icon-btn" aria-label={`تعديل ${schedule.name}`} onClick={() => setEditing(schedule)}><Pencil size={16} /></button>
+                    {!schedule.is_default && <button type="button" className="icon-btn" aria-label={`حذف ${schedule.name}`} onClick={() => void removeSchedule(schedule)}><Trash2 size={16} /></button>}
+                  </span></td>}
+                </tr>
+              ))}</tbody>
+            </table>
+          </ScrollTable>
+        ) : <p className="eyebrow">لا توجد دوامات لهذا الفرع.</p>}
       </section>
       {editing && <ScheduleDialog branchId={branch.id} schedule={editing === 'new' ? null : editing} onClose={() => setEditing(null)} onSaved={() => { setEditing(null); void reload() }} />}
     </>
@@ -146,8 +150,8 @@ function ScheduleDialog({ branchId, schedule, onClose, onSaved }: { branchId: nu
       <form className="form-grid" onSubmit={save}>
         <Field label="اسم الدوام" error={fields.name}>{(id) => <input id={id} className="input" value={form.name} onChange={(e) => set('name', e.target.value)} placeholder="مثال: الدوام العادي" />}</Field>
         <div className="af-row2">
-          <Field label="البداية" error={fields.start_time}>{(id) => <input id={id} className="input num" type="time" value={form.start_time} onChange={(e) => set('start_time', e.target.value)} />}</Field>
-          <Field label="النهاية" error={fields.end_time}>{(id) => <input id={id} className="input num" type="time" value={form.end_time} onChange={(e) => set('end_time', e.target.value)} />}</Field>
+          <Field label="البداية" error={fields.start_time}>{(id) => <TimeField id={id} label="بداية الدوام" value={form.start_time} onChange={(value) => set('start_time', value)} />}</Field>
+          <Field label="النهاية" error={fields.end_time}>{(id) => <TimeField id={id} label="نهاية الدوام" value={form.end_time} onChange={(value) => set('end_time', value)} />}</Field>
         </div>
         <Field label="دقائق السماح للتأخير" error={fields.grace_minutes}>{(id) => <input id={id} className="input num" type="number" min={0} max={120} value={form.grace_minutes} onChange={(e) => set('grace_minutes', e.target.value)} />}</Field>
         <div className="field">

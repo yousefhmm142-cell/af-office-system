@@ -1,6 +1,6 @@
 import { Briefcase, FileText, History, Image as ImageIcon, Paperclip, Pencil, Trash2, Upload, UserRound, Wallet } from 'lucide-react'
 import { useRef, useState, type FormEvent, type ReactNode } from 'react'
-import { useParams } from 'react-router'
+import { useNavigate, useParams } from 'react-router'
 import { api, ApiError, openFile } from '../api/client'
 import {
   ATTACHMENT_TYPES, EDUCATION, SALARY_TYPES, STATUS_LABEL,
@@ -23,6 +23,7 @@ const STATUS_TONE: Record<EmployeeStatus, Tone> = { active: 'ok', trainee: 'info
 export function EmployeeFile() {
   const me = useUser()
   const params = useParams()
+  const navigate = useNavigate()
   const id = params.id ?? String(me.id)
   const { data, error, loading, setData } = useLoad<File_>(`/employees/${id}`)
   const [edit, setEdit] = useState<'personal' | 'wallet' | 'job' | 'status' | null>(null)
@@ -32,6 +33,15 @@ export function EmployeeFile() {
   const f = data
   const p = f.personal
   const mine = f.user.id === me.id
+
+  if (mine && f.user.needs_profile_completion) {
+    return (
+      <>
+        <PageHead title="استكمال الملف الشخصي" eyebrow="أدخل بياناتك الشخصية للبدء في استخدام النظام." />
+        <PersonalDialog file={f} part="personal" onClose={() => {}} onSaved={(updated) => { setData(updated); navigate('/', { replace: true }) }} onboarding />
+      </>
+    )
+  }
 
   return (
     <>
@@ -144,7 +154,7 @@ function useSave(onSaved: (f: File_) => void) {
   return { busy, fields, error, run }
 }
 
-function PersonalDialog({ file, part, onClose, onSaved }: { file: File_; part: 'personal' | 'wallet'; onClose(): void; onSaved(f: File_): void }) {
+function PersonalDialog({ file, part, onClose, onSaved, onboarding = false }: { file: File_; onboarding?: boolean; part: 'personal' | 'wallet'; onClose(): void; onSaved(f: File_): void }) {
   const { setUser, state } = useAuth()
   const p = file.personal
   const [form, setForm] = useState({
@@ -156,7 +166,7 @@ function PersonalDialog({ file, part, onClose, onSaved }: { file: File_; part: '
   const set = (k: keyof typeof form, v: string) => setForm((f) => ({ ...f, [k]: v }))
   const { busy, fields, error, run } = useSave((f) => {
     // Keep the name in the top bar right when someone edits their own file.
-    if (state.status === 'signed_in' && state.user.id === f.user.id) setUser({ ...state.user, name: f.user.name })
+    if (state.status === 'signed_in' && state.user.id === f.user.id) setUser({ ...state.user, name: f.user.name, needs_profile_completion: f.user.needs_profile_completion })
     onSaved(f)
   })
   const nul = (v: string) => (v.trim() === '' ? null : v.trim())
@@ -174,47 +184,56 @@ function PersonalDialog({ file, part, onClose, onSaved }: { file: File_; part: '
   )
   const digits = { inputMode: 'numeric' as const, dir: 'ltr', className: 'input num' }
 
+  const formContent = (
+    <form className="form-grid" onSubmit={save}>
+      {part === 'personal' ? (
+        <>
+          {input('name', 'الاسم الرباعي')}
+          <div className="af-row2">{input('national_id', 'رقم الهوية', digits)}{input('phone', 'رقم الجوال', { ...digits, inputMode: 'tel', placeholder: '05xxxxxxxx' })}</div>
+          {input('address', 'مكان السكن')}
+          <div className="af-row2">
+            <Field label="آخر مؤهل" error={fields.education_level}>{(id) => (
+              <select id={id} className="input select" value={form.education_level} onChange={(e) => set('education_level', e.target.value)}>
+                <option value="">—</option>{EDUCATION.map(([k, v]) => <option key={k} value={k}>{v}</option>)}
+              </select>)}</Field>
+            {input('specialty', 'التخصص')}
+          </div>
+          <div className="field">
+            <label>الجنس</label>
+            <div className="segmented" role="radiogroup" aria-label="الجنس">
+              <button type="button" role="radio" aria-checked={form.gender === 'male'} onClick={() => set('gender', 'male')}>ذكر</button>
+              <button type="button" role="radio" aria-checked={form.gender === 'female'} onClick={() => set('gender', 'female')}>أنثى</button>
+            </div>
+            {fields.gender && <ErrorBanner text={fields.gender} />}
+          </div>
+        </>
+      ) : (
+        <>
+          <div className="field">
+            <label>النوع</label>
+            <div className="segmented" role="radiogroup" aria-label="النوع">
+              <button type="button" role="radio" aria-checked={form.payment_method === 'wallet'} onClick={() => set('payment_method', 'wallet')}>محفظة</button>
+              <button type="button" role="radio" aria-checked={form.payment_method === 'bank'} onClick={() => set('payment_method', 'bank')}>حساب بنك</button>
+            </div>
+          </div>
+          {input('provider', form.payment_method === 'bank' ? 'اسم البنك' : 'اسم المحفظة', { placeholder: form.payment_method === 'bank' ? 'مثال: بنك فلسطين' : 'مثال: PalPay' })}
+          {input('account_number', 'رقم الحساب', digits)}
+          {input('account_holder_name', 'اسم صاحب الحساب')}
+          <div className="af-row2">{input('account_holder_national_id', 'هوية صاحب الحساب', digits)}{input('account_holder_phone', 'جوال صاحب الحساب', { ...digits, inputMode: 'tel' })}</div>
+        </>
+      )}
+      <ErrorBanner text={error} />
+      {onboarding && <Button type="submit" variant="primary" busy={busy}>حفظ البيانات الشخصية</Button>}
+    </form>
+  )
+
+  if (onboarding) return <section className="card glass af-pad af-onboarding">{formContent}</section>
+
   return (
-    <Dialog open onClose={onClose} title={part === 'personal' ? 'البيانات الشخصية' : 'المحفظة / الحساب البنكي'} icon={part === 'personal' ? <UserRound size={20} /> : <Wallet size={20} />}
+    <Dialog open onClose={onClose} title={part === 'personal' ? 'البيانات الشخصية' : 'المحفظة / الحساب البنكي'}
+      icon={part === 'personal' ? <UserRound size={20} /> : <Wallet size={20} />}
       footer={<><Button onClick={onClose}>إلغاء</Button><Button variant="primary" busy={busy} onClick={() => save()}>حفظ</Button></>}>
-      <form className="form-grid" onSubmit={save}>
-        {part === 'personal' ? (
-          <>
-            {input('name', 'الاسم الرباعي')}
-            <div className="af-row2">{input('national_id', 'رقم الهوية', digits)}{input('phone', 'رقم الجوال', { ...digits, inputMode: 'tel', placeholder: '05xxxxxxxx' })}</div>
-            {input('address', 'مكان السكن')}
-            <div className="af-row2">
-              <Field label="آخر مؤهل" error={fields.education_level}>{(id) => (
-                <select id={id} className="input select" value={form.education_level} onChange={(e) => set('education_level', e.target.value)}>
-                  <option value="">—</option>{EDUCATION.map(([k, v]) => <option key={k} value={k}>{v}</option>)}
-                </select>)}</Field>
-              {input('specialty', 'التخصص')}
-            </div>
-            <div className="field">
-              <label>الجنس</label>
-              <div className="segmented" role="radiogroup" aria-label="الجنس">
-                <button type="button" role="radio" aria-checked={form.gender === 'male'} onClick={() => set('gender', 'male')}>ذكر</button>
-                <button type="button" role="radio" aria-checked={form.gender === 'female'} onClick={() => set('gender', 'female')}>أنثى</button>
-              </div>
-            </div>
-          </>
-        ) : (
-          <>
-            <div className="field">
-              <label>النوع</label>
-              <div className="segmented" role="radiogroup" aria-label="النوع">
-                <button type="button" role="radio" aria-checked={form.payment_method === 'wallet'} onClick={() => set('payment_method', 'wallet')}>محفظة</button>
-                <button type="button" role="radio" aria-checked={form.payment_method === 'bank'} onClick={() => set('payment_method', 'bank')}>حساب بنك</button>
-              </div>
-            </div>
-            {input('provider', form.payment_method === 'bank' ? 'اسم البنك' : 'اسم المحفظة', { placeholder: form.payment_method === 'bank' ? 'مثال: بنك فلسطين' : 'مثال: PalPay' })}
-            {input('account_number', 'رقم الحساب', digits)}
-            {input('account_holder_name', 'اسم صاحب الحساب')}
-            <div className="af-row2">{input('account_holder_national_id', 'هوية صاحب الحساب', digits)}{input('account_holder_phone', 'جوال صاحب الحساب', { ...digits, inputMode: 'tel' })}</div>
-          </>
-        )}
-        <ErrorBanner text={error} />
-      </form>
+      {formContent}
     </Dialog>
   )
 }
