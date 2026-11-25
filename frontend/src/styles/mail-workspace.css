@@ -1,0 +1,11 @@
+.af-mail-workspace .af-mail-body {grid-template-columns:minmax(145px,.7fr) minmax(235px,1.15fr) minmax(280px,1.7fr);align-items:stretch}
+.af-mail-categories {display:flex;flex-direction:column;gap:6px;padding:12px;min-width:0}
+.af-mail-filter {display:flex;gap:8px;align-items:center;text-align:start;padding:9px;border:0;border-radius:9px;background:transparent;color:inherit;font:inherit;cursor:pointer}
+.af-mail-filter[aria-pressed=true],.af-mail-filter:hover {background:var(--brand-soft);color:var(--brand-text)}
+.af-mail-filter .af-count {margin-inline-start:auto}
+.af-mail-workspace .af-mail-items {max-height:66vh;overflow:auto}
+.af-inline-reply {padding:12px;border-block-start:1px solid var(--line);margin-block-start:auto}
+.af-inline-reply .textarea {width:100%;margin-block:6px}
+.af-mail-workspace .af-conv {display:flex;flex-direction:column;flex:1}
+@media(max-width:1060px) {.af-mail-workspace .af-mail-body {grid-template-columns:minmax(125px,.65fr) minmax(185px,1fr) minmax(235px,1.4fr)}}
+@media(max-width:900px) {.af-mail-workspace .af-mail-body {grid-template-columns:minmax(0,1fr)}.af-mail-categories {flex-direction:row;flex-wrap:wrap}.af-mail-workspace.reading .af-mail-categories,.af-mail-workspace.reading .af-mail-list {display:none}.af-mail-workspace:not(.reading) .af-mail-read {display:none}.af-mail-workspace.reading .af-mail-read {display:flex}.af-mail-workspace .af-back {display:inline-flex}}

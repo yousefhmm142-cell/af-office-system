@@ -6,7 +6,7 @@ import { Dialog } from '../../ui/Dialog'
 import { ErrorBanner, Field } from '../../ui/Field'
 import { Avatar, Button } from '../../ui/primitives'
 import { useToast } from '../../ui/Toast'
-import type { Full, Group, Kind, Recipient } from './lib'
+import { KIND, type Full, type Group, type Kind, type Recipient } from './lib'
 
 export interface Draft {
   kind: Kind
@@ -21,6 +21,7 @@ export interface Draft {
 export function Compose({ draft, onClose, onSent }: { draft: Draft; onClose(): void; onSent(): void }) {
   const toast = useToast()
   const { data } = useLoad<{ people: Recipient[]; groups: Group[] }>('/messages/recipients')
+  const [kind,setKind] = useState(draft.kind)
   const [to, setTo] = useState(draft.to ?? [])
   const [groups, setGroups] = useState<Group[]>([])
   const [q, setQ] = useState('')
@@ -53,7 +54,7 @@ export function Compose({ draft, onClose, onSent }: { draft: Draft; onClose(): v
     groups.forEach((g, i) => { form.append(`groups[${i}][type]`, g.type); if (g.id) form.append(`groups[${i}][id]`, String(g.id)) })
     form.append('subject', subject.trim())
     form.append('body', body.trim() || (draft.kind !== 'message' ? subject : ''))
-    form.append('kind', draft.kind)
+    form.append('kind', kind)
     if (draft.kind === 'leave_request') { if (from) form.append('meta[from]', from); if (until) form.append('meta[to]', until) }
     if (draft.kind === 'permission_request') { if (date) form.append('meta[date]', date); if (fromTime) form.append('meta[from_time]', fromTime); if (toTime) form.append('meta[to_time]', toTime) }
     if (draft.replyTo) form.append('reply_to', String(draft.replyTo))
@@ -117,6 +118,8 @@ export function Compose({ draft, onClose, onSent }: { draft: Draft; onClose(): v
           </div>
         )}
 
+        {!draft.replyTo && !draft.forwardOf && <label>التصنيف<select className="input select" value={kind} onChange={e=>setKind(e.target.value as Kind)}>
+          {(['message','fault','collection','circular'] as const).map(k=><option key={k} value={k}>{KIND[k].label}</option>)}</select></label>}
         <Field label="الموضوع">{(id) => <input id={id} className="input" value={subject} onChange={(e) => setSubject(e.target.value)} />}</Field>
         <Field label={draft.kind === 'message' ? 'نص الرسالة' : 'السبب أو التفاصيل'}>
           {(id) => <textarea id={id} className="input textarea af-body" rows={6} value={body} onChange={(e) => setBody(e.target.value)} placeholder={draft.kind === 'leave_request' ? 'مثال: ظرف عائلي' : draft.kind === 'permission_request' ? 'مثال: موعد طبيب' : 'اكتب رسالتك…'} />}

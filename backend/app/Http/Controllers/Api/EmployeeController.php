@@ -4,14 +4,18 @@ namespace App\Http\Controllers\Api;
 
 use App\Http\Controllers\Controller;
 use App\Http\Present;
+use App\Models\AttendanceDay;
 use App\Models\Employee;
 use App\Models\EmployeeAttachment;
 use App\Models\EmployeeStatusLog;
+use App\Models\PayrollItem;
 use App\Models\User;
 use App\Models\WorkSchedule;
+use App\Services\AttendanceService;
 use App\Services\PayrollService;
 use App\Support\Access;
 use App\Support\Audit;
+use Carbon\CarbonImmutable;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\DB;
@@ -254,6 +258,70 @@ class EmployeeController extends Controller
         }
     }
 
+    public function overview(Request $request, User $user, AttendanceService $attendance): JsonResponse
+    {
+        $actor = $request->user();
+        $this->authorizeView($actor, $user);
+        $month = $request->validate(['month' => ['required', 'date_format:Y-m']])['month'];
+        $start = CarbonImmutable::parse($month.'-01', $attendance->tz());
+        $end = $start->endOfMonth();
+        $days = AttendanceDay::where('user_id', $user->id)->whereBetween('date', [$start->toDateString(), $end->toDateString()])->get()->keyBy(fn ($d) => $d->date->toDateString());
+        $leaves = DB::table('leave_days as d')->join('leave_requests as l', 'l.id', '=', 'd.request_id')->where('l.user_id', $user->id)->where('l.status', 'approved')
+            ->whereBetween('d.date', [$start->toDateString(), $end->toDateString()])->pluck('l.kind', 'd.date');
+        $calendar = [];
+        $today = $attendance->now()->toDateString();
+        for ($date = $start; $date->lte($end); $date = $date->addDay()) {
+            $key = $date->toDateString();
+            $day = $days->get($key);
+            $schedule = $attendance->scheduleFor($user, $date);
+            $work = $schedule && $attendance->isWorkDay($schedule, $date, $user->branch_id);
+            $leave = $leaves->get($key);
+            $state = match (true) {
+                (bool) $day?->check_in => $day->late_minutes ? 'late' : 'present',
+                $leave && $leave !== 'permission' => 'leave',
+                ! $work => 'off',
+                $key < $today && $user->employee?->tracks_attendance && (! $user->employee->hire_date || $key >= $user->employee->hire_date->toDateString()) => 'absent',
+                default => 'scheduled',
+            };
+            $calendar[] = ['date' => $key, 'state' => $state, 'permission' => $leave === 'permission',
+                'in' => $day?->check_in?->setTimezone($attendance->tz())->format('H:i'),
+                'out' => $day?->check_out?->setTimezone($attendance->tz())->format('H:i'),
+                'minutes' => $day?->worked_minutes ?? 0,
+                'shift' => $work ? substr($schedule->start_time, 0, 5).'–'.substr($schedule->end_time, 0, 5) : null];
+        }
+        $canPay = $actor->id === $user->id || Access::allowsBranch($actor, 'payroll.view', $user->branch_id);
+        $pay = $canPay ? PayrollItem::where('user_id', $user->id)->whereHas('batch', fn ($q) => $q->where('month', $month)->whereIn('status', ['approved', 'paid']))
+            ->with('batch:id,title')->get()->map(fn ($item) => $item->only('id', 'base', 'overtime', 'bonuses', 'auto_deductions', 'manual_deductions', 'advance_deduction', 'net') + ['title' => $item->batch->title]) : null;
+        $reports = DB::table('employee_field_reports')->where('user_id', $user->id)->whereBetween('date', [$start->toDateString(), $end->toDateString()])
+            ->orderByDesc('date')->get()->map(fn ($row) => ['date' => $row->date, 'kind' => $row->kind, 'metrics' => json_decode($row->metrics, true)]);
+
+        return response()->json(['calendar' => $calendar, 'pay' => $pay, 'reports' => $reports, 'leave_counts' => $leaves->countBy()]);
+    }
+
+    public function saveFieldReport(Request $request, User $user): JsonResponse
+    {
+        abort_if($request->user()->id === $user->id, 403);
+        $this->authorizeEdit($request->user(), $user);
+        $data = $request->validate([
+            'date' => ['required', 'date_format:Y-m-d'],
+            'kind' => ['required', Rule::in(['collection', 'technical', 'administration'])],
+        ]);
+        $fields = match ($data['kind']) {
+            'collection' => ['collected' => ['required', 'numeric', 'between:0,99999999'], 'target' => ['required', 'numeric', 'between:0,99999999'],
+                'bills' => ['required', 'integer', 'between:0,999999'], 'meters' => ['required', 'integer', 'between:0,999999'], 'zones' => ['required', 'string', 'max:250']],
+            'technical' => ['repairs' => ['required', 'integer', 'between:0,999999'], 'response' => ['required', 'integer', 'between:0,10080']],
+            'administration' => ['transactions' => ['required', 'integer', 'between:0,999999']],
+        };
+        $metrics = $request->validate($fields);
+        DB::transaction(function () use ($user, $data, $metrics) {
+            User::whereKey($user->id)->lockForUpdate()->firstOrFail();
+            DB::table('employee_field_reports')->updateOrInsert(['user_id' => $user->id] + $data, ['metrics' => json_encode($metrics, JSON_THROW_ON_ERROR)]);
+            Audit::log('employee.field_report', $user, null, $data + $metrics);
+        });
+
+        return response()->json(['ok' => true]);
+    }
+
     private function payload(User $actor, User $user): array
     {
         $user->loadMissing('role', 'branch');
@@ -268,7 +336,7 @@ class EmployeeController extends Controller
             'attendance' => ['month' => $month, 'late_minutes' => $summary['late_minutes'], 'absent_days' => $summary['absent_days']],
             'user' => Present::user($user),
             'personal' => $emp->only(Employee::PERSONAL),
-            'job' => ['hire_date' => $emp->hire_date?->format('Y-m-d')] + $emp->only(Employee::JOB) + [
+            'job' => ['salary_amount' => ($actor->id === $user->id || $manage || Access::allowsBranch($actor, 'payroll.view', $user->branch_id)) ? $emp->salary_amount : null, 'hire_date' => $emp->hire_date?->format('Y-m-d')] + $emp->only(Employee::JOB) + [
                 'department' => $emp->department?->only('id', 'name'),
                 'schedule' => $emp->schedule ? ['id' => $emp->schedule->id, 'name' => $emp->schedule->name] : null,
             ],

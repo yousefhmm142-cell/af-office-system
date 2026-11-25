@@ -1,7 +1,7 @@
 import { useEffect, useSyncExternalStore } from 'react'
 import { api } from '../../api/client'
 
-export type Kind = 'message' | 'leave_request' | 'permission_request'
+export type Kind = 'message' | 'leave_request' | 'permission_request' | 'fault' | 'collection' | 'circular'
 export interface Summary {
   id: number; subject: string; kind: Kind; preview: string; sender: { id: number; name: string } | null
   to: string; recipients_count: number; has_attachments: boolean; read: boolean; created_at: string
@@ -18,6 +18,9 @@ export interface Recipient { id: number; name: string; role: string | null; role
 export interface Group { type: 'all' | 'branch' | 'department'; id: number | null; name: string }
 
 export const KIND: Record<Kind, { label: string; tone: 'info' | 'warn' | 'neutral' }> = {
+  fault: { label: 'بلاغ عطل', tone: 'warn' },
+  collection: { label: 'تقرير تحصيل', tone: 'info' },
+  circular: { label: 'تعميم', tone: 'info' },
   message: { label: 'رسالة', tone: 'neutral' },
   leave_request: { label: 'طلب إجازة', tone: 'info' },
   permission_request: { label: 'طلب إذن', tone: 'warn' },

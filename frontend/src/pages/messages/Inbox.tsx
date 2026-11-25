@@ -1,15 +1,16 @@
-import { Archive, ArchiveRestore, ArrowRight, CalendarDays, Clock, Forward, Inbox as InboxIcon, Mail, MailOpen, Paperclip, PenLine, Reply, ReplyAll, Search, Send } from 'lucide-react'
+import '../../styles/mail-workspace.css'
+import { Archive, ArchiveRestore, ArrowRight, Forward, Inbox as InboxIcon, Mail, MailOpen, Paperclip, PenLine, ReplyAll, Search, Send } from 'lucide-react'
 import { useEffect, useState } from 'react'
-import { useNavigate, useParams } from 'react-router'
+import { Link, useNavigate, useParams } from 'react-router'
 import { api, ApiError, openFile } from '../../api/client'
-import { useUser } from '../../app/auth'
+import { can, useUser } from '../../app/auth'
 import { useLoad } from '../../lib/useLoad'
 import { ErrorBanner } from '../../ui/Field'
 import { Loading, PageHead } from '../../ui/PageHead'
 import { Avatar, Button, Pill } from '../../ui/primitives'
 import { useToast } from '../../ui/Toast'
 import { Compose, KindIcon, type Draft } from './Compose'
-import { fullWhen, KIND, setUnread, when, type Full, type Summary } from './lib'
+import { fullWhen, KIND, setUnread, when, type Full, type Summary, type Kind } from './lib'
 
 type Folder = 'inbox' | 'sent' | 'archive'
 const FOLDERS: Array<[Folder, string, typeof InboxIcon]> = [['inbox', 'الوارد', InboxIcon], ['sent', 'المرسل', Send], ['archive', 'الأرشيف', Archive]]
@@ -20,11 +21,19 @@ export function Inbox() {
   const navigate = useNavigate()
   const me = useUser()
   const [folder, setFolder] = useState<Folder>('inbox')
+  const [category,setCategory] = useState<Kind | 'leaves' | ''>('')
+  const [branch,setBranch] = useState('')
+  const [page,setPage] = useState(1)
+  const [leaveId,setLeaveId] = useState<number | null>(null)
+  const branches = useLoad<{ branches: { id:number; name:string }[] }>(can(me,'branches.view') ? '/branches' : null)
+  const leaves = useLoad<{ requests: Leave[] }>(category==='leaves' ? '/leaves' : null)
   const [search, setSearch] = useState('')
   const [q, setQ] = useState('')
-  const { data, error, loading, reload } = useLoad<{ messages: Summary[]; unread: number }>(`/messages?folder=${folder}${q ? `&search=${encodeURIComponent(q)}` : ''}`)
+  const { data, error, loading, reload } = useLoad<{ messages: Summary[]; unread: number; has_more: boolean }>(category==='leaves' ? null : `/messages?folder=${folder}&page=${page}${branch ? '&branch_id='+branch : ''}${category ? '&kind='+category : ''}${q ? `&search=${encodeURIComponent(q)}` : ''}`)
   const [draft, setDraft] = useState<Draft | null>(null)
-  const employee = me.role?.key === 'employee'
+  const selectedLeave = leaves.data?.requests.find(r=>r.id===leaveId)
+  const filters = [['leaves','طلبات إجازة وإذن'],['fault','بلاغات أعطال'],['collection','تقارير تحصيل'],['circular','تعميمات']] as const
+  const selectCategory = (value: typeof category) => { setCategory(value); setLeaveId(null); setPage(1); navigate('/messages') }
 
   useEffect(() => { if (data) setUnread(data.unread) }, [data])
   useEffect(() => {
@@ -33,27 +42,31 @@ export function Inbox() {
   }, [search])
 
   return (
-    <div className={`af-mail${id ? ' reading' : ''}`}>
-      <div className="af-mail-head">
-        <PageHead title="المراسلات" eyebrow={employee ? 'راسل مدير فرعك أو شؤون الموظفين' : 'الرسائل والطلبات'} />
-        <div className="af-compose-btns">
-          <Button variant="primary" size="lg" icon={<PenLine size={18} />} onClick={() => setDraft({ kind: 'message' })}>رسالة جديدة</Button>
-          <Button icon={<CalendarDays size={18} />} onClick={() => setDraft({ kind: 'leave_request' })}>طلب إجازة</Button>
-          <Button icon={<Clock size={18} />} onClick={() => setDraft({ kind: 'permission_request' })}>طلب إذن</Button>
-        </div>
-      </div>
-
+    <div className={`af-mail af-mail-workspace${id || selectedLeave ? ' reading' : ''}`} dir="rtl">
+      <PageHead title="المراسلات" />
       <div className="af-mail-body">
+        <aside className="card glass af-mail-categories" aria-label="تصنيفات المراسلات">
+          <Button variant="primary" block icon={<PenLine size={18} />} onClick={() => setDraft({ kind: 'message' })}>رسالة جديدة</Button>
+          {FOLDERS.map(([f,label,Icon])=><button className="af-mail-filter" type="button" key={f} aria-pressed={folder===f && !category} onClick={()=>{setFolder(f);selectCategory('')}}><Icon size={16}/>{label}{f==='inbox' && <span className="af-count">{data?.unread ?? 0}</span>}</button>)}
+          <span className="af-sub">تصنيفات العمل</span>
+          {filters.map(([value,label])=><button className="af-mail-filter" type="button" key={value} aria-pressed={category===value} onClick={()=>{setFolder('inbox');selectCategory(value)}}>{label}</button>)}
+        </aside>
         <aside className="card glass af-mail-list">
-          <div className="segmented af-folders" role="radiogroup" aria-label="المجلد">
-            {FOLDERS.map(([f, label, Icon]) => (
-              <button key={f} type="button" role="radio" aria-checked={folder === f} onClick={() => { setFolder(f); navigate('/messages') }}>
-                <Icon size={15} /> {label}{f === 'inbox' && (data?.unread ?? 0) > 0 && <span className="af-count num">{data?.unread}</span>}
-              </button>
-            ))}
-          </div>
-          <div className="af-search"><Search size={17} aria-hidden="true" /><input className="input" placeholder="ابحث في الرسائل" value={search} onChange={(e) => setSearch(e.target.value)} aria-label="بحث" /></div>
-          <ErrorBanner text={error} />
+          <div className="af-search"><Search size={17} aria-hidden="true" /><input className="input" placeholder="ابحث في الرسائل" value={search} maxLength={80} onChange={(e) => {setSearch(e.target.value);setPage(1)}} aria-label="بحث" /></div>
+          <select className="input select" aria-label="فلتر الفرع" value={branch} onChange={e=>{setBranch(e.target.value);setPage(1);setLeaveId(null);navigate('/messages')}}>
+            <option value="">كل الفروع المتاحة</option>{(branches.data?.branches ?? (me.branch ? [me.branch] : [])).map(b=><option key={b.id} value={b.id}>{b.name}</option>)}
+          </select>
+          <ErrorBanner text={category==='leaves' ? leaves.error : error} />
+          {category==='leaves' ? <div className="af-mail-items">
+            {leaves.data?.requests.filter(r=>(!branch || r.branch_id===Number(branch)) && (!q || [r.name,r.reason,leaveKind[r.kind]].some(value=>value.includes(q)))).map(r=>
+              <button className="af-mail-item" type="button" key={r.id} data-active={r.id===leaveId || undefined} data-unread={!r.read || undefined} onClick={()=>{
+                setLeaveId(r.id)
+                if (!r.read) void api(`/leaves/${r.id}/read`,{method:'POST'}).then(()=>leaves.reload()).catch(()=>undefined)
+              }}>
+                <Avatar name={r.name} size={38}/><span className="af-mail-text"><b>{r.name}</b><span>{leaveKind[r.kind]}</span><small>{leaveStatus[r.status]}</small></span>
+              </button>)}
+            {!leaves.loading && !leaves.data?.requests.length && <p>لا توجد طلبات.</p>}
+          </div> : <>
           {loading && !data ? <Loading /> : (
             <div className="af-mail-items">
               {data?.messages.map((m) => (
@@ -72,16 +85,18 @@ export function Inbox() {
               )}
             </div>
           )}
+          {((data?.has_more ?? false) || page>1) && <div className="af-toolbar"><Button disabled={page===1} onClick={()=>setPage(page-1)}>السابق</Button><Button disabled={!data?.has_more} onClick={()=>setPage(page+1)}>التالي</Button></div>}
+          </>}
         </aside>
 
         <section className="card glass af-mail-read">
-          {id ? <Conversation id={id} onReply={setDraft} onChanged={() => void reload()} /> : (
+          {category==='leaves' && selectedLeave ? <LeaveDetails key={selectedLeave.id} leave={selectedLeave} back={()=>setLeaveId(null)} reload={leaves.reload} /> : id ? <Conversation key={id} id={id} onReply={setDraft} onChanged={() => void reload()} /> : (
             <div className="af-mail-empty big"><MailOpen size={44} /><p>اختر رسالة لقراءتها</p></div>
           )}
         </section>
       </div>
 
-      {draft && <Compose draft={draft} onClose={() => setDraft(null)} onSent={() => { setDraft(null); setFolder('sent'); void reload() }} />}
+      {draft && <Compose draft={draft} onClose={() => setDraft(null)} onSent={() => { setDraft(null); setFolder('sent'); selectCategory(''); void reload() }} />}
     </div>
   )
 }
@@ -90,7 +105,10 @@ function Conversation({ id, onReply, onChanged }: { id: string; onReply(d: Draft
   const me = useUser()
   const toast = useToast()
   const navigate = useNavigate()
-  const { data, error, loading, setData } = useLoad<{ thread: Full[]; current_id: number; archived: boolean; unread: number }>(`/messages/${id}`)
+  const [reply,setReply] = useState('')
+  const [channel,setChannel] = useState<'system'|'sms'>('system')
+  const [sending,setSending] = useState(false)
+  const { data, error, loading, setData, reload } = useLoad<{ thread: Full[]; current_id: number; archived: boolean; unread: number; sms_enabled: boolean }>(`/messages/${id}`)
   useEffect(() => { if (data) { setUnread(data.unread); onChanged() } }, [data?.current_id]) // eslint-disable-line react-hooks/exhaustive-deps
 
   if (loading && !data) return <Loading />
@@ -111,6 +129,25 @@ function Conversation({ id, onReply, onChanged }: { id: string; onReply(d: Draft
     } catch (e) { toast(e instanceof ApiError ? e.message : 'حدث خطأ', 'danger') }
   }
 
+  const target = last.sender && last.sender.id !== me.id ? last.sender : others(last)[0]
+  async function sendQuickReply() {
+    if (!target || !reply.trim() || sending) return
+    setSending(true)
+    try {
+      if (channel === 'sms') {
+        await api(`/messages/${last.id}/sms`,{method:'POST',body:{to:target.id,body:reply.trim()}})
+        toast('استلم مزوّد الرسائل طلب الإرسال')
+      } else {
+        await api('/messages',{method:'POST',body:{to:[target.id],subject:replySubject,body:reply.trim(),reply_to:last.id}})
+        await reload()
+        onChanged()
+        toast('أُرسل الرد داخل النظام')
+      }
+      setReply('')
+    } catch(e) {
+      toast(e instanceof ApiError ? Object.values(e.fields)[0] ?? e.message : 'تعذّر إرسال الرد','danger')
+    } finally { setSending(false) }
+  }
   return (
     <div className="af-conv">
       <header className="af-conv-head">
@@ -122,7 +159,6 @@ function Conversation({ id, onReply, onChanged }: { id: string; onReply(d: Draft
         {data.thread.map((m) => <MessageCard key={m.id} m={m} mine={m.sender?.id === me.id} />)}
       </div>
       <footer className="af-conv-actions">
-        <Button variant="primary" icon={<Reply size={18} />} onClick={() => onReply({ kind: 'message', replyTo: last.id, subject: replySubject, to: last.sender && last.sender.id !== me.id ? [last.sender] : others(last).slice(0, 1) })}>رد</Button>
         {uniq(data.thread.flatMap(others)).length > 1 && (
           <Button icon={<ReplyAll size={18} />} onClick={() => onReply({ kind: 'message', replyTo: last.id, subject: replySubject, to: uniq(data.thread.flatMap(others)) })}>رد على الجميع</Button>
         )}
@@ -130,6 +166,12 @@ function Conversation({ id, onReply, onChanged }: { id: string; onReply(d: Draft
           <Button icon={<Forward size={18} />} onClick={() => onReply({ kind: 'message', forwardOf: last, subject: `رفع: ${last.subject}`, body: 'للاطلاع والإفادة.' })}>رفع / تحويل</Button>
         )}
       </footer>
+      {target && <form className="af-inline-reply" onSubmit={e=>{e.preventDefault();void sendQuickReply()}}>
+        <label>رد سريع إلى {target.name}<textarea className="input textarea" rows={3} value={reply} maxLength={channel==='sms'?480:20000} onChange={e=>setReply(e.target.value)} /></label>
+        <div className="af-toolbar"><select className="input select" aria-label="قناة الإرسال" value={channel} onChange={e=>setChannel(e.target.value as 'system'|'sms')}>
+          <option value="system">إرسال داخل النظام</option><option value="sms" disabled={!data.sms_enabled}>{data.sms_enabled ? 'رسالة قصيرة SMS' : 'خدمة SMS بحاجة إلى إعداد'}</option>
+        </select><Button type="submit" variant="primary" icon={<Send size={16}/>} busy={sending} disabled={!reply.trim() || (channel==='sms' && reply.length>480)}>إرسال الرد</Button></div>
+      </form>}
     </div>
   )
 }
@@ -167,7 +209,35 @@ function MessageCard({ m, mine }: { m: Full; mine: boolean }) {
         </div>
       )}
       {mine && m.recipients.length > 0 && <small className="af-sub">{m.recipients.every((r) => r.read) ? 'قرأها الجميع' : `قرأها ${m.recipients.filter((r) => r.read).length} من ${m.recipients.length}`}</small>}
-      {m.kind !== 'message' && !mine && <Pill tone={KIND[m.kind].tone}>يمكنك الرد بالموافقة أو الرفض، أو رفعه للإدارة</Pill>}
+      {(m.kind==='leave_request'||m.kind==='permission_request') && !mine && <Link to="/leaves">فتح سجل الإجازات والأذونات</Link>}
     </article>
   )
+}
+
+const leaveKind = { annual:'إجازة سنوية', sick:'إجازة مرضية', other:'إجازة أخرى', permission:'إذن بالساعات' }
+const leaveStatus = { pending:'بانتظار شؤون الموظفين', escalated:'محال إلى الإدارة', approved:'معتمد', rejected:'مرفوض', cancelled:'ملغى' }
+type Leave = {id:number; read:number; user_id:number; branch_id:number; name:string; reason:string; starts:string; ends:string; kind:keyof typeof leaveKind; status:keyof typeof leaveStatus; days:number; from_time:string|null; to_time:string|null}
+
+function LeaveDetails({leave,back,reload}:{leave:Leave;back():void;reload():Promise<void>}) {
+  const user=useUser()
+  const toast=useToast()
+  const [busy,setBusy]=useState(false)
+  const hr=user.role?.key==='hr'
+  const review=leave.user_id!==user.id && ((hr && leave.status==='pending') || (user.role?.key==='management' && leave.status==='escalated'))
+  async function decide(action:string) {
+    setBusy(true)
+    try { await api(`/leaves/${leave.id}`,{method:'PATCH',body:{action}}); await reload(); toast('حُفظ القرار') }
+    catch(e) { toast(e instanceof ApiError ? Object.values(e.fields)[0] ?? e.message : 'تعذّر حفظ القرار','danger') }
+    finally { setBusy(false) }
+  }
+  return <div className="af-conv">
+    <header className="af-conv-head"><button type="button" className="icon-btn af-back" aria-label="رجوع إلى القائمة" onClick={back}><ArrowRight size={18}/></button><h2>{leaveKind[leave.kind]}</h2></header>
+    <article className="af-pad"><h3>{leave.name}</h3><Pill tone="info">{leaveStatus[leave.status]}</Pill>
+      <p>{leave.starts}{leave.starts!==leave.ends && ` – ${leave.ends}`}</p>
+      <p>{leave.kind==='permission' ? `${leave.from_time?.slice(0,5)} – ${leave.to_time?.slice(0,5)}` : `${leave.days} يوم دوام`}</p>
+      <p className="af-msg-body">{leave.reason}</p>
+    </article>
+    {review && <footer className="af-conv-actions"><Button disabled={busy} variant="primary" onClick={()=>decide('approved')}>موافقة</Button><Button disabled={busy} onClick={()=>decide('rejected')}>رفض</Button>{hr && <Button disabled={busy} onClick={()=>decide('escalated')}>إحالة للإدارة</Button>}</footer>}
+    <Link className="af-pad" to="/leaves">سجل الإجازات والأذونات</Link>
+  </div>
 }

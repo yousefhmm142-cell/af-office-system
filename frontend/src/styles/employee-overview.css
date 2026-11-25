@@ -1,0 +1,25 @@
+.af-employee-layout {display:grid;grid-template-columns:minmax(235px, .85fr) minmax(0, 2.3fr);gap:16px;align-items:start}
+.af-employee-identity,.af-employee-details,.af-employee-overview {display:grid;gap:14px;min-width:0}
+.af-employee-identity .af-profile {display:grid;justify-items:center;text-align:center}
+.af-emp-metrics,.af-emp-detail,.af-performance-list,.af-performance-inputs {display:grid;gap:12px}
+.af-emp-metrics {grid-template-columns:repeat(auto-fit,minmax(118px,1fr))}
+.af-emp-metrics .card {text-align:center;border-block-start:3px solid var(--brand-text)}
+.af-emp-metrics strong {display:block;font-size:1.55rem;color:var(--brand-text);margin-top:6px}
+.af-emp-detail,.af-performance-list,.af-performance-inputs {grid-template-columns:repeat(auto-fit,minmax(min(100%,240px),1fr));align-items:start}
+.af-calendar {display:grid;grid-template-columns:repeat(7,minmax(0,1fr));gap:4px;text-align:center;margin-block:12px}
+.af-calendar button {min-height:34px;border-radius:8px;border:1px solid var(--line);background:var(--surface-2);color:inherit;cursor:pointer}
+.af-calendar button[aria-pressed=true] {outline:2px solid var(--brand-text)}
+.af-calendar-key {display:flex;gap:6px;flex-wrap:wrap}
+.af-calendar-key small {padding:3px 6px;border-radius:5px}
+.af-calendar [data-state=present],.af-calendar-key [data-state=present] {background:#156653;color:white}
+.af-calendar [data-state=late],.af-calendar-key [data-state=late] {background:#835112;color:white}
+.af-calendar [data-state=absent],.af-calendar-key [data-state=absent] {background:#942d41;color:white}
+.af-calendar [data-state=leave],.af-calendar-key [data-state=leave] {background:#4c5090;color:white}
+.af-planning-table {max-height:360px;overflow:auto}
+.af-performance-list dl div {display:flex;justify-content:space-between;gap:8px;border-bottom:1px solid var(--line);padding-block:5px}
+.af-performance-list dd {margin:0}
+@media(max-width:790px) {.af-employee-layout {grid-template-columns:minmax(0,1fr)} .af-employee-identity {display:contents}.af-employee-details {grid-row:3}}
+
+.af-work-activity {display:grid;grid-template-columns:repeat(auto-fit,minmax(30px,1fr));gap:6px;margin-top:12px}
+.af-work-activity div {display:grid;justify-items:center;gap:4px}
+.af-work-activity progress {width:100%;height:14px;accent-color:var(--brand-text)}

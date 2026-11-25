@@ -6,10 +6,28 @@ use App\Models\Role;
 use App\Models\WorkSchedule;
 use Illuminate\Http\UploadedFile;
 use Illuminate\Support\Facades\Storage;
+use Laravel\Sanctum\Sanctum;
 use Tests\TestCase;
 
 class EmployeesTest extends TestCase
 {
+    public function test_monthly_file_and_field_reports_respect_branch_and_edit_scope(): void
+    {
+        $branch = $this->makeBranch();
+        $employee = $this->makeUser(Role::EMPLOYEE, $branch);
+        $form = ['date' => '2026-11-27', 'kind' => 'collection', 'collected' => 200, 'target' => 400, 'bills' => 4, 'meters' => 10, 'zones' => 'الوسط'];
+        $this->actAs(Role::HR);
+        $this->putJson("/api/employees/$employee->id/field-report", $form)->assertOk();
+        $this->getJson("/api/employees/$employee->id/overview?month=2026-11")->assertOk()
+            ->assertJsonCount(30, 'calendar')->assertJsonPath('reports.0.metrics.meters', 10);
+        Sanctum::actingAs($employee);
+        $this->putJson("/api/employees/$employee->id/field-report", $form)->assertForbidden();
+        $this->actAs(Role::BRANCH_MANAGER, $branch);
+        $this->getJson("/api/employees/$employee->id/overview?month=2026-11")->assertOk()->assertJsonPath('pay', null);
+        $this->actAs(Role::BRANCH_MANAGER, $this->makeBranch('فرع آخر'));
+        $this->getJson("/api/employees/$employee->id/overview?month=2026-11")->assertForbidden();
+    }
+
     public function test_every_account_gets_an_employee_file(): void
     {
         $user = $this->makeUser(Role::EMPLOYEE, $this->makeBranch());

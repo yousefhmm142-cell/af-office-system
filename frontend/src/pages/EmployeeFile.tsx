@@ -1,3 +1,5 @@
+import { EmployeeOverview } from './EmployeeOverview'
+import '../styles/employee-overview.css'
 import { Briefcase, FileText, History, Image as ImageIcon, Paperclip, Pencil, Trash2, Upload, UserRound, Wallet } from 'lucide-react'
 import { useRef, useState, type FormEvent, type ReactNode } from 'react'
 import { useNavigate, useParams } from 'react-router'
@@ -29,6 +31,7 @@ export function EmployeeFile() {
   const toast = useToast()
   const [allowance,setAllowance] = useState('')
   const [year,setYear] = useState(String(new Date().getFullYear()))
+  const [performance, setPerformance] = useState(false)
   const [edit, setEdit] = useState<'personal' | 'wallet' | 'job' | 'status' | null>(null)
 
   if (loading && !data) return <Loading />
@@ -51,6 +54,12 @@ export function EmployeeFile() {
       <PageHead title={mine ? 'ملفي' : f.user.name} eyebrow={mine ? f.user.name : 'ملف الموظف'}
         actions={<Pill tone={STATUS_TONE[f.status]}>{STATUS_LABEL[f.status]}</Pill>} />
 
+      <div className="segmented af-tabs" role="group" aria-label="أقسام ملف الموظف">
+        <button type="button" aria-pressed={!performance} onClick={()=>setPerformance(false)}>ملف الموظف</button>
+        <button type="button" aria-pressed={performance} onClick={()=>setPerformance(true)}>تقرير الأداء الميداني</button>
+      </div>
+      <div className="af-employee-layout">
+      <aside className="af-employee-identity">
       <section className="card glass af-pad af-profile">
         <Avatar name={f.user.name} size={64} />
         <div>
@@ -64,7 +73,7 @@ export function EmployeeFile() {
       </section>
       {f.status === 'terminated' && f.termination_reason && <div className="banner danger" style={{ marginTop: 12 }}><p>سبب الفصل: {f.termination_reason}</p></div>}
 
-      <div className="af-grid2" style={{ marginTop: 16 }}>
+      {!performance && <div className="af-employee-details">
         <Section icon={<UserRound size={18} />} title="البيانات الشخصية" onEdit={f.can.edit_personal ? () => setEdit('personal') : undefined}>
           <Row k="الاسم الكامل" v={f.user.name} />
           <Row k="رقم الهوية" v={p.national_id} num />
@@ -110,7 +119,10 @@ export function EmployeeFile() {
           <label>إجمالي الاستحقاق السنوي بالأيام<input className="input" type="number" min="0" max="366" required value={allowance} onChange={e=>setAllowance(e.target.value)} /></label>
           <Button type="submit">حفظ الرصيد</Button></form>}
         </Section>
-        <Attachments file={f} onChange={(attachments) => setData({ ...f, attachments })} />
+
+      </div>}
+      </aside>
+      <EmployeeOverview key={f.user.id} file={f} performance={performance} mine={mine} documents={<Attachments file={f} onChange={(attachments) => setData({ ...f, attachments })} />} />
       </div>
 
       {f.status_log.length > 0 && (

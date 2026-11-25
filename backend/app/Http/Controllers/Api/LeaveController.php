@@ -9,6 +9,7 @@ use App\Services\AttendanceService;
 use App\Support\Access;
 use App\Support\Audit;
 use Carbon\CarbonImmutable;
+use Illuminate\Database\Query\Builder;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\DB;
@@ -42,6 +43,23 @@ class LeaveController extends Controller
     public function index(Request $request): JsonResponse
     {
         $actor = $request->user();
+        $query = $this->visibleRequests($actor)
+            ->selectSub(DB::table('leave_request_reads')->selectRaw('count(*)')->whereColumn('leave_request_id', 'l.id')->where('user_id', $actor->id), 'read');
+
+        return response()->json(['requests' => $query->orderByDesc('l.id')->get()]);
+    }
+
+    public function read(Request $request, int $id): JsonResponse
+    {
+        $actor = $request->user();
+        abort_unless($this->visibleRequests($actor)->where('l.id', $id)->exists(), 404);
+        DB::table('leave_request_reads')->insertOrIgnore(['leave_request_id' => $id, 'user_id' => $actor->id]);
+
+        return response()->json(['ok' => true]);
+    }
+
+    private function visibleRequests(User $actor): Builder
+    {
         $query = DB::table('leave_requests as l')->join('users as u', 'l.user_id', '=', 'u.id')->select('l.*', 'u.name')
             ->selectSub(DB::table('leave_days')->selectRaw('count(*)')->whereColumn('request_id', 'l.id'), 'days');
         $management = $actor->role?->key === Role::MANAGEMENT;
@@ -58,7 +76,7 @@ class LeaveController extends Controller
             }
         });
 
-        return response()->json(['requests' => $query->orderByDesc('l.id')->get()]);
+        return $query;
     }
 
     public function store(Request $request): JsonResponse
@@ -159,6 +177,7 @@ class LeaveController extends Controller
                 $this->saveDays($id, $dates);
             }
             DB::table('leave_requests')->where('id', $id)->update(['status' => $action, 'updated_at' => now()]);
+            DB::table('leave_request_reads')->where('leave_request_id', $id)->where('user_id', '!=', $actor->id)->delete();
             Audit::log('leave.decision', $target, ['status' => $row->status], ['request_id' => $id, 'status' => $action]);
         });
 

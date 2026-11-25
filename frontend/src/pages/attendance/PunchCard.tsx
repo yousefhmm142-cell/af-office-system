@@ -27,7 +27,7 @@ function readCache(): Mine | null {
  * The big button on the home page: «سجّل حضور» / «سجّل انصراف», from anywhere.
  * Without internet the press is kept on the phone with its time and sent later by itself.
  */
-export function PunchCard() {
+export function PunchCard({ reminder = false, onRecorded }: { reminder?: boolean; onRecorded?: () => void } = {}) {
   const toast = useToast()
   const online = useOnline()
   const { data: live, reload } = useLoad<Mine>('/attendance/me')
@@ -83,6 +83,7 @@ export function PunchCard() {
       const res = await punch({ method: 'app', uuid })
       toast(res.message, res.ok ? 'ok' : 'danger')
       await reload()
+      if (res.ok) onRecorded?.()
     } catch (e) {
       // The internet dropped on the way: keep the press with the same id (the server counts it once).
       if (e instanceof ApiError && e.status === 0) {
@@ -96,6 +97,8 @@ export function PunchCard() {
     <section className="card glass af-punch" data-state={next.status}>
       <div className="af-punch-info">
         <p className="eyebrow">حضور اليوم{data.is_work_day === false ? ' · يوم راحة' : data.schedule ? ` · دوامك ${data.schedule.start_time}–${data.schedule.end_time}` : ''}</p>
+        {reminder && canPress && next.status === 'in' && data.is_work_day && data.schedule && hhmm(new Date()) >= data.schedule.start_time &&
+          <p className="banner warn" role="status"><Clock3 size={16} /> حان موعد دوامك. سجّل حضورك.</p>}
         <div className="af-punch-times">
           <span><LogIn size={16} /> حضور <b className="num">{day?.check_in ?? '—'}</b></span>
           <span><LogOut size={16} /> انصراف <b className="num">{day?.check_out ?? '—'}</b></span>

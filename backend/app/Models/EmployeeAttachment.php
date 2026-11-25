@@ -9,7 +9,7 @@ class EmployeeAttachment extends Model
 {
     use HasUuid;
 
-    public const TYPES = ['id_photo', 'specialty_cert', 'experience_cert', 'other'];
+    public const TYPES = ['contract', 'id_photo', 'specialty_cert', 'experience_cert', 'other'];
 
     protected $fillable = ['uuid', 'employee_id', 'type', 'path', 'original_name', 'mime', 'size', 'uploaded_by'];
 

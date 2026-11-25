@@ -48,7 +48,10 @@ Route::middleware(['auth:sanctum', 'active'])->group(function () {
         Route::put('employees/{user}/leave-allowance', [LeaveController::class, 'allowance']);
         Route::get('leaves', [LeaveController::class, 'index']);
         Route::post('leaves', [LeaveController::class, 'store']);
+        Route::post('leaves/{id}/read', [LeaveController::class, 'read'])->whereNumber('id');
         Route::patch('leaves/{id}', [LeaveController::class, 'decide'])->whereNumber('id');
+        Route::get('employees/{user}/overview', [EmployeeController::class, 'overview']);
+        Route::put('employees/{user}/field-report', [EmployeeController::class, 'saveFieldReport']);
         Route::get('dashboard', [DashboardController::class, 'show']);
         Route::get('branches', [BranchController::class, 'index'])->middleware('perm:branches.view');
         Route::post('branches', [BranchController::class, 'store'])->middleware('perm:branches.manage');
@@ -174,6 +177,7 @@ Route::middleware(['auth:sanctum', 'active'])->group(function () {
         Route::get('messages/recipients', [MessageController::class, 'recipients']);
         Route::post('messages', [MessageController::class, 'store'])->middleware('throttle:60,1');
         Route::get('messages/{message}', [MessageController::class, 'show']);
+        Route::post('messages/{message}/sms', [MessageController::class, 'smsReply'])->middleware('throttle:5,1');
         Route::post('messages/{message}/archive', [MessageController::class, 'archive']);
         Route::post('messages/{message}/unread', [MessageController::class, 'markUnread']);
         Route::get('messages/{message}/attachments/{attachment}', [MessageController::class, 'attachment']);

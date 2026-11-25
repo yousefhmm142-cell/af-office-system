@@ -60,7 +60,7 @@ export type EmployeeStatus = 'active' | 'trainee' | 'suspended' | 'terminated'
 export const STATUS_LABEL: Record<EmployeeStatus, string> = { active: 'فعّال', trainee: 'متدرب', suspended: 'موقوف عن العمل', terminated: 'مفصول' }
 export const EDUCATION: Array<[string, string]> = [['none', 'بدون'], ['primary', 'ابتدائي'], ['preparatory', 'إعدادي'], ['secondary', 'ثانوي'], ['diploma', 'دبلوم'], ['bachelor', 'بكالوريوس'], ['master', 'ماجستير'], ['phd', 'دكتوراه']]
 export const SALARY_TYPES: Array<[string, string]> = [['monthly', 'شهري'], ['weekly', 'أسبوعي'], ['daily', 'يومية'], ['contract', 'مقاولة']]
-export const ATTACHMENT_TYPES: Array<[string, string]> = [['id_photo', 'صورة الهوية'], ['specialty_cert', 'شهادة التخصص'], ['experience_cert', 'شهادة خبرة'], ['other', 'أخرى']]
+export const ATTACHMENT_TYPES: Array<[string, string]> = [['contract', 'عقد العمل'], ['id_photo', 'صورة الهوية'], ['specialty_cert', 'شهادة التخصص'], ['experience_cert', 'شهادة خبرة'], ['other', 'أخرى']]
 
 export interface Personal {
   national_id: string | null; phone: string | null; wa_code: number; address: string | null; education_level: string | null

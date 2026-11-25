@@ -11,7 +11,7 @@ class Message extends Model
 {
     use HasUuid;
 
-    public const KINDS = ['message', 'leave_request', 'permission_request'];
+    public const KINDS = ['message', 'leave_request', 'permission_request', 'fault', 'collection', 'circular'];
 
     protected $fillable = ['uuid', 'sender_id', 'thread_id', 'parent_id', 'forwarded_from_id', 'kind', 'subject', 'body', 'meta', 'groups_label'];
 

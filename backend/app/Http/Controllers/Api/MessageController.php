@@ -10,9 +10,12 @@ use App\Models\MessageAttachment;
 use App\Models\MessageRecipient;
 use App\Models\User;
 use App\Services\MessagingRules;
+use App\Support\Audit;
+use Illuminate\Http\Client\ConnectionException;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\DB;
+use Illuminate\Support\Facades\Http;
 use Illuminate\Support\Facades\Storage;
 use Illuminate\Validation\Rule;
 use Illuminate\Validation\ValidationException;
@@ -30,6 +33,8 @@ class MessageController extends Controller
         $data = $request->validate([
             'folder' => ['nullable', Rule::in(['inbox', 'sent', 'archive'])],
             'search' => ['nullable', 'string', 'max:80'],
+            'branch_id' => ['nullable', 'integer', 'min:1'],
+            'kind' => ['nullable', Rule::in(Message::KINDS)],
             'page' => ['nullable', 'integer', 'min:1'],
         ]);
         $folder = $data['folder'] ?? 'inbox';
@@ -41,6 +46,14 @@ class MessageController extends Controller
         } else {
             $q->whereHas('recipients', fn ($r) => $r->where('user_id', $me->id)
                 ->when($folder === 'inbox', fn ($w) => $w->whereNull('archived_at'), fn ($w) => $w->whereNotNull('archived_at')));
+        }
+        if (isset($data['branch_id'])) {
+            $branch = $data['branch_id'];
+            $q->where(fn ($q) => $q->whereHas('sender', fn ($sender) => $sender->where('branch_id', $branch))
+                ->orWhereHas('recipients.user', fn ($recipient) => $recipient->where('branch_id', $branch)));
+        }
+        if (isset($data['kind'])) {
+            $q->where('kind', $data['kind']);
         }
         if ($search !== '') {
             $q->where(fn ($w) => $w->where('subject', 'like', "%{$search}%")->orWhere('body', 'like', "%{$search}%")
@@ -90,6 +103,7 @@ class MessageController extends Controller
             'archived' => $archived !== null,
             'unread' => $this->unreadCount($me->id),
             'can_reply_all' => true,
+            'sms_enabled' => $this->smsEnabled(),
         ]);
     }
 
@@ -215,6 +229,37 @@ class MessageController extends Controller
         });
 
         return response()->json(['message' => $this->present($message->fresh())], 201);
+    }
+
+    private function smsEnabled(): bool
+    {
+        return (bool) (config('services.twilio.account_sid') && config('services.twilio.token') && config('services.twilio.from'));
+    }
+
+    public function smsReply(Request $request, Message $message): JsonResponse
+    {
+        $actor = $request->user();
+        abort_unless($message->sender_id === $actor->id || $message->recipients()->where('user_id', $actor->id)->exists(), 404);
+        abort_unless($this->smsEnabled(), 503, 'خدمة الرسائل القصيرة غير مهيّأة.');
+        $data = $request->validate(['to' => ['required', 'integer'], 'body' => ['required', 'string', 'max:480']]);
+        abort_if($data['to'] == $actor->id || ($message->sender_id != $data['to'] && ! $message->recipients()->where('user_id', $data['to'])->exists()), 403);
+        $person = User::with('employee')->where('is_active', true)->findOrFail($data['to']);
+        $phone = $person->employee?->phone;
+        $code = $person->employee?->wa_code;
+        $raw = preg_replace('/[^0-9+]/', '', $phone ?? '');
+        $destination = str_starts_with($raw, '+') ? $raw : '+'.$code.ltrim($raw, '0');
+        abort_unless($phone && preg_match('/^\+[1-9][0-9]{7,14}$/', $destination), 422, 'رقم هاتف المستلم غير صالح للإرسال.');
+        $sid = config('services.twilio.account_sid');
+        try {
+            $result = Http::asForm()->withBasicAuth($sid, config('services.twilio.token'))->timeout(10)
+                ->post("https://api.twilio.com/2010-04-01/Accounts/{$sid}/Messages.json", ['To' => $destination, 'From' => config('services.twilio.from'), 'Body' => $data['body']]);
+        } catch (ConnectionException) {
+            abort(502, 'تعذّر الاتصال بمزوّد الرسائل القصيرة.');
+        }
+        abort_unless($result->successful(), 502, 'رفض مزوّد الرسائل القصيرة الطلب.');
+        Audit::log('messages.sms_sent', $message, null, ['recipient_id' => $person->id, 'reference' => $result->json('sid')]);
+
+        return response()->json(['ok' => true]);
     }
 
     public function archive(Request $request, Message $message): JsonResponse

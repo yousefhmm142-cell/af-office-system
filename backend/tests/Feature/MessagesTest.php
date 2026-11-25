@@ -6,6 +6,7 @@ use App\Models\Branch;
 use App\Models\Role;
 use App\Models\User;
 use Illuminate\Http\UploadedFile;
+use Illuminate\Support\Facades\Http;
 use Illuminate\Support\Facades\Storage;
 use Laravel\Sanctum\Sanctum;
 use Tests\TestCase;
@@ -13,10 +14,15 @@ use Tests\TestCase;
 class MessagesTest extends TestCase
 {
     private Branch $a;
+
     private User $emp;
+
     private User $manager;
+
     private User $hr;
+
     private User $mgmt;
+
     private User $otherManager;
 
     protected function setUp(): void
@@ -35,6 +41,36 @@ class MessagesTest extends TestCase
     private function send(array $body)
     {
         return $this->postJson('/api/messages', $body + ['subject' => 'موضوع', 'body' => 'نص']);
+    }
+
+    public function test_work_category_and_branch_filter_keep_the_inbox_private(): void
+    {
+        Sanctum::actingAs($this->emp);
+        $message = $this->send(['to' => [$this->hr->id], 'kind' => 'fault'])->assertCreated()->json('message.id');
+        Sanctum::actingAs($this->hr);
+        $this->getJson('/api/messages?kind=fault&branch_id='.$this->a->id)->assertOk()
+            ->assertJsonPath('messages.0.id', $message)->assertJsonPath('messages.0.read', false);
+        $this->getJson('/api/messages/'.$message)->assertOk();
+        $this->getJson('/api/messages?kind=fault&branch_id='.$this->a->id)->assertJsonPath('messages.0.read', true);
+        $this->getJson('/api/messages?kind=collection&branch_id='.$this->a->id)->assertJsonCount(0, 'messages');
+        Sanctum::actingAs($this->otherManager);
+        $this->getJson('/api/messages?kind=fault&branch_id='.$this->a->id)->assertJsonCount(0, 'messages');
+        $this->postJson('/api/messages/'.$message.'/sms', ['to' => $this->emp->id, 'body' => 'بلاغ'])->assertNotFound();
+    }
+
+    public function test_sms_reply_uses_the_participants_registered_phone(): void
+    {
+        config(['services.twilio.account_sid' => 'ACtest', 'services.twilio.token' => 'test', 'services.twilio.from' => '+15555555555']);
+        Http::fake(['api.twilio.com/*' => Http::response(['sid' => 'SMtest'], 201)]);
+        $this->emp->employee->update(['phone' => '0599123456', 'wa_code' => 970]);
+        Sanctum::actingAs($this->emp);
+        $message = $this->send(['to' => [$this->hr->id]])->assertCreated()->json('message.id');
+        Sanctum::actingAs($this->hr);
+        $path = '/api/messages/'.$message.'/sms';
+        $this->postJson($path, ['to' => $this->otherManager->id, 'body' => 'متابعة'])->assertForbidden();
+        $this->postJson($path, ['to' => $this->emp->id, 'body' => 'متابعة'])->assertOk();
+        Http::assertSentCount(1);
+        Http::assertSent(fn ($request) => $request['To'] === '+970599123456' && $request['Body'] === 'متابعة');
     }
 
     public function test_employee_writes_to_branch_manager_and_hr_only(): void
