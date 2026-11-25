@@ -3,6 +3,7 @@ import { Account } from '../pages/Account'
 import { Audit } from '../pages/Audit'
 import { Inbox } from '../pages/messages/Inbox'
 import { DailyTasks } from '../pages/tasks/DailyTasks'
+import { SubscriberTasks } from '../pages/tasks/SubscriberTasks'
 import { TasksBoard } from '../pages/tasks/Board'
 import { LinkPage } from '../pages/tasks/LinkPage'
 import { MyTasks } from '../pages/tasks/MyTasks'
@@ -17,6 +18,7 @@ import { MyAttendance } from '../pages/attendance/MyAttendance'
 import { Points } from '../pages/attendance/Points'
 import { Scan } from '../pages/attendance/Scan'
 import { BranchDetail } from '../pages/BranchDetail'
+import { BranchSettings } from '../pages/BranchSettings'
 import { Branches } from '../pages/Branches'
 import { EmployeeFile } from '../pages/EmployeeFile'
 import { ForcedPasswordChange } from '../pages/ChangePassword'
@@ -52,6 +54,13 @@ function NeedAny({ permissions, children }: { permissions: string[]; children: R
   return permissions.some((p) => can(user, p)) ? <>{children}</> : <Navigate to="/" replace />
 }
 
+function BranchSettingsGate() {
+  const user = useUser()
+  return user.role?.key === 'branch_manager' && (can(user, 'permissions.branch_manage') || can(user, 'users.manage'))
+    ? <BranchSettings />
+    : <Navigate to="/" replace />
+}
+
 export const router = createBrowserRouter([
   // A technician's private task link: opens without signing in.
   { path: 't/:token', element: <LinkPage /> },
@@ -66,6 +75,7 @@ export const router = createBrowserRouter([
           { path: 'branches', element: <Need permission="branches.view"><Branches /></Need> },
           { path: 'branches/:id', element: <Need permission="branches.view"><BranchDetail /></Need> },
           { path: 'users', element: <Need permission="users.view"><Users /></Need> },
+          { path: 'settings', element: <BranchSettingsGate /> },
           { path: 'permissions', element: <Need permission="permissions.manage"><Permissions /></Need> },
           { path: 'audit', element: <Need permission="audit.view"><Audit /></Need> },
           { path: 'account', element: <Account /> },
@@ -73,6 +83,7 @@ export const router = createBrowserRouter([
           { path: 'attendance/me', element: <MyAttendance /> },
           { path: 'my-tasks', element: <MyTasks /> },
           { path: 'tasks', element: <NeedAny permissions={['tasks.view', 'tasks.manage']}><TasksBoard /></NeedAny> },
+          { path: 'subscriber', element: <NeedAny permissions={['tasks.view', 'tasks.manage']}><SubscriberTasks /></NeedAny> },
           { path: 'tasks/daily', element: <NeedAny permissions={['tasks.view', 'tasks.manage']}><DailyTasks /></NeedAny> },
           { path: 'tasks/settings', element: <Need permission="tasks.manage"><TaskSettings /></Need> },
           { path: 'messages', element: <Inbox /> },

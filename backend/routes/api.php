@@ -68,6 +68,8 @@ Route::middleware(['auth:sanctum', 'active'])->group(function () {
         Route::post('users/{user}/reset-password', [UserController::class, 'resetPassword'])->middleware('perm:users.manage');
         Route::delete('users/{user}', [UserController::class, 'destroy'])->middleware('perm:users.manage');
 
+        Route::get('settings/branch/pages', [PermissionController::class, 'branchPages'])->middleware('perm:permissions.branch_manage');
+        Route::put('settings/branch/users/{user}/page', [PermissionController::class, 'updateBranchPage'])->middleware('perm:permissions.branch_manage');
         Route::get('permissions', [PermissionController::class, 'index'])->middleware('perm:permissions.manage');
         Route::match(['put', 'patch'], 'roles/{role}/permissions', [PermissionController::class, 'updateRole'])->middleware('perm:permissions.manage');
         Route::get('users/{user}/permissions', [PermissionController::class, 'showUser'])->middleware('perm:permissions.manage');

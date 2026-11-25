@@ -1,4 +1,4 @@
-import { ChevronRight, LogOut } from 'lucide-react'
+import { ChevronRight, LogOut, Settings } from 'lucide-react'
 import { useState } from 'react'
 import { Link, NavLink, Outlet, useLocation } from 'react-router'
 import { Avatar, Logo } from '../ui/primitives'
@@ -25,6 +25,8 @@ export function AppShell() {
   const { signOut } = useAuth()
   const confirm = useConfirm()
   const items = navFor(user)
+  const branchManager = user.role?.key === 'branch_manager'
+  const settings = items.find((item) => item.to === '/settings')
   const unread = useUnread()
   const newTasks = useNewTasks(!!user.branch && !!user.modules?.includes('tasks'))
   const badge = (to: string) => {
@@ -37,7 +39,10 @@ export function AppShell() {
     try { localStorage.setItem(MINI_KEY, m ? '0' : '1') } catch { /* this visit only */ }
     return !m
   })
-  const tabs = items.slice(0, 5)
+  const primary = ['/', '/tasks', '/attendance', '/messages', '/settings']
+  const tabs = branchManager ? primary.flatMap((to) => items.filter((item) => item.to === to)) : items.slice(0, 5)
+  const operations = items.filter((item) => ['/', '/tasks', '/attendance'].includes(item.to))
+  const follow = items.filter((item) => !['/', '/tasks', '/attendance', '/users', '/account', '/settings'].includes(item.to))
 
   const link = ({ to, label, icon: Icon }: (typeof items)[number]) => (
     <NavLink key={to} to={to} end={to === "/"} className="sb-item" data-tip={label} aria-label={mini ? label : undefined}>
@@ -60,16 +65,21 @@ export function AppShell() {
           <Logo height={mini ? 32 : 64} className="sb-logo" />
           <span className="sb-name">
             <span className="sb-kicker">نظام إدارة</span>
-            <span className="sb-title">المكاتب</span>
+            <span className="sb-title">{branchManager ? user.branch?.name ?? 'المكاتب' : 'المكاتب'}</span>
             <span className="sb-company">شركة أبناء فارس أبو زايد</span>
           </span>
         </NavLink>
         <div className="sb-scroll">
-          <div className="sb-label">الإدارة</div>
-          <nav className="sb-nav" aria-label="الإدارة">{items.filter((i) => i.to !== '/account').map(link)}</nav>
+          <div className="sb-label">{branchManager ? 'التشغيل' : 'الإدارة'}</div>
+          <nav className="sb-nav" aria-label={branchManager ? 'التشغيل' : 'الإدارة'}>{(branchManager ? operations : items.filter((i) => i.to !== '/account')).map(link)}</nav>
+          {branchManager && follow.length > 0 && <>
+            <div className="sb-label">المتابعة</div>
+            <nav className="sb-nav" aria-label="المتابعة">{follow.map(link)}</nav>
+          </>}
         </div>
         <div className="sb-foot">
-          <nav className="sb-nav" aria-label="الحساب">{link({ to: '/account', label: 'حسابي', icon: items[items.length - 1]!.icon })}</nav>
+          {branchManager && settings && <div className="sb-label">النظام</div>}
+          <nav className="sb-nav" aria-label="الحساب">{branchManager && settings && link(settings)}{link({ to: '/account', label: 'حسابي', icon: items[items.length - 1]!.icon })}</nav>
         </div>
       </aside>
 
@@ -85,6 +95,7 @@ export function AppShell() {
             </Link>
             <span className="grow" />
             <div className="topbar-end">
+              {branchManager && settings && <NavLink to="/settings" className="icon-btn settings-btn" aria-label="الإعدادات" title="الإعدادات"><Settings size={18} /></NavLink>}
               <ThemeToggle />
               <button
                 type="button"

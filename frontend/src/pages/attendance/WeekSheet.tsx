@@ -5,7 +5,7 @@ import { clock12 } from '../../lib/format'
 import { ErrorBanner } from '../../ui/Field'
 import { Loading } from '../../ui/PageHead'
 import { ScrollTable } from '../../ui/ScrollTable'
-import { Button } from '../../ui/primitives'
+import { Button, Logo } from '../../ui/primitives'
 import { dayName, STATE, type Board, type BoardRow } from './lib'
 
 const weekDay = new Intl.DateTimeFormat('ar-EG-u-nu-latn-ca-gregory', { weekday: 'long', timeZone: 'UTC' })
@@ -22,8 +22,8 @@ export function weekStart(date: string) {
   return shiftDate(date, -((weekday + 1) % 7))
 }
 
-export function WeekSheet({ branch, start, today, onWeek, onDay }: {
-  branch: string; start: string; today: string
+export function WeekSheet({ branch, branchName, start, today, onWeek, onDay }: {
+  branch: string; branchName?: string; start: string; today: string
   onWeek(date: string): void
   onDay(date: string, row: BoardRow, canManage: boolean): void
 }) {
@@ -53,9 +53,9 @@ export function WeekSheet({ branch, start, today, onWeek, onDay }: {
   return (
     <section aria-label="كشف الحضور الأسبوعي">
       <div className="week-bar card af-week-actions">
-        <Button icon={<ChevronRight size={17} />} onClick={() => onWeek(shiftDate(start, -7))}>الأسبوع السابق</Button>
+        <button type="button" className="icon-btn" aria-label="الأسبوع السابق" onClick={() => onWeek(shiftDate(start, -7))}><ChevronRight size={18} /></button>
         <span className="week-label"><b>{end >= today ? 'هذا الأسبوع' : 'الأسبوع'}</b><small>{dayName(start)} – {dayName(end)}</small></span>
-        <Button icon={<ChevronLeft size={17} />} disabled={end >= today} onClick={() => onWeek(shiftDate(start, 7))}>الأسبوع التالي</Button>
+        <button type="button" className="icon-btn" aria-label="الأسبوع التالي" disabled={end >= today} onClick={() => onWeek(shiftDate(start, 7))}><ChevronLeft size={18} /></button>
         {split && <div className="segmented" role="radiogroup" aria-label="فئة كشف الحضور">
           <button type="button" role="radio" aria-checked={group === 'all'} onClick={() => setGroup('all')}>الجميع</button>
           <button type="button" role="radio" aria-checked={group === 'regular'} onClick={() => setGroup('regular')}>الموظفون</button>
@@ -68,6 +68,10 @@ export function WeekSheet({ branch, start, today, onWeek, onDay }: {
       {data && !roster.length && <p className="card af-pad">لا توجد سجلات للفئة المحددة في هذا الأسبوع.</p>}
       {data && roster.length > 0 && (
         <div className="card week-card af-week-table">
+          <header className="af-week-print-head">
+            <Logo height={46} />
+            <div><b>شركة أبناء فارس أبو زايد</b>{branchName && <span> · فرع {branchName}</span>}</div>
+          </header>
           <h2 className="af-week-title">كشف الحضور{split && group === 'regular' ? ' للموظفين' : split && group === 'idle' ? ' للبطالة' : ''} من {dayName(start)} إلى {dayName(end)}</h2>
           <ScrollTable label="كشف الحضور الأسبوعي"><table className="week">
             <thead>
@@ -93,7 +97,10 @@ export function WeekSheet({ branch, start, today, onWeek, onDay }: {
                     const row = rows[index]
                     return <td key={date} data-status={row?.state}>{row ? (
                       <button type="button" className="week-cell af-att-time" onClick={() => onDay(date, row, manageByDate.get(date) === true)}>
-                        {row.day?.check_in ? <span dir="ltr"><b className="af-time-in">{clock12(row.day.check_in)}</b>{row.day.check_out && <> · <b className="af-time-out">{clock12(row.day.check_out)}</b></>}</span> : STATE[row.state].label}
+                        {row.day?.check_in ? <span className="af-week-times">
+                          <bdi className="af-time-in" dir="rtl">{clock12(row.day.check_in)}</bdi>
+                          {row.day.check_out && <><span aria-hidden="true">–</span><bdi className="af-time-out" dir="rtl">{clock12(row.day.check_out)}</bdi></>}
+                        </span> : STATE[row.state].label}
                       </button>
                     ) : '—'}</td>
                   })}
@@ -102,6 +109,7 @@ export function WeekSheet({ branch, start, today, onWeek, onDay }: {
               )
             })}</tbody>
           </table></ScrollTable>
+          <footer className="af-week-print-sign">توقيع مدير الفرع <span aria-hidden="true">____________________</span></footer>
         </div>
       )}
     </section>

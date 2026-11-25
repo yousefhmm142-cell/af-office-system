@@ -22,6 +22,74 @@ class PermissionController extends Controller
 {
     private const RANK = ['own' => 1, 'branch' => 2, 'all' => 3];
 
+    private const BRANCH_PAGES = [
+        'attendance.view' => 'الحضور والانصراف',
+        'tasks.view' => 'المهام الميدانية',
+    ];
+
+    public function branchPages(Request $request): JsonResponse
+    {
+        $actor = $request->user();
+        $branch = $actor->branch_id;
+        abort_unless($branch && Access::allowsBranch($actor, 'permissions.branch_manage', $branch), 403);
+        $pages = $this->editableBranchPages($actor);
+        $people = User::where('branch_id', $branch)->whereHas('role', fn ($query) => $query->where('key', Role::EMPLOYEE))
+            ->where('is_active', true)->orderBy('name')->get(['id', 'name', 'username']);
+        $grants = DB::table('branch_page_grants')->join('permissions', 'permissions.id', '=', 'branch_page_grants.permission_id')
+            ->where('branch_page_grants.branch_id', $branch)->whereIn('user_id', $people->modelKeys())
+            ->get(['user_id', 'permissions.key'])->groupBy('user_id');
+        $companyOverrides = DB::table('user_permissions')->join('permissions', 'permissions.id', '=', 'user_permissions.permission_id')
+            ->whereIn('user_id', $people->modelKeys())->whereIn('permissions.key', array_keys($pages))
+            ->get(['user_id', 'permissions.key', 'effect', 'scope'])->groupBy('user_id');
+
+        return response()->json([
+            'pages' => collect($pages)->map(fn ($label, $key) => compact('key', 'label'))->values(),
+            'people' => $people->map(fn (User $user) => $user->only('id', 'name', 'username') + [
+                'pages' => $grants->get($user->id, collect())->pluck('key')->values(),
+                'locked' => $companyOverrides->get($user->id, collect())->map(fn ($override) => [
+                    'key' => $override->key,
+                    'enabled' => $override->effect === 'allow' && in_array($override->scope ?? 'branch', ['branch', 'all'], true),
+                ])->values(),
+            ]),
+        ]);
+    }
+
+    public function updateBranchPage(Request $request, User $user): JsonResponse
+    {
+        $actor = $request->user();
+        $branch = $actor->branch_id;
+        abort_unless($branch && $branch === $user->branch_id && $user->is_active && $user->role?->key === Role::EMPLOYEE, 403);
+        UserController::assertCanManage($actor, $user->role, $branch, 'permissions.branch_manage');
+        $data = $request->validate([
+            'key' => ['required', Rule::in(array_keys($this->editableBranchPages($actor)))],
+            'enabled' => ['required', 'boolean'],
+        ]);
+        $permission = Permission::where('key', $data['key'])->firstOrFail();
+        $grant = ['branch_id' => $branch, 'user_id' => $user->id, 'permission_id' => $permission->id];
+
+        DB::transaction(function () use ($grant, $data, $user, $branch) {
+            $account = User::whereKey($user->id)->lockForUpdate()->firstOrFail();
+            abort_unless($account->branch_id === $branch && $account->is_active && $account->role?->key === Role::EMPLOYEE, 403);
+            $controlledByCompany = DB::table('user_permissions')->where('user_id', $account->id)
+                ->where('permission_id', $grant['permission_id'])->exists();
+            abort_if($controlledByCompany, 403, 'هذه الصلاحية محددة من إعدادات الشركة.');
+
+            $changed = $data['enabled']
+                ? DB::table('branch_page_grants')->insertOrIgnore($grant)
+                : DB::table('branch_page_grants')->where($grant)->delete();
+            if ($changed) {
+                Audit::log('permissions.branch_page', $account, null, $data);
+            }
+        });
+
+        return response()->json(['enabled' => (bool) $data['enabled']]);
+    }
+
+    private function editableBranchPages(User $actor): array
+    {
+        return array_filter(self::BRANCH_PAGES, fn ($key) => Access::allowsBranch($actor, $key, $actor->branch_id), ARRAY_FILTER_USE_KEY);
+    }
+
     public function index(): JsonResponse
     {
         $perms = Permission::orderBy('sort_order')->get(['id', 'key', 'name', 'group']);
@@ -41,6 +109,7 @@ class PermissionController extends Controller
     public function updateRole(Request $request, Role $role): JsonResponse
     {
         $actor = $request->user();
+        abort_unless(Access::scope($actor, 'permissions.manage') === 'all', 403, 'تعديل صلاحيات الأدوار يتطلب صلاحية على مستوى الشركة.');
         abort_if($role->key === Role::SUPER_ADMIN, 403, 'صلاحيات السوبر أدمن كاملة دائماً ولا تتغير.');
         abort_unless($actor->isSuperAdmin() || $role->level < $actor->level(), 403, 'لا يمكنك تعديل صلاحيات دور في مستواك أو أعلى منه.');
         $data = $request->validate([

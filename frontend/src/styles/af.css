@@ -576,3 +576,11 @@
 .week-bar { flex-wrap: wrap; }
 .af-schedule-table { min-width: 35rem; }
 .af-schedule-table .af-row-actions { justify-content: flex-start; }
+
+.af-branch-settings { display: grid; grid-template-columns: minmax(0, 1fr); gap: 16px; }
+.af-branch-settings > .segmented { justify-self: start; max-width: 100%; }
+.af-branch-settings .ph { margin: 0; }
+.af-branch-settings > .card > .af-toolbar { padding-inline: 18px; }
+.af-settings-team { justify-content: space-between; flex-wrap: wrap; gap: 10px; }
+.af-branch-settings .row { text-decoration: none; color: var(--ink); }
+.af-branch-settings .row:hover { background: var(--surface-2); }

@@ -21,7 +21,7 @@ function tempPassword() {
   return String(100000 + ((n[0] ?? 0) % 900000))
 }
 
-export function Users() {
+export function Users({ embedded = false }: { embedded?: boolean }) {
   const me = useUser()
   const toast = useToast()
   const confirm = useConfirm()
@@ -65,10 +65,11 @@ export function Users() {
     } catch (e) { toast(e instanceof ApiError ? e.message : 'لم يُحذف', 'danger') }
   }
 
+  const create = manages && <Button variant="primary" icon={<UserPlus size={18} />} disabled={!roles.data} onClick={() => setEditing('new')}>حساب جديد</Button>
   return (
     <>
-      <PageHead title="الموظفون" eyebrow="الحسابات والملفات الشخصية"
-        actions={manages && <Button variant="primary" icon={<UserPlus size={18} />} disabled={!roles.data} onClick={() => setEditing('new')}>حساب جديد</Button>} />
+      {embedded ? <header className="card-h af-settings-team"><h2>فريق الفرع</h2>{create}</header> :
+        <PageHead title="الموظفون" eyebrow="الحسابات والملفات الشخصية" actions={create} />}
       <div className="af-toolbar">
         <div className="af-search">
           <Search size={17} aria-hidden="true" />
@@ -125,7 +126,7 @@ export function Users() {
         </div>
       )}
       {editing && (
-        <UserDialog user={editing === 'new' ? null : editing} roles={roles.data?.roles ?? []} branches={branches.data?.branches ?? []}
+        <UserDialog branchStyle={embedded} user={editing === 'new' ? null : editing} roles={roles.data?.roles ?? []} branches={branches.data?.branches ?? []}
           onClose={() => setEditing(null)} onSaved={() => { setEditing(null); void reload() }} />
       )}
       {resetting && <ResetDialog user={resetting} onClose={() => setResetting(null)} onSaved={() => { setResetting(null); void reload() }} />}
@@ -133,7 +134,7 @@ export function Users() {
   )
 }
 
-function UserDialog({ user, roles, branches, onClose, onSaved }: { user: User | null; roles: Role[]; branches: Branch[]; onClose(): void; onSaved(): void }) {
+function UserDialog({ user, roles, branches, onClose, onSaved, branchStyle }: { branchStyle: boolean; user: User | null; roles: Role[]; branches: Branch[]; onClose(): void; onSaved(): void }) {
   const me = useUser()
   const toast = useToast()
   const assignable = roles.filter((r) => r.assignable || r.id === user?.role?.id)
@@ -183,6 +184,16 @@ function UserDialog({ user, roles, branches, onClose, onSaved }: { user: User | 
 
   return (
     <Dialog open onClose={onClose} title={user ? `تعديل ${user.name}` : 'حساب جديد'} icon={<UserPlus size={20} />}
+      aside={branchStyle ? <>
+        <h3>ملخص الحساب</h3>
+        <div className="aside-big">{form.name.trim() || 'حساب جديد'}</div>
+        <div className="aside-box">
+          <div className="aside-row"><span>اسم المستخدم</span><b dir="auto">{form.username || '—'}</b></div>
+          <div className="aside-row"><span>الدور</span><b>{role?.name ?? '—'}</b></div>
+          <div className="aside-row"><span>الفرع</span><b>{me.branch?.name ?? '—'}</b></div>
+        </div>
+        {!user && <p className="aside-note">يستكمل الموظف ملفه الشخصي بعد دخوله الأول.</p>}
+      </> : undefined}
       footer={<><Button onClick={onClose}>إلغاء</Button><Button variant="primary" busy={busy} onClick={() => void save()}>حفظ</Button></>}>
       <form className="form-grid" onSubmit={save}>
         <Field label="الاسم الكامل" error={fields.name}>{(id) => <input id={id} className="input" value={form.name} onChange={(e) => set('name', e.target.value)} />}</Field>

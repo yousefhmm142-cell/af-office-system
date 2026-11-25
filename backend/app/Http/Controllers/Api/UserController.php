@@ -187,6 +187,10 @@ class UserController extends Controller
         if ($actor->isSuperAdmin()) {
             return;
         }
+        if ($actor->role?->key === Role::BRANCH_MANAGER) {
+            abort_unless($branchId !== null && $branchId === $actor->branch_id && $role?->key === Role::EMPLOYEE,
+                403, 'يمكن لمدير الفرع إدارة حسابات موظفي فرعه فقط.');
+        }
         abort_unless(Access::allowsBranch($actor, $permission, $branchId), 403, 'ليست لديك صلاحية على موظفي هذا الفرع.');
         abort_unless($role && $role->level < $actor->level(), 403, 'لا يمكنك إدارة حساب في مستواك أو أعلى منه.');
     }

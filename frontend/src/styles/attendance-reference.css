@@ -79,3 +79,17 @@ table.week { width: 100%; border-collapse: collapse; min-width: 900px; }
 @media (max-width: 900px) {
   .af-branch-attendance-head .segmented { margin-inline-start: 0; max-width: 100%; overflow-x: auto; }
 }
+
+.af-week-print-head, .af-week-print-sign { display: none; }
+.af-week-actions > .icon-btn { flex: none; }
+.af-week-actions > .btn { margin-inline-start: auto; }
+@media print {
+  .af-week-print-head { display: flex; align-items: center; gap: 12px; padding: 0 0 10px; }
+  .af-week-print-sign { display: flex; gap: 12px; padding-block-start: 18px; }
+  .af-week-table .week-cell { min-height: 36px; }
+  .af-week-table .week th, .af-week-table .week td { font-size: 9pt; }
+}
+@media (max-width: 600px) {
+  .af-week-actions .week-label { min-width: 0; flex: 1; }
+}
+.af-week-times { display: inline-flex; align-items: baseline; gap: .3rem; }

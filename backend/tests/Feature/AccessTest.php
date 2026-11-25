@@ -74,6 +74,41 @@ class AccessTest extends TestCase
         $this->assertSame('all', $access['users.view']);
     }
 
+    public function test_branch_manager_grants_only_local_page_access_to_employees(): void
+    {
+        $branch = $this->makeBranch('فرع أ');
+        $other = $this->makeBranch('فرع ب');
+        $worker = $this->makeUser(Role::EMPLOYEE, $branch);
+        $outside = $this->makeUser(Role::EMPLOYEE, $other);
+        $manager = $this->actAs(Role::BRANCH_MANAGER, $branch);
+
+        $this->getJson('/api/settings/branch/pages')->assertOk()
+            ->assertJsonPath('people.0.id', $worker->id)->assertJsonCount(1, 'people');
+        $this->putJson("/api/settings/branch/users/{$outside->id}/page", ['key' => 'tasks.view', 'enabled' => true])->assertForbidden();
+        $this->putJson("/api/settings/branch/users/{$manager->id}/page", ['key' => 'tasks.view', 'enabled' => true])->assertForbidden();
+        $this->putJson("/api/settings/branch/users/{$worker->id}/page", ['key' => 'payroll.view', 'enabled' => true])->assertUnprocessable();
+
+        $path = "/api/settings/branch/users/{$worker->id}/page";
+        $this->putJson($path, ['key' => 'tasks.view', 'enabled' => true])->assertOk();
+        $this->putJson($path, ['key' => 'tasks.view', 'enabled' => true])->assertOk();
+        $this->assertSame('branch', Access::scope($worker->fresh(), 'tasks.view'));
+        $this->assertDatabaseCount('branch_page_grants', 1);
+
+        $worker->update(['branch_id' => $other->id]);
+        $this->assertNull(Access::scope($worker->fresh(), 'tasks.view'));
+        $worker->update(['branch_id' => $branch->id]);
+        $this->putJson($path, ['key' => 'tasks.view', 'enabled' => false])->assertOk();
+        $this->assertNull(Access::scope($worker->fresh(), 'tasks.view'));
+
+        DB::table('user_permissions')->insert([
+            'user_id' => $worker->id, 'permission_id' => Permission::where('key', 'tasks.view')->value('id'),
+            'effect' => 'deny', 'scope' => null,
+        ]);
+        $this->getJson('/api/settings/branch/pages')->assertOk()
+            ->assertJsonPath('people.0.locked.0.key', 'tasks.view')->assertJsonPath('people.0.locked.0.enabled', false);
+        $this->putJson($path, ['key' => 'tasks.view', 'enabled' => true])->assertForbidden();
+    }
+
     public function test_changing_one_role_permission_retains_the_other_grants(): void
     {
         $this->actAs(Role::SUPER_ADMIN);

@@ -3,6 +3,7 @@
 namespace App\Support;
 
 use App\Models\Permission;
+use App\Models\Role;
 use App\Models\User;
 use Illuminate\Database\Eloquent\Builder;
 use Illuminate\Support\Facades\DB;
@@ -41,6 +42,19 @@ class Access
             ->where('role_permissions.role_id', $user->role_id)
             ->pluck('role_permissions.scope', 'permissions.key')
             ->all();
+
+        if ($user->branch_id !== null && $user->role?->key === Role::EMPLOYEE) {
+            $branchPages = DB::table('branch_page_grants')
+                ->join('permissions', 'permissions.id', '=', 'branch_page_grants.permission_id')
+                ->where('branch_page_grants.user_id', $user->id)
+                ->where('branch_page_grants.branch_id', $user->branch_id)
+                ->pluck('permissions.key');
+            foreach ($branchPages as $key) {
+                if (($map[$key] ?? null) !== 'all') {
+                    $map[$key] = 'branch';
+                }
+            }
+        }
 
         $overrides = DB::table('user_permissions')
             ->join('permissions', 'permissions.id', '=', 'user_permissions.permission_id')

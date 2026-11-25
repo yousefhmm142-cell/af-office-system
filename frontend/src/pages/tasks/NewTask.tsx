@@ -1,4 +1,4 @@
-import { ClipboardPlus, MessageCircle, Save, Send } from 'lucide-react'
+import { ClipboardPlus, MessageCircle, PhoneIncoming, Save, Send } from 'lucide-react'
 import { useMemo, useState } from 'react'
 import { api, ApiError } from '../../api/client'
 import { Dialog } from '../../ui/Dialog'
@@ -11,7 +11,7 @@ import { MINUTES, PRIORITY, durationText, whatsappText, whatsappUrl, type Option
  * A new task in a few taps: what (type), who (technicians), for whom (subscriber), where, how urgent,
  * how long. Then «send by WhatsApp», «send in the app», or just keep it for later.
  */
-export function NewTask({ options, onClose, onSaved }: { options: Options; onClose(): void; onSaved(t: Task): void }) {
+export function NewTask({ options, onClose, onSaved, branchStyle = false, prepare = false }: { options: Options; branchStyle?: boolean; prepare?: boolean; onClose(): void; onSaved(t: Task): void }) {
   const toast = useToast()
   const types = options.types.filter((t) => t.is_active)
   const [typeId, setTypeId] = useState<number | null>(null)
@@ -56,38 +56,8 @@ export function NewTask({ options, onClose, onSaved }: { options: Options; onClo
     } finally { setBusy(null) }
   }
 
-  return (
-    <Dialog open onClose={onClose} title="مهمة جديدة" icon={<ClipboardPlus size={20} />} className="af-compose"
-      footer={
-        <div className="af-task-foot">
-          <Button variant="primary" size="lg" icon={<MessageCircle size={18} />} busy={busy === 'whatsapp'} disabled={!typeId || techs.length === 0} onClick={() => void save('whatsapp')}>حفظ وإرسال واتساب</Button>
-          <Button icon={<Send size={18} />} busy={busy === 'app'} disabled={!typeId || techs.length === 0} onClick={() => void save('app')}>إرسال داخل النظام</Button>
-          <Button variant="ghost" icon={<Save size={18} />} busy={busy === 'save'} disabled={!typeId} onClick={() => void save(null)}>حفظ دون إرسال</Button>
-        </div>
-      }>
-      <div className="form-grid">
-        <div className="field">
-          <label>نوع المهمة</label>
-          <div className="chips">
-            {shownTypes.map((t) => <button key={t.id} type="button" className="chip" aria-pressed={typeId === t.id} onClick={() => { setTypeId(t.id); setMinutes(t.default_minutes) }}>{t.name}</button>)}
-            {!showAllTypes && types.length > 10 && <button type="button" className="chip" onClick={() => setShowAllTypes(true)}>المزيد…</button>}
-          </div>
-          {fields.task_type_id && <span className="field-error">{fields.task_type_id}</span>}
-        </div>
-
-        <div className="field">
-          <label>الفني <small className="af-sub" style={{ display: 'inline' }}>(اختر أكثر من فني لمهمة مشتركة، أو اتركه فارغاً لتحضير المهمة)</small></label>
-          <div className="af-techs">
-            {technicians.map((t) => (
-              <button key={t.id} type="button" className="af-tech" aria-pressed={techs.includes(t.id)} onClick={() => setTechs(techs.includes(t.id) ? techs.filter((x) => x !== t.id) : [...techs, t.id])}>
-                <Avatar name={t.name} size={34} />
-                <span><b>{t.name}</b><small>{t.job_title ?? t.department ?? ''}{t.open ? ` · ${t.open} مفتوحة` : ' · متفرّغ'}</small></span>
-              </button>
-            ))}
-          </div>
-          {fields.assignees && <span className="field-error">{fields.assignees}</span>}
-        </div>
-
+  const contactFields = (
+    <>
         <div className="af-row2">
           <Field label="المشترك (اختياري)" error={fields.subscriber_name}>{(id) => <input id={id} className="input" value={subscriber} onChange={(e) => setSubscriber(e.target.value)} />}</Field>
           <Field label="جوال المشترك" error={fields.subscriber_phone}>{(id) => <input id={id} className="input num" inputMode="tel" dir="ltr" placeholder="05xxxxxxxx" value={phone} onChange={(e) => setPhone(e.target.value.replace(/\D/g, '').slice(0, 10))} />}</Field>
@@ -102,6 +72,63 @@ export function NewTask({ options, onClose, onSaved }: { options: Options; onClo
           </div>
         )}
         <Field label="وصف المكان" error={fields.location_text}>{(id) => <input id={id} className="input" value={place} onChange={(e) => setPlace(e.target.value)} placeholder="مثال: قرب المسجد، الطابق الثاني" />}</Field>
+
+    </>
+  )
+  const summary = branchStyle ? (
+    <>
+      <h3>ملخص المهمة <span className="aside-tag">قبل الحفظ</span></h3>
+      <div><span className="aside-label">المشترك</span><div className="aside-big">{subscriber.trim() || '—'}</div></div>
+      <div className="aside-box">
+        <div className="aside-row"><span>الجوال</span><b dir="ltr">{phone || '—'}</b></div>
+        <div className="aside-row"><span>المنطقة</span><b>{options.zones.find((zone) => zone.id === zoneId)?.name ?? (place.trim() || '—')}</b></div>
+        <div className="aside-row"><span>المطلوب</span><b>{types.find((item) => item.id === typeId)?.name ?? '—'}</b></div>
+        <div className="aside-row"><span>الفني</span><b>{prepare ? 'يُختار لاحقًا' : (technicians.filter((person) => techs.includes(person.id)).map((person) => person.name).join('، ') || '—')}</b></div>
+      </div>
+      {prepare && <p className="aside-note">تظهر المهمة في قائمة «بانتظار فني» بعد الحفظ.</p>}
+    </>
+  ) : undefined
+
+  return (
+    <Dialog open onClose={onClose} title={prepare ? 'تجهيز مهمة' : 'مهمة جديدة'} icon={prepare ? <PhoneIncoming size={20} /> : <ClipboardPlus size={20} />}
+      aside={summary} className={branchStyle ? undefined : 'af-compose'}
+      subtitle={prepare ? 'سجّل طلب المشترك، واختر الفني لاحقًا.' : undefined}
+      footer={
+        <div className="af-task-foot">
+          {prepare ? (
+            <Button variant="primary" size="lg" icon={<Save size={18} />} busy={busy === 'save'} disabled={!typeId} onClick={() => void save(null)}>حفظ المهمة المجهزة</Button>
+          ) : <>
+          <Button variant="primary" size="lg" icon={<MessageCircle size={18} />} busy={busy === 'whatsapp'} disabled={!typeId || techs.length === 0} onClick={() => void save('whatsapp')}>حفظ وإرسال واتساب</Button>
+          <Button icon={<Send size={18} />} busy={busy === 'app'} disabled={!typeId || techs.length === 0} onClick={() => void save('app')}>إرسال داخل النظام</Button>
+          <Button variant="ghost" icon={<Save size={18} />} busy={busy === 'save'} disabled={!typeId} onClick={() => void save(null)}>حفظ دون إرسال</Button>
+          </>}
+        </div>
+      }>
+      <div className="form-grid">
+        {branchStyle && contactFields}
+        <div className="field">
+          <label>نوع المهمة</label>
+          <div className="chips">
+            {shownTypes.map((t) => <button key={t.id} type="button" className="chip" aria-pressed={typeId === t.id} onClick={() => { setTypeId(t.id); setMinutes(t.default_minutes) }}>{t.name}</button>)}
+            {!showAllTypes && types.length > 10 && <button type="button" className="chip" onClick={() => setShowAllTypes(true)}>المزيد…</button>}
+          </div>
+          {fields.task_type_id && <span className="field-error">{fields.task_type_id}</span>}
+        </div>
+
+        {!prepare && (        <div className="field">
+          <label>الفني <small className="af-sub" style={{ display: 'inline' }}>(اختر أكثر من فني لمهمة مشتركة، أو اتركه فارغاً لتحضير المهمة)</small></label>
+          <div className="af-techs">
+            {technicians.map((t) => (
+              <button key={t.id} type="button" className="af-tech" aria-pressed={techs.includes(t.id)} onClick={() => setTechs(techs.includes(t.id) ? techs.filter((x) => x !== t.id) : [...techs, t.id])}>
+                <Avatar name={t.name} size={34} />
+                <span><b>{t.name}</b><small>{t.job_title ?? t.department ?? ''}{t.open ? ` · ${t.open} مفتوحة` : ' · متفرّغ'}</small></span>
+              </button>
+            ))}
+          </div>
+          {fields.assignees && <span className="field-error">{fields.assignees}</span>}
+        </div>
+        )}
+        {!branchStyle && contactFields}
 
         <div className="af-row2">
           <div className="field">

@@ -41,6 +41,7 @@ return [
         'payroll.manage' => ['إعداد الرواتب والخصومات والسلف والدفعات', 'الرواتب'],
         'payroll.approve' => ['اعتماد دفعات الرواتب', 'الرواتب'],
         'messages.groups' => ['المراسلة الجماعية (فرع أو قسم أو الجميع)', 'المراسلات'],
+        'permissions.branch_manage' => ['فتح صفحات للموظفين داخل الفرع', 'النظام'],
         'permissions.manage' => ['توزيع الصلاحيات', 'النظام'],
         'audit.view' => ['سجل الحركات', 'النظام'],
     ],
@@ -80,6 +81,8 @@ return [
         'branch_manager' => [
             'branches.view' => 'branch',
             'schedules.view' => 'branch',
+            'users.manage' => 'branch',
+            'permissions.branch_manage' => 'branch',
             'users.view' => 'branch',
             'employees.view' => 'branch',
             'attendance.view' => 'branch',

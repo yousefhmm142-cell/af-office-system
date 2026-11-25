@@ -104,7 +104,7 @@ export function TaskSheet({ id, options, onClose, onChanged }: { id: number; opt
                       : <small className="af-missing">بلا رقم جوال</small>)}
                   </div>
                 ))}
-                {manage && ['new', 'sent', 'seen'].includes(t.status) && <button type="button" className="link-btn" onClick={() => setReassign(t.assignees.map((a) => a.id))}><UserCog size={15} /> تغيير الفني</button>}
+                {manage && options && ['new', 'sent', 'seen'].includes(t.status) && <button type="button" className="link-btn" onClick={() => setReassign(t.assignees.map((a) => a.id))}><UserCog size={15} /> تغيير الفني</button>}
               </div>
             )}
           </section>

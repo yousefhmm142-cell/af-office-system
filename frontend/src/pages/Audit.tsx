@@ -17,6 +17,7 @@ const ACTIONS: Record<string, string> = {
   'user.password_changed': 'تغيير كلمة المرور', 'branch.created': 'إضافة فرع', 'branch.updated': 'تعديل فرع', 'branch.modules': 'تعديل أقسام فرع',
   'branch.deleted': 'حذف فرع', 'schedule.created': 'إضافة دوام', 'schedule.updated': 'تعديل دوام', 'schedule.deleted': 'حذف دوام',
   'holiday.created': 'إضافة عطلة', 'holiday.deleted': 'حذف عطلة', 'department.created': 'إضافة قسم', 'department.updated': 'تعديل قسم',
+  'permissions.branch_page': 'تغيير الصفحات المفتوحة داخل الفرع',
   'department.deleted': 'حذف قسم', 'permissions.role': 'تعديل صلاحيات دور', 'permissions.user': 'تعديل صلاحيات شخص',
   'employee.profile_completed': 'استكمال الملف الشخصي',
   'employee.personal': 'تعديل البيانات الشخصية', 'employee.job': 'تعديل بيانات العمل', 'employee.status': 'تغيير حالة موظف',

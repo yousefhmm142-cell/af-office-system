@@ -7,6 +7,7 @@ import { useLoad } from '../../lib/useLoad'
 import { ErrorBanner } from '../../ui/Field'
 import { Loading, PageHead } from '../../ui/PageHead'
 import { Avatar, Button, Pill } from '../../ui/primitives'
+import { BranchTasks, type BranchTaskView } from './BranchTasks'
 import { NewTask } from './NewTask'
 import { TaskSheet } from './TaskSheet'
 import { PRIORITY, durationText, useMinutesSince, type Options, type Task } from './lib'
@@ -25,6 +26,7 @@ const COLUMNS: Array<{ key: string; label: string; match: (t: Task) => boolean }
 /** The office's day of tasks, in four columns, with a timer on every open task. */
 export function TasksBoard() {
   const me = useUser()
+  const manager = me.role?.key === 'branch_manager'
   const all = scopeOf(me, 'tasks.view') === 'all' || scopeOf(me, 'tasks.manage') === 'all'
   const branches = useLoad<{ branches: Branch[] }>(all ? '/branches' : null)
   const [branchId, setBranchId] = useState<string>(me.branch ? String(me.branch.id) : '')
@@ -35,11 +37,14 @@ export function TasksBoard() {
   const { data, error, loading, reload } = useLoad<{ tasks: Task[]; can_manage: boolean }>(chosen ? `/tasks?branch_id=${chosen}&day=${day}${q ? `&search=${encodeURIComponent(q)}` : ''}` : null)
   const options = useLoad<Options>(chosen ? `/tasks/options?branch_id=${chosen}` : null)
   const [params, setParams] = useSearchParams()
-  const creating = params.get('new') === '1'
-  function setCreating(open: boolean) {
+  const preparing = manager && params.get('new') === 'prepare'
+  const status = params.get('status')
+  const managerView: BranchTaskView = status === 'waiting' || status === 'late' || status === 'done' ? status : 'assigned'
+  const creating = params.get('new') === '1' || preparing
+  function setCreating(open: boolean, prepare = false) {
     setParams((current) => {
       const next = new URLSearchParams(current)
-      if (open) next.set('new', '1')
+      if (open) next.set('new', prepare ? 'prepare' : '1')
       else next.delete('new')
       return next
     }, { replace: true })
@@ -54,6 +59,37 @@ export function TasksBoard() {
   const openCount = tasks.filter((t) => !['done', 'cancelled'].includes(t.status)).length
   const done = tasks.filter((t) => t.status === 'done').length
   const columns = useMemo(() => COLUMNS.map((c) => ({ ...c, tasks: tasks.filter(c.match) })), [tasks])
+
+  if (manager) return (
+    <>
+      <BranchTasks view={managerView} tasks={tasks} options={options.data} day={day} today={todayGaza()} search={search}
+        archive={params.get('view') === 'archive'} canManage={data?.can_manage ?? false} loading={loading} error={error}
+        onView={(view) => setParams((current) => { const next = new URLSearchParams(current); next.set('status', view); return next }, { replace: true })}
+        onSearch={setSearch} onDay={setDay} onStep={(amount) => setDay(shiftDay(day, amount))}
+        onOpen={setOpen} onNew={(prepare) => setCreating(true, prepare)} />
+      {creating && data?.can_manage && options.data && <NewTask branchStyle prepare={preparing} options={options.data}
+        onClose={() => setCreating(false)}
+        onSaved={(task) => {
+          if (preparing) {
+            setParams((current) => {
+              const next = new URLSearchParams(current)
+              next.delete('new')
+              next.set('status', 'waiting')
+              return next
+            }, { replace: true })
+            setSearch('')
+            setQ('')
+            setDay(todayGaza())
+          } else {
+            setCreating(false)
+            setOpen(task.id)
+          }
+          void reload()
+          void options.reload()
+        }} />}
+      {open && <TaskSheet id={open} options={options.data} onClose={() => setOpen(null)} onChanged={() => { void reload(); void options.reload() }} />}
+    </>
+  )
 
   return (
     <>

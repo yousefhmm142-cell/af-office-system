@@ -2,7 +2,6 @@
 
 namespace Tests\Feature;
 
-use App\Models\Permission;
 use App\Models\Role;
 use App\Models\User;
 use Illuminate\Support\Facades\DB;
@@ -108,9 +107,6 @@ class UsersTest extends TestCase
         $a = $this->makeBranch('فرع أ');
         $b = $this->makeBranch('فرع ب');
         $manager = $this->makeUser(Role::BRANCH_MANAGER, $a);
-        DB::table('role_permissions')->insert([
-            'role_id' => $manager->role_id, 'permission_id' => Permission::where('key', 'users.manage')->value('id'), 'scope' => 'branch',
-        ]);
         \Laravel\Sanctum\Sanctum::actingAs($manager);
         $body = ['name' => 'سامي', 'password' => 'temp1234', 'role_id' => $this->roleId(Role::EMPLOYEE)];
 

@@ -113,7 +113,7 @@ export function Board() {
           <Button variant="primary" icon={<CheckCheck size={18} />} busy={approving} onClick={() => void approveAll()}>اعتماد الكل ({data.summary.pending})</Button>
         )}
       </div>}
-      {view === 'week' && chosen && <WeekSheet key={`${chosen}-${week}-${weekRevision}`} branch={chosen} start={week} today={todayGaza()} onWeek={setWeek} onDay={(day, row, canManage) => {
+      {view === 'week' && chosen && <WeekSheet key={`${chosen}-${week}-${weekRevision}`} branch={chosen} branchName={all ? branches.data?.branches.find((branch) => String(branch.id) === chosen)?.name : me.branch?.name} start={week} today={todayGaza()} onWeek={setWeek} onDay={(day, row, canManage) => {
         if (row.day) setHistory({ row, canManage })
         else if (canManage && row.user.id !== me.id) editDay(row, day)
       }} />}
