@@ -41,8 +41,10 @@ export function AppShell() {
   })
   const primary = ['/', '/tasks', '/attendance', '/messages', '/settings']
   const tabs = branchManager ? primary.flatMap((to) => items.filter((item) => item.to === to)) : items.slice(0, 5)
-  const operations = items.filter((item) => ['/', '/tasks', '/attendance'].includes(item.to))
-  const follow = items.filter((item) => !['/', '/tasks', '/attendance', '/users', '/account', '/settings'].includes(item.to))
+  const operatingRoutes = ['/', '/generation', '/distribution', '/tasks', '/attendance']
+  const followRoutes = ['/seals', '/attendance/me', '/my-tasks', '/messages', '/my-pay', '/me', '/branches', '/payroll', '/permissions', '/audit']
+  const operations = operatingRoutes.flatMap((to) => items.filter((item) => item.to === to))
+  const follow = followRoutes.flatMap((to) => items.filter((item) => item.to === to))
 
   const link = ({ to, label, icon: Icon }: (typeof items)[number]) => (
     <NavLink key={to} to={to} end={to === "/"} className="sb-item" data-tip={label} aria-label={mini ? label : undefined}>
@@ -95,7 +97,7 @@ export function AppShell() {
             </Link>
             <span className="grow" />
             <div className="topbar-end">
-              {branchManager && settings && <NavLink to="/settings" className="icon-btn settings-btn" aria-label="الإعدادات" title="الإعدادات"><Settings size={18} /></NavLink>}
+              {branchManager && settings && <NavLink to="/settings" className="rbtn" aria-label="الإعدادات" title="الإعدادات"><Settings size={19} aria-hidden="true" /></NavLink>}
               <ThemeToggle />
               <button
                 type="button"
@@ -118,7 +120,7 @@ export function AppShell() {
         </div>
         <OfflineBar />
         <UpdateBar />
-        <main className="page stage glass" id="main">
+        <main className="page stage glass" id="main" data-section={pathname.split("/")[1] || "home"}>
           <div key={pathname} className="page-enter"><Outlet /></div>
         </main>
       </div>

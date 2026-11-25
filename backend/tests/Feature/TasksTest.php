@@ -38,6 +38,21 @@ class TasksTest extends TestCase
         ])->assertCreated()->json('task');
     }
 
+    public function test_subscriber_import_is_validated_and_scoped_to_the_branch(): void
+    {
+        $this->actAs(Role::BRANCH_MANAGER, $this->branch);
+        $other = $this->makeBranch('فرع آخر');
+        $body = ['subscribers' => [['n' => 'مشترك تجريبي', 'a' => 'حي تجريبي', 'b' => '17', 'p' => null]]];
+        $this->putJson('/api/tasks/subscribers', $body)->assertOk()->assertJsonPath('count', 1);
+        $this->putJson('/api/tasks/subscribers', ['subscribers' => [['n' => '']]])->assertUnprocessable();
+        $this->getJson('/api/tasks/subscribers')->assertOk()->assertJsonPath('subscribers.0.n', 'مشترك تجريبي');
+        $this->putJson('/api/tasks/subscribers', $body + ['branch_id' => $other->id])->assertForbidden();
+        $this->actAs(Role::BRANCH_MANAGER, $other);
+        $this->getJson('/api/tasks/subscribers')->assertOk()->assertJsonCount(0, 'subscribers');
+        Sanctum::actingAs($this->tech);
+        $this->getJson('/api/tasks/subscribers')->assertForbidden();
+    }
+
     public function test_full_life_of_a_task_numbered_per_branch(): void
     {
         $this->actAs(Role::BRANCH_MANAGER, $this->branch);
@@ -57,6 +72,21 @@ class TasksTest extends TestCase
 
         $events = collect($this->getJson("/api/tasks/{$t['id']}")->json('task.events'))->pluck('event')->all();
         $this->assertSame(['created', 'sent_whatsapp', 'started', 'completed'], $events);
+    }
+
+    public function test_archive_uses_completion_date_and_branch_scope(): void
+    {
+        $this->travelTo(CarbonImmutable::parse('2026-11-23 10:00:00', config('app.business_timezone')));
+        $this->actAs(Role::BRANCH_MANAGER, $this->branch);
+        $task = $this->newTask();
+        Task::whereKey($task['id'])->update(['status' => 'done', 'completed_at' => now()->addDay()]);
+
+        $this->getJson('/api/tasks/archive?from=2026-11-24&to=2026-11-25')
+            ->assertOk()->assertJsonPath('tasks.0.id', $task['id']);
+        $this->getJson('/api/tasks/archive?from=2026-11-23&to=2026-11-23')->assertOk()->assertJsonCount(0, 'tasks');
+        $this->getJson('/api/tasks/archive?from=2026-11-25&to=2026-11-24')->assertUnprocessable();
+        $other = $this->makeBranch('فرع آخر');
+        $this->getJson("/api/tasks/archive?from=2026-11-24&to=2026-11-25&branch_id={$other->id}")->assertForbidden();
     }
 
     public function test_technician_cannot_touch_another_task_or_cancel(): void

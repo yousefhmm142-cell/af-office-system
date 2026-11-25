@@ -584,3 +584,7 @@
 .af-settings-team { justify-content: space-between; flex-wrap: wrap; gap: 10px; }
 .af-branch-settings .row { text-decoration: none; color: var(--ink); }
 .af-branch-settings .row:hover { background: var(--surface-2); }
+
+.af-report-downloads { display: flex; flex-wrap: wrap; gap: 8px; }
+.af-week-actions > .af-report-downloads { margin-inline-start: auto; }
+.af-sheet-pdf-head { display: none; }

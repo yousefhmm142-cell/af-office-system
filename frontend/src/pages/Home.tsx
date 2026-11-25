@@ -1,20 +1,18 @@
-import { AlarmClock, ArrowLeft, Building2, CalendarCheck, CircleDollarSign, ClipboardList, Inbox, ListTodo, Mail, Plus, Sparkles, UserX, Users, Wallet } from 'lucide-react'
+import { AlarmClock, ArrowLeft, Building2, CalendarCheck, CircleDollarSign, ClipboardList, Inbox, ListTodo, Mail, Sparkles, UserX, Users, Wallet } from 'lucide-react'
 import type { ReactNode } from 'react'
 import { Link } from 'react-router'
-import type { User } from '../api/types'
 import { can, useUser } from '../app/auth'
-import { clock12, firstName, formatLongDate, formatTime, formatWeekday, greeting } from '../lib/format'
+import { firstName, formatLongDate, formatWeekday, greeting } from '../lib/format'
 import { useLoad } from '../lib/useLoad'
 import { ErrorBanner } from '../ui/Field'
 import { Loading, PageHead } from '../ui/PageHead'
 import { navFor } from '../app/nav'
-import { Pill } from '../ui/primitives'
-import type { Board } from './attendance/lib'
 import { PunchCard } from './attendance/PunchCard'
 import { fmt } from './payroll/lib'
+import { BranchManagerHome } from './dashboard/BranchManagerHome'
 
 interface BranchRow { id: number; name: string; staff: number; present: number | null; late: number | null; not_in: number | null; open_tasks: number | null; late_tasks: number; done_today: number | null }
-interface Dashboard {
+export interface Dashboard {
   today: string
   me: { unread: number; open_tasks: number; last_pay: { net: number; title: string; status: string } | null; month: { days: number; late_minutes: number; overtime_minutes: number } | null }
   branches: BranchRow[]
@@ -24,7 +22,7 @@ interface Dashboard {
   attention: Array<{ kind: string; count: number; link: string }>
 }
 
-const ATTENTION: Record<string, { icon: ReactNode; text: (n: number) => string; tone: 'warn' | 'info' }> = {
+export const ATTENTION: Record<string, { icon: ReactNode; text: (n: number) => string; tone: 'warn' | 'info' }> = {
   payroll_draft: { icon: <Sparkles size={18} />, text: (n) => `${n} دفعة رواتب بانتظار المراجعة والاعتماد`, tone: 'warn' },
   payroll_to_pay: { icon: <CircleDollarSign size={18} />, text: (n) => `${n} دفعة رواتب معتمدة وجاهزة للصرف`, tone: 'info' },
   attendance_pending: { icon: <CalendarCheck size={18} />, text: (n) => `${n} يوم حضور سابق بانتظار الاعتماد`, tone: 'warn' },
@@ -54,7 +52,7 @@ export function Home() {
   ).includes(to))
   const hasAttendance = !!user.branch && !!user.modules?.includes('attendance')
 
-  if (role === 'branch_manager') return <BranchHome user={user} data={data} error={error} loading={loading} />
+  if (role === 'branch_manager') return <BranchManagerHome user={user} data={data} error={error} loading={loading} />
 
   return (
     <div className="home">
@@ -180,79 +178,5 @@ export function Home() {
         <p className="eyebrow">ستظهر هنا أرقامك حين تتوفر بيانات.</p>
       )}
     </div>
-  )
-}
-
-
-function BranchHome({ user, data, error, loading }: { user: User; data: Dashboard | null; error: string | null; loading: boolean }) {
-  const now = new Date()
-  const branch = data?.branches.find((row) => row.id === user.branch?.id)
-  const attention = data?.attention ?? []
-  const pending = attention.find((item) => item.kind === 'attendance_pending')?.count ?? 0
-  const shortcuts = navFor(user).filter(({ to }) => ['/attendance', '/tasks', '/users', '/branches'].includes(to))
-  const { data: board } = useLoad<Board>(branch?.present != null ? `/attendance/board?branch_id=${branch.id}&date=${data?.today}` : null)
-  const events = (board?.rows ?? []).flatMap(({ user: person, day }) => {
-    if (!day) return []
-    return [
-      ...(day.check_in ? [{ key: `${person.id}-in`, name: person.name, time: day.check_in, kind: 'in' }] : []),
-      ...(day.check_out ? [{ key: `${person.id}-out`, name: person.name, time: day.check_out, kind: 'out' }] : []),
-    ]
-  }).sort((a, b) => b.time.localeCompare(a.time))
-
-  return (
-    <div className="home af-branch-home">
-      <PageHead title={`${greeting(now)}، ${firstName(user.name)}`}
-        eyebrow={`${formatWeekday(now)} · ${formatLongDate(now)} · ${formatTime(now)}${user.branch ? ` · ${user.branch.name}` : ''}`}
-        actions={can(user, 'tasks.manage') && <Link to="/tasks?new=1" className="btn primary"><Plus size={18} /> مهمة جديدة</Link>} />
-      <ErrorBanner text={error} />
-      {loading && !data && <Loading />}
-      {data && <>
-        <section className="af-branch-kpis" aria-label="أرقام اليوم">
-          {branch?.done_today != null && <BranchStat title="إنجاز الفنيين اليوم" value={branch.done_today} to="/tasks/daily" action="فتح الكشف" featured />}
-          {can(user, 'attendance.manage') && <BranchStat title="بانتظار اعتمادك" value={pending} to="/attendance?tab=week" action="عرض الكشف الأسبوعي" detail="أيام حضور سابقة" />}
-          {branch?.open_tasks != null && <BranchStat title="مهام مفتوحة" value={branch.open_tasks} to="/tasks" action="عرض المهام"
-            detail={<Pill tone={branch.late_tasks ? 'danger' : 'ok'}>{branch.late_tasks ? `${branch.late_tasks} متأخرة` : 'لا مهام متأخرة'}</Pill>} />}
-          {branch?.present != null && <BranchStat title="حضور اليوم" value={branch.present} total={branch.staff} to="/attendance" action="عرض الحضور" />}
-          <BranchStat title="رسائل جديدة" value={data.me.unread} to="/messages" action="فتح المراسلات" />
-        </section>
-        {board && <section className="card glass af-branch-activity">
-          <header><h2>يومك</h2><Link to="/attendance">آخر تسجيلات الحضور <ArrowLeft size={14} /></Link></header>
-          {events.length ? <ul>{events.slice(0, 8).map((event) => <li key={event.key}>
-            <span className="num" data-kind={event.kind}>{clock12(event.time)}</span>
-            <b>{event.name}</b>
-            <small>{event.kind === 'in' ? 'حضور' : 'انصراف'}</small>
-          </li>)}</ul> : <p>لا توجد تسجيلات حضور لهذا اليوم.</p>}
-        </section>}
-        {attention.length > 0 && <section aria-label="يتطلب انتباهك" className="af-attention">
-          {attention.map(({ kind, count, link }) => {
-            const item = ATTENTION[kind]
-            return item && <Link key={kind} to={link} className={`af-attn ${item.tone}`}>{item.icon}<span>{item.text(count)}</span><ArrowLeft size={16} /></Link>
-          })}
-        </section>}
-      </>}
-      <section className="mod-grid" aria-label="وحدات الفرع">
-        {shortcuts.map(({ to, label, icon: Icon }) => (
-          <Link className="mod-card glass" key={to} to={to}>
-            <span className="mod-icon" aria-hidden="true"><Icon size={22} /></span>
-            <b>{label}</b>
-            <span className="mod-foot"><ArrowLeft size={18} aria-hidden="true" /></span>
-          </Link>
-        ))}
-      </section>
-      {branch?.present != null && <PunchCard />}
-    </div>
-  )
-}
-
-function BranchStat({ title, value, total, detail, to, action, featured }: {
-  title: string; value: number; total?: number; detail?: ReactNode; to: string; action: string; featured?: boolean
-}) {
-  return (
-    <article className={`af-branch-stat ${featured ? 'af-branch-stat-featured' : 'glass'}`}>
-      <h2>{title}</h2>
-      <div><strong className="num">{value}</strong>{total != null && <small> من {total}</small>}</div>
-      {detail && <div>{detail}</div>}
-      <Link to={to}>{action}<ArrowLeft size={15} /></Link>
-    </article>
   )
 }

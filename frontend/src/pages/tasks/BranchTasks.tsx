@@ -18,7 +18,6 @@ interface Props {
   day: string
   today: string
   search: string
-  archive: boolean
   canManage: boolean
   loading: boolean
   error: string | null
@@ -30,17 +29,17 @@ interface Props {
   onNew(prepare: boolean): void
 }
 
-export function BranchTasks({ view, tasks, options, day, today, search, archive, canManage, loading, error, onView, onSearch, onDay, onStep, onOpen, onNew }: Props) {
+export function BranchTasks({ view, tasks, options, day, today, search, canManage, loading, error, onView, onSearch, onDay, onStep, onOpen, onNew }: Props) {
   const [technician, setTechnician] = useState<number | null>(null)
   const active = tasks.filter((task) => !['new', 'done', 'cancelled'].includes(task.status))
   const waiting = tasks.filter((task) => task.status === 'new')
   const late = active.filter((task) => task.late)
   const done = tasks.filter((task) => task.status === 'done')
   const groups = { waiting, assigned: active, late, done }
-  const live = day === today && !search.trim() && !archive
-  const selection = live ? groups[view] : archive ? tasks.filter((task) => task.status === 'done' || task.status === 'cancelled') : tasks
+  const live = day === today && !search.trim()
+  const selection = live ? groups[view] : tasks
   const shown = technician === null ? selection : selection.filter((task) => task.assignees.some((person) => person.id === technician))
-  const title = archive ? 'أرشيف الفنيين' : 'المهام الميدانية'
+  const title = 'المهام الميدانية'
   const technicians = new Map((options?.technicians ?? []).map((person) => [person.id, person]))
   const names = new Map([...technicians.values()].map((person) => [person.id, person.name]))
   for (const task of tasks) for (const person of task.assignees) names.set(person.id, person.name)
@@ -49,15 +48,14 @@ export function BranchTasks({ view, tasks, options, day, today, search, archive,
   return (
     <div className="tasks af-branch-tasks">
       <header className="ph">
-        <div><h1>{title}</h1><p className="muted">{archive ? 'المهام المنجزة والملغاة حسب اليوم والفني.' : 'جهّز المهمة وأرسلها للفني، ثم تابع وقت إنجازها.'}</p></div>
-        {archive && <Link className="btn" to="/tasks">العودة إلى المهام</Link>}
+        <div><h1>{title}</h1><p className="muted">جهّز المهمة وأرسلها للفني، ثم تابع وقت إنجازها.</p></div>
       </header>
-      {!archive && <div className="task-search">
+      <div className="task-search">
         <Search size={20} aria-hidden="true" />
         <input type="search" value={search} maxLength={80} onChange={(event) => onSearch(event.target.value)}
           placeholder="ابحث برقم المهمة أو المشترك أو الفني أو التفاصيل…" aria-label="بحث عام بالمهام" />
         {search && <button type="button" className="icon-btn" aria-label="مسح البحث" onClick={() => onSearch('')}><X size={18} /></button>}
-      </div>}
+      </div>
       {!search.trim() && <div className="task-daybar" role="group" aria-label="اليوم">
         <button type="button" className="tdb-step" aria-label="اليوم السابق" onClick={() => onStep(-1)}><ChevronRight size={22} /></button>
         <label className="tdb-day"><CalendarDays size={18} aria-hidden="true" />
@@ -81,7 +79,7 @@ export function BranchTasks({ view, tasks, options, day, today, search, archive,
           </button>
         ))}
       </div>}
-      {!archive && <div className="ph-actions task-actions">
+      <div className="ph-actions task-actions">
         <Link className="btn tasks-daily-entry" to="/tasks/daily"><Printer size={18} /> كشف إنجاز الفنيين</Link>
         <Link className="btn" to="/tasks?view=archive"><ListChecks size={18} /> أرشيف الفنيين</Link>
         <Link className="btn" to="/subscriber"><UserRound size={18} /> ملف مشترك</Link>
@@ -89,7 +87,7 @@ export function BranchTasks({ view, tasks, options, day, today, search, archive,
           <Button icon={<Plus size={18} />} disabled={!options} onClick={() => onNew(false)}>مهمة جديدة</Button>
           <Button className="ph-action" variant="primary" icon={<PhoneIncoming size={18} />} disabled={!options} onClick={() => onNew(true)}>تجهيز مهمة</Button>
         </>}
-      </div>}
+      </div>
       {(!live || view !== 'waiting') && names.size > 0 && <div className="chips task-filters" role="group" aria-label="الفني">
         <button type="button" className="chip" aria-pressed={technician === null} onClick={() => setTechnician(null)}>كل الفنيين</button>
         {[...names.entries()].map(([id, name]) => <button key={id} type="button" className="chip" aria-pressed={technician === id}

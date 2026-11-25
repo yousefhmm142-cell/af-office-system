@@ -1,5 +1,5 @@
-import { ArrowRight, Printer } from 'lucide-react'
-import { useMemo, useState } from 'react'
+import { ArrowRight } from 'lucide-react'
+import { useMemo, useRef, useState } from 'react'
 import { Link } from 'react-router'
 import type { Branch } from '../../api/types'
 import { scopeOf, useUser } from '../../app/auth'
@@ -9,6 +9,7 @@ import { Dialog } from '../../ui/Dialog'
 import { ErrorBanner } from '../../ui/Field'
 import { Loading, PageHead } from '../../ui/PageHead'
 import { Button } from '../../ui/primitives'
+import { ReportDownloads } from '../../ui/ReportDownloads'
 import { ScrollTable } from '../../ui/ScrollTable'
 import { dayName } from '../attendance/lib'
 import { timeOf, type Task } from './lib'
@@ -23,6 +24,7 @@ interface WorkRow {
 
 export function DailyTasks() {
   const user = useUser()
+  const sheet = useRef<HTMLDivElement>(null)
   const all = scopeOf(user, 'tasks.view') === 'all' || scopeOf(user, 'tasks.manage') === 'all'
   const branches = useLoad<{ branches: Branch[] }>(all ? '/branches' : null)
   const [branchId, setBranchId] = useState(String(user.branch?.id ?? ''))
@@ -70,13 +72,16 @@ export function DailyTasks() {
         </select>}
         <input className="input af-date" type="date" value={date} max={businessDate.format(new Date())} aria-label="تاريخ الإنجاز"
           onChange={(event) => { if (event.target.value) setDate(event.target.value) }} />
-        <Button disabled={!totalTasks} icon={<Printer size={17} />} onClick={() => window.print()}>طباعة الكشف</Button>
+        <ReportDownloads sheet={sheet} name={`كشف إنجاز الفنيين ${branchName ?? ''} ${date}`}
+          headers={['الفني', ...types.map(([, label]) => label), 'المجموع']}
+          rows={rows.map(([, row]) => [row.name, ...types.map(([id]) => row.byType.get(id)?.length ?? 0), row.tasks.length])} />
       </div>
       <ErrorBanner text={error ?? branches.error} />
       {(branches.loading && all && !branches.data || chosen && loading && !current) && <Loading />}
       {current && totalTasks === 0 && <p className="card glass af-pad">لا توجد مهام منجزة في هذا اليوم.</p>}
       {current && totalTasks > 0 && (
-        <div className="card glass af-daily-work-table">
+        <div ref={sheet} className="card glass af-daily-work-table landscape">
+          <header className="af-sheet-pdf-head"><b>كشف إنجاز الفنيين</b><span>{[branchName, dayName(date)].filter(Boolean).join(' · ')}</span></header>
           <ScrollTable label="إنجاز الفنيين">
             <table className="tbl">
               <thead><tr><th scope="col">الفني</th>{types.map(([id, label]) => <th key={id} scope="col">{label}</th>)}<th scope="col">المجموع</th></tr></thead>

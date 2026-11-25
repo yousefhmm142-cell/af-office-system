@@ -7,6 +7,7 @@ import { useLoad } from '../../lib/useLoad'
 import { ErrorBanner } from '../../ui/Field'
 import { Loading, PageHead } from '../../ui/PageHead'
 import { Avatar, Button, Pill } from '../../ui/primitives'
+import { TaskArchive } from './TaskArchive'
 import { BranchTasks, type BranchTaskView } from './BranchTasks'
 import { NewTask } from './NewTask'
 import { TaskSheet } from './TaskSheet'
@@ -34,9 +35,10 @@ export function TasksBoard() {
   const [day, setDay] = useState(todayGaza)
   const [search, setSearch] = useState('')
   const [q, setQ] = useState('')
-  const { data, error, loading, reload } = useLoad<{ tasks: Task[]; can_manage: boolean }>(chosen ? `/tasks?branch_id=${chosen}&day=${day}${q ? `&search=${encodeURIComponent(q)}` : ''}` : null)
-  const options = useLoad<Options>(chosen ? `/tasks/options?branch_id=${chosen}` : null)
   const [params, setParams] = useSearchParams()
+  const archive = manager && params.get('view') === 'archive'
+  const { data, error, loading, reload } = useLoad<{ tasks: Task[]; can_manage: boolean }>(chosen && !archive ? `/tasks?branch_id=${chosen}&day=${day}${q ? `&search=${encodeURIComponent(q)}` : ''}` : null)
+  const options = useLoad<Options>(chosen ? `/tasks/options?branch_id=${chosen}` : null)
   const preparing = manager && params.get('new') === 'prepare'
   const status = params.get('status')
   const managerView: BranchTaskView = status === 'waiting' || status === 'late' || status === 'done' ? status : 'assigned'
@@ -62,14 +64,19 @@ export function TasksBoard() {
 
   if (manager) return (
     <>
-      <BranchTasks view={managerView} tasks={tasks} options={options.data} day={day} today={todayGaza()} search={search}
-        archive={params.get('view') === 'archive'} canManage={data?.can_manage ?? false} loading={loading} error={error}
+      {archive ? <TaskArchive branch={chosen} branchName={me.branch?.name} options={options.data} today={todayGaza()} onOpen={setOpen} /> : <BranchTasks view={managerView} tasks={tasks} options={options.data} day={day} today={todayGaza()} search={search}
+        canManage={data?.can_manage ?? false} loading={loading} error={error}
         onView={(view) => setParams((current) => { const next = new URLSearchParams(current); next.set('status', view); return next }, { replace: true })}
         onSearch={setSearch} onDay={setDay} onStep={(amount) => setDay(shiftDay(day, amount))}
-        onOpen={setOpen} onNew={(prepare) => setCreating(true, prepare)} />
+        onOpen={setOpen} onNew={(prepare) => setCreating(true, prepare)} />}
       {creating && data?.can_manage && options.data && <NewTask branchStyle prepare={preparing} options={options.data}
         onClose={() => setCreating(false)}
-        onSaved={(task) => {
+        onSaved={(task, keepOpen) => {
+          if (keepOpen) {
+            void reload()
+            void options.reload()
+            return
+          }
           if (preparing) {
             setParams((current) => {
               const next = new URLSearchParams(current)

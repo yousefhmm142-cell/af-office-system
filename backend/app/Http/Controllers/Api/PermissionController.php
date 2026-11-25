@@ -25,6 +25,8 @@ class PermissionController extends Controller
     private const BRANCH_PAGES = [
         'attendance.view' => 'الحضور والانصراف',
         'tasks.view' => 'المهام الميدانية',
+        'generation.view' => 'التوليد',
+        'distribution.view' => 'التوزيع',
     ];
 
     public function branchPages(Request $request): JsonResponse

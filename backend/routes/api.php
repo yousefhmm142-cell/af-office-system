@@ -86,6 +86,22 @@ Route::middleware(['auth:sanctum', 'active'])->group(function () {
 
         // Attendance: everyone punches and sees their own; managers see and fix their branch.
         Route::post('attendance/punch', [AttendanceController::class, 'punch'])->middleware('throttle:30,1');
+        Route::post('generation/equipment/{kind}', [App\Http\Controllers\Api\GenerationController::class, 'equipment'])->whereIn('kind', ['generator', 'fuel']);
+        Route::get('generation/{date}', [App\Http\Controllers\Api\GenerationController::class, 'show']);
+        Route::put('generation/{date}', [App\Http\Controllers\Api\GenerationController::class, 'save']);
+        Route::post('generation/{date}/{action}', [App\Http\Controllers\Api\GenerationController::class, 'transition'])->whereIn('action', ['submit', 'approve', 'return']);
+
+        Route::post('distribution/zones', [App\Http\Controllers\Api\DistributionController::class, 'zone']);
+        Route::get('dashboard/branch-operations', App\Http\Controllers\Api\BranchOperationsController::class);
+        Route::get('distribution/{date}', [App\Http\Controllers\Api\DistributionController::class, 'show']);
+        Route::put('distribution/{date}', [App\Http\Controllers\Api\DistributionController::class, 'save']);
+        Route::post('distribution/{date}/{action}', [App\Http\Controllers\Api\DistributionController::class, 'transition'])->whereIn('action', ['submit', 'approve', 'return']);
+        Route::get('seals', [App\Http\Controllers\Api\SealController::class, 'show']);
+        Route::get('seals/{number}/tasks', [App\Http\Controllers\Api\SealController::class, 'tasks'])->whereNumber('number');
+        Route::get('seals/history', [App\Http\Controllers\Api\SealController::class, 'history']);
+        Route::post('seals/import', [App\Http\Controllers\Api\SealController::class, 'import']);
+        Route::post('seals/{action}', [App\Http\Controllers\Api\SealController::class, 'update'])
+            ->whereIn('action', ['add-roll', 'update-roll', 'delete-roll', 'issue', 'assign-batch', 'update-batch', 'add-to-batch', 'delete-batch', 'record', 'return-to-stock']);
         Route::get('attendance/me', [AttendanceController::class, 'me']);
         Route::get('attendance/days/{day}/history', [AttendanceController::class, 'history']);
         Route::get('attendance/overview', [AttendanceController::class, 'overview'])->middleware('perm:attendance.view');
@@ -130,6 +146,9 @@ Route::middleware(['auth:sanctum', 'active'])->group(function () {
         Route::patch('task-types/{type}', [TaskController::class, 'saveType'])->middleware('perm:tasks.manage');
         Route::post('zones', [TaskController::class, 'saveZone'])->middleware('perm:tasks.manage');
         Route::patch('zones/{zone}', [TaskController::class, 'saveZone'])->middleware('perm:tasks.manage');
+        Route::get('tasks/archive', [TaskController::class, 'archive'])->middleware('perm:tasks.view');
+        Route::get('tasks/subscribers', [TaskController::class, 'subscribers'])->middleware('perm:tasks.manage');
+        Route::put('tasks/subscribers', [TaskController::class, 'importSubscribers'])->middleware('perm:tasks.manage');
         Route::get('tasks/{task}', [TaskController::class, 'show']);
         Route::patch('tasks/{task}', [TaskController::class, 'update'])->middleware('perm:tasks.manage');
         Route::get('tasks/{task}/photo', [TaskController::class, 'photo']);

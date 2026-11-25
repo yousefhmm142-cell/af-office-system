@@ -80,16 +80,26 @@ table.week { width: 100%; border-collapse: collapse; min-width: 900px; }
   .af-branch-attendance-head .segmented { margin-inline-start: 0; max-width: 100%; overflow-x: auto; }
 }
 
-.af-week-print-head, .af-week-print-sign { display: none; }
 .af-week-actions > .icon-btn { flex: none; }
 .af-week-actions > .btn { margin-inline-start: auto; }
 @media print {
-  .af-week-print-head { display: flex; align-items: center; gap: 12px; padding: 0 0 10px; }
-  .af-week-print-sign { display: flex; gap: 12px; padding-block-start: 18px; }
   .af-week-table .week-cell { min-height: 36px; }
   .af-week-table .week th, .af-week-table .week td { font-size: 9pt; }
 }
 @media (max-width: 600px) {
   .af-week-actions .week-label { min-width: 0; flex: 1; }
 }
-.af-week-times { display: inline-flex; align-items: baseline; gap: .3rem; }
+
+.af-branch-attendance .att-times { font-size: 1rem; }
+.af-att-edit .time-btn { min-height: 44px; padding: 4px 10px; }
+.af-att-edit .time-btn b { font-size: 1.5rem; letter-spacing: 0; }
+
+.inout { display: inline-flex; align-items: baseline; gap: 6px; white-space: nowrap; line-height: 1.2; }
+.inout b { font-size: 1rem; font-weight: 800; letter-spacing: -.2px; }
+.t-in { color: var(--t-in); }
+.t-out { color: var(--t-out); }
+.t-dash { color: var(--muted); }
+.att-day { display: grid; gap: 16px; }
+.att-punch-end { display: inline-flex; align-items: center; gap: 8px; }
+.att-manual { display: grid; gap: 8px; padding: 12px; border-radius: var(--r-in); background: var(--surface-2); }
+.att-manual-row { display: flex; gap: 8px; align-items: center; flex-wrap: wrap; }

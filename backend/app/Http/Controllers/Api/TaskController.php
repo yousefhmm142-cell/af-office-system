@@ -3,6 +3,7 @@
 namespace App\Http\Controllers\Api;
 
 use App\Http\Controllers\Controller;
+use App\Models\Branch;
 use App\Models\BranchModule;
 use App\Models\Task;
 use App\Models\TaskType;
@@ -10,6 +11,7 @@ use App\Models\User;
 use App\Models\Zone;
 use App\Services\TaskService;
 use App\Support\Access;
+use App\Support\Audit;
 use Carbon\CarbonImmutable;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Http\Request;
@@ -65,6 +67,72 @@ class TaskController extends Controller
             'tasks' => $q->get()->map(fn ($t) => $this->present($t)),
             'can_manage' => Access::allowsBranch($actor, 'tasks.manage', $branchId),
         ]);
+    }
+
+    public function archive(Request $request): JsonResponse
+    {
+        $data = $request->validate([
+            'branch_id' => ['nullable', 'integer'],
+            'from' => ['required', 'date_format:Y-m-d'],
+            'to' => ['required', 'date_format:Y-m-d', 'after_or_equal:from'],
+        ]);
+        $branch = $this->branchFor($request->user(), $data['branch_id'] ?? null, 'tasks.view');
+        $tz = config('app.business_timezone');
+        $from = CarbonImmutable::parse($data['from'], $tz)->startOfDay()->utc();
+        $to = CarbonImmutable::parse($data['to'], $tz)->endOfDay()->utc();
+
+        $tasks = Task::where('branch_id', $branch)
+            ->where(fn ($q) => $q->whereBetween('completed_at', [$from, $to])->orWhereBetween('cancelled_at', [$from, $to]))
+            ->with('assignees:id,name', 'type:id,name', 'zone:id,name')->orderByDesc('number')->get();
+
+        return response()->json([
+            'from' => $data['from'], 'to' => $data['to'],
+            'tasks' => $tasks->map(fn ($task) => $this->present($task)),
+        ]);
+    }
+
+    public function subscribers(Request $request): JsonResponse
+    {
+        $data = $request->validate(['branch_id' => ['nullable', 'integer']]);
+        $branch = $this->subscriberBranch($request, $data['branch_id'] ?? null);
+        $subscribers = DB::table('task_subscribers')->where('branch_id', $branch)->orderBy('id')->get(['n', 'a', 'b', 'p']);
+
+        return response()->json(['subscribers' => $subscribers]);
+    }
+
+    public function importSubscribers(Request $request): JsonResponse
+    {
+        $data = $request->validate(['branch_id' => ['nullable', 'integer']]);
+        $branch = $this->subscriberBranch($request, $data['branch_id'] ?? null);
+        $data = $request->validate([
+            'subscribers' => ['required', 'array', 'list', 'max:10000'],
+            'subscribers.*' => ['array:n,a,b,p'],
+            'subscribers.*.n' => ['required', 'string', 'min:2', 'max:120'],
+            'subscribers.*.a' => ['nullable', 'string', 'max:160'],
+            'subscribers.*.b' => ['nullable', 'string', 'max:80'],
+            'subscribers.*.p' => ['nullable', 'string', 'regex:/^[0-9]{1,24}$/'],
+        ]);
+        DB::transaction(function () use ($branch, $data): void {
+            Branch::whereKey($branch)->lockForUpdate()->firstOrFail();
+            DB::table('task_subscribers')->where('branch_id', $branch)->delete();
+            foreach (array_chunk($data['subscribers'], 150) as $chunk) {
+                DB::table('task_subscribers')->insert(array_map(fn (array $row) => [
+                    'branch_id' => $branch, 'n' => $row['n'], 'a' => $row['a'] ?? null, 'b' => $row['b'] ?? null, 'p' => $row['p'] ?? null,
+                ], $chunk));
+            }
+            Audit::log('tasks.subscribers.import', null, null, ['count' => count($data['subscribers'])], null, $branch);
+        });
+
+        return response()->json(['count' => count($data['subscribers'])]);
+    }
+
+    private function subscriberBranch(Request $request, ?int $requested): int
+    {
+        $branch = $this->branchFor($request->user(), $requested, 'tasks.manage');
+        $enabled = BranchModule::where('branch_id', $branch)->where('module', 'tasks')->value('is_enabled');
+        abort_if($enabled !== null && ! $enabled, 422, 'قسم المهام مغلق في هذا الفرع.');
+
+        return $branch;
     }
 
     public function show(Request $request, Task $task): JsonResponse

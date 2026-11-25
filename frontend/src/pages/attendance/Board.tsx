@@ -4,9 +4,9 @@ import { Link, useSearchParams } from 'react-router'
 import { api, ApiError } from '../../api/client'
 import type { Branch } from '../../api/types'
 import { can, scopeOf, useUser } from '../../app/auth'
-import { clock12 } from '../../lib/format'
 import { useDocumentTitle } from '../../lib/useDocumentTitle'
 import { useLoad } from '../../lib/useLoad'
+import { InOut } from './InOut'
 import { Points } from './Points'
 import { WeekSheet, weekStart } from './WeekSheet'
 import '../../styles/attendance-reference.css'
@@ -113,7 +113,7 @@ export function Board() {
           <Button variant="primary" icon={<CheckCheck size={18} />} busy={approving} onClick={() => void approveAll()}>اعتماد الكل ({data.summary.pending})</Button>
         )}
       </div>}
-      {view === 'week' && chosen && <WeekSheet key={`${chosen}-${week}-${weekRevision}`} branch={chosen} branchName={all ? branches.data?.branches.find((branch) => String(branch.id) === chosen)?.name : me.branch?.name} start={week} today={todayGaza()} onWeek={setWeek} onDay={(day, row, canManage) => {
+      {view === 'week' && chosen && <WeekSheet key={`${chosen}-${week}`} revision={weekRevision} branchStyle={manager} branch={chosen} branchName={all ? branches.data?.branches.find((branch) => String(branch.id) === chosen)?.name : me.branch?.name} start={week} today={todayGaza()} onWeek={setWeek} onDay={(day, row, canManage) => {
         if (row.day) setHistory({ row, canManage })
         else if (canManage && row.user.id !== me.id) editDay(row, day)
       }} />}
@@ -195,9 +195,7 @@ function BranchDay({ data, onOpen, canEdit }: {
             <button type="button" className="att-row card" disabled={!row.day && !canEdit(row)} onClick={() => onOpen(row)}>
               <Avatar name={row.user.name} size={38} />
               <span className="att-name"><b>{row.user.name}</b><small>{[row.user.job_title, row.schedule].filter(Boolean).join(' · ')}</small></span>
-              {row.day?.check_in && <span className="att-times"><span className="af-att-time num" dir="ltr">
-                <b className="af-time-in">{clock12(row.day.check_in)}</b>{row.day.check_out && <> · <b className="af-time-out">{clock12(row.day.check_out)}</b></>}
-              </span></span>}
+              {row.day?.check_in && <span className="att-times"><InOut inAt={row.day.check_in} outAt={row.day.check_out} /></span>}
               <span className="att-tags">
                 <Pill tone={STATE[row.state].tone}>{STATE[row.state].label}</Pill>
                 {!!row.day?.late_minutes && <Pill tone="warn" dot={false}>{row.day.late_minutes} دقيقة تأخير</Pill>}
@@ -286,12 +284,15 @@ function EditDay({ row, date, onClose, onSaved }: { row: BoardRow; date: string;
   return (
     <Dialog open onClose={onClose} title={row.user.name} subtitle={`${dayName(date)} · يُحفظ في السجل من عدّل ومتى`} icon={<Pencil size={20} />}
       footer={<><Button onClick={onClose}>إلغاء</Button><Button variant="primary" busy={busy} onClick={() => void save()}>حفظ واعتماد</Button></>}>
-      <form className="form-grid" onSubmit={save}>
-        <div className="af-row2">
-          <Field label="الحضور" error={fields.check_in}>{(id) => <TimeField id={id} label="وقت الحضور" value={inT} onChange={setIn} />}</Field>
-          <Field label="الانصراف" error={fields.check_out}>{(id) => <TimeField id={id} label="وقت الانصراف" value={outT} onChange={setOut} />}</Field>
+      <form className="att-day af-att-edit" onSubmit={save}>
+        <div className="att-manual">
+          <b>سجّل حضور أو انصراف</b>
+          <div className="af-row2">
+            <Field label="الحضور" error={fields.check_in}>{(id) => <TimeField id={id} label="وقت الحضور" value={inT} onChange={setIn} />}</Field>
+            <Field label="الانصراف" error={fields.check_out}>{(id) => <TimeField id={id} label="وقت الانصراف" value={outT} onChange={setOut} />}</Field>
+          </div>
+          <Field label="السبب (اختياري)" error={fields.reason}>{(id) => <input id={id} className="input" value={reason} onChange={(e) => setReason(e.target.value)} placeholder="مثال: الجوال كان طافي" />}</Field>
         </div>
-        <Field label="ملاحظة (اختياري)" error={fields.reason}>{(id) => <input id={id} className="input" value={reason} onChange={(e) => setReason(e.target.value)} placeholder="مثال: لا يملك جوالاً" />}</Field>
         <ErrorBanner text={error ?? fields.date ?? null} />
       </form>
     </Dialog>

@@ -13,7 +13,17 @@ import { Extras } from '../pages/payroll/Extras'
 import { MyPay } from '../pages/payroll/MyPay'
 import { PayrollHome } from '../pages/payroll/PayrollHome'
 import { PayrollSettings } from '../pages/payroll/SettingsPage'
+import { DistributionPage } from '../pages/distribution/DistributionPage'
+import { DistributionHistoryPage } from '../pages/distribution/DistributionHistoryPage'
+import { SealIssuePage } from '../pages/seals/IssuePage'
+import { SealLogPage } from '../pages/seals/LogPage'
+import { SealRecentPage } from '../pages/seals/RecentPage'
+import { SealUnrecordedPage } from '../pages/seals/UnrecordedPage'
+import { SealLedger } from '../pages/seals/repo'
+import '../styles/seals.css'
+import '../styles/seals-night.css'
 import { Board } from '../pages/attendance/Board'
+import { GenerationPage } from '../pages/generation/GenerationPage'
 import { MyAttendance } from '../pages/attendance/MyAttendance'
 import { Points } from '../pages/attendance/Points'
 import { Scan } from '../pages/attendance/Scan'
@@ -93,7 +103,17 @@ export const router = createBrowserRouter([
           { path: 'payroll/extras', element: <Need permission="payroll.manage"><Extras /></Need> },
           { path: 'payroll/settings', element: <Need permission="payroll.manage"><PayrollSettings /></Need> },
           { path: 'payroll/:id', element: <NeedAny permissions={['payroll.view', 'payroll.manage']}><BatchPage /></NeedAny> },
+          { path: 'distribution', element: <Need permission="distribution.view"><DistributionPage /></Need> },
+          { path: 'distribution/history', element: <Need permission="distribution.view"><DistributionHistoryPage /></Need> },
+          { path: 'distribution/:date', element: <Need permission="distribution.view"><DistributionPage /></Need> },
+          { path: 'seals', element: <Need permission="seals.manage"><SealLedger><Outlet /></SealLedger></Need>, children: [
+            { index: true, element: <SealIssuePage /> },
+            { path: 'recent', element: <SealRecentPage /> },
+            { path: 'unrecorded', element: <SealUnrecordedPage /> },
+            { path: 'log', element: <SealLogPage /> },
+          ] },
           { path: 'attendance', element: <Need permission="attendance.view"><Board /></Need> },
+          { path: 'generation', element: <Need permission="generation.view"><GenerationPage /></Need> },
           { path: 'attendance/points', element: <Need permission="attendance.points"><Points /></Need> },
           { path: 'employees/:id', element: <EmployeeFile /> },
           { path: '*', element: <Navigate to="/" replace /> },
