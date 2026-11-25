@@ -16,6 +16,7 @@ use App\Support\Access;
 use Carbon\CarbonImmutable;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Http\Request;
+use Illuminate\Support\Facades\DB;
 
 /**
  * The home page, by role: what the person needs to see first today. Each part is included only
@@ -143,9 +144,11 @@ class DashboardController extends Controller
         $users = User::where('branch_id', $branchId)->where('is_active', true)->with('employee')
             ->whereHas('employee', fn ($q) => $q->where('tracks_attendance', true)->whereIn('status', ['active', 'trainee']))->orderBy('name')->get();
         $in = AttendanceDay::where('date', $today)->whereIn('user_id', $users->pluck('id'))->whereNotNull('check_in')->pluck('user_id')->flip();
+        $onLeave = DB::table('leave_days as d')->join('leave_requests as l', 'l.id', '=', 'd.request_id')
+            ->where('d.date', $today)->where('l.branch_id', $branchId)->where('l.status', 'approved')->where('l.kind', '!=', 'permission')->pluck('l.user_id')->flip();
         $list = [];
         foreach ($users as $u) {
-            if (isset($in[$u->id])) {
+            if (isset($in[$u->id]) || $onLeave->has($u->id)) {
                 continue;
             }
             $s = $this->attendance->scheduleFor($u);

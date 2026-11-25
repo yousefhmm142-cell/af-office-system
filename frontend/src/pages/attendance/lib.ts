@@ -12,8 +12,8 @@ export interface Mine {
   month: string; today: string; next: { status: string; message: string; wait_until: string | null }
   is_work_day?: boolean; today_day: Day | null; schedule: { name: string; start_time: string; end_time: string } | null; days: Day[]; totals: Totals
 }
-export interface BoardRow { user: { id: number; name: string; job_title: string | null }; state: State; schedule: string | null; schedule_name?: string | null; day: Day | null }
-export type State = 'present' | 'late' | 'left' | 'absent' | 'not_yet' | 'off'
+export interface BoardRow { user: { id: number; name: string; job_title: string | null }; state: State; permission?: string | null; schedule: string | null; schedule_name?: string | null; day: Day | null }
+export type State = 'present' | 'late' | 'left' | 'absent' | 'not_yet' | 'off' | 'leave'
 export interface Board {
   date: string; branch_id: number; rows: BoardRow[]; can_manage: boolean
   summary: { expected: number; present: number; late: number; absent: number; pending: number }
@@ -29,6 +29,7 @@ export const STATE: Record<State, { label: string; tone: 'ok' | 'warn' | 'danger
   left: { label: 'انصرف', tone: 'info' },
   absent: { label: 'غائب', tone: 'danger' },
   not_yet: { label: 'لم يحضر بعد', tone: 'neutral' },
+  leave: { label: 'إجازة معتمدة', tone: 'info' },
   off: { label: 'عطلة', tone: 'neutral' },
 }
 

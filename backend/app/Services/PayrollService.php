@@ -22,9 +22,9 @@ use Illuminate\Support\Facades\DB;
  *              daily:  days attended × daily wage × percent
  *              weekly: days attended × (weekly wage ÷ work days a week) × percent
  *   attendance only in the batch that completes the month (100%), from the settings in force:
- *              late minutes and absent days are deducted, extra hours are added
+ *              attendance is recorded for review, extra hours are added
  *   manual     deductions and bonuses of that month not yet paid by another batch
- *   advances   one instalment per batch until the advance is paid back
+ *   advances   only instalments selected by HR for this batch
  *   net        base + overtime + bonuses − deductions − advance instalment (never below zero:
  *              the instalment is reduced first)
  */
@@ -67,7 +67,8 @@ class PayrollService
         abort_unless($batch->status === 'draft', 422, 'لا يمكن إعادة حساب دفعة معتمدة.');
 
         return DB::transaction(function () use ($batch) {
-            PayrollBatch::whereKey($batch->id)->lockForUpdate()->first();
+            $batch = PayrollBatch::whereKey($batch->id)->lockForUpdate()->firstOrFail();
+            abort_unless($batch->status === 'draft', 422, 'الدفعة معتمدة.');
             $batch->items()->delete();
             PayrollAdjustment::where('batch_id', $batch->id)->update(['batch_id' => null]);
             AdvancePayment::where('batch_id', $batch->id)->delete();
@@ -96,8 +97,8 @@ class PayrollService
 
         $daysPerWeek = max(1, count($att['schedule']?->work_days ?? [1, 2, 3, 4, 5, 6, 7]));
         $base = match ($type) {
-            'daily' => $att['present_days'] * $salary * $pct,
-            'weekly' => $att['present_days'] * ($salary / $daysPerWeek) * $pct,
+            'daily' => ($att['present_days'] + $att['leave_days_without_punch']) * $salary * $pct,
+            'weekly' => ($att['present_days'] + $att['leave_days_without_punch']) * ($salary / $daysPerWeek) * $pct,
             default => $salary * $pct,
         };
         $hourly = match ($type) {
@@ -107,23 +108,9 @@ class PayrollService
             default => 0,
         };
 
-        $late = $absence = $overtime = 0.0;
+        $overtime = 0.0;
         if ($batch->is_final && $emp->tracks_attendance && $type !== 'contract') {
             $s = $this->settingsFor($user->branch_id, $batch->month);
-            $lateHours = $att['late_minutes'] / 60;
-            $late = match ($s->late_mode) {
-                'wage' => $lateHours * $hourly * $s->late_value,
-                'fixed' => $lateHours * $s->late_value,
-                default => 0,
-            };
-            // Daily and weekly pay already leaves out the days not worked.
-            if ($type === 'monthly') {
-                $absence = match ($s->absence_mode) {
-                    'wage' => $att['absent_days'] * (float) $emp->daily_hours * $hourly * $s->absence_value,
-                    'fixed' => $att['absent_days'] * $s->absence_value,
-                    default => 0,
-                };
-            }
             $otHours = $att['overtime_minutes'] / 60;
             if ($s->overtime_cap_hours !== null) {
                 $otHours = min($otHours, $s->overtime_cap_hours);
@@ -144,11 +131,11 @@ class PayrollService
         $bonuses = (float) $adjustments->where('type', 'bonus')->sum('amount');
         $manual = (float) $adjustments->where('type', 'deduction')->sum('amount');
 
-        $gross = round($base + $overtime + $bonuses - $late - $absence - $manual, 2);
+        $gross = round($base + $overtime + $bonuses - $manual, 2);
 
         // One instalment of each open advance, never more than what is left to pay.
         $advanceTotal = 0.0;
-        $advances = Advance::where('user_id', $user->id)->where('start_month', '<=', $batch->month)->orderBy('id')->get();
+        $advances = Advance::whereIn('id', $batch->advance_ids ?? [])->where('user_id', $user->id)->where('start_month', '<=', $batch->month)->orderBy('id')->lockForUpdate()->get();
         foreach ($advances as $adv) {
             $want = min($adv->installment, $adv->remaining($batch->id));
             $due = round(min($want, max(0, $gross - $advanceTotal)), 2);
@@ -173,12 +160,12 @@ class PayrollService
             'batch_id' => $batch->id, 'user_id' => $user->id, 'branch_id' => $user->branch_id,
             'salary_type' => $type, 'salary_amount' => $salary,
             'base' => round($base, 2), 'overtime' => round($overtime, 2), 'bonuses' => round($bonuses, 2),
-            'auto_deductions' => round($late + $absence, 2), 'manual_deductions' => round($manual, 2),
+            'auto_deductions' => 0, 'manual_deductions' => round($manual, 2),
             'advance_deduction' => round($advanceTotal, 2), 'net' => $net,
             'details' => [
                 'present_days' => $att['present_days'], 'absent_days' => $att['absent_days'],
                 'late_minutes' => $att['late_minutes'], 'overtime_minutes' => $att['overtime_minutes'],
-                'late_amount' => round($late, 2), 'absence_amount' => round($absence, 2),
+                'late_amount' => 0, 'absence_amount' => 0,
                 'hourly' => round($hourly, 2), 'adjustments' => $adjustments->map(fn ($a) => ['type' => $a->type, 'amount' => $a->amount, 'reason' => $a->reason])->values(),
                 'notes' => $notes,
             ],
@@ -210,6 +197,9 @@ class PayrollService
 
         $shifts = DB::table('employee_shifts')->where('user_id', $user->id)->where('branch_id', $user->branch_id)
             ->whereBetween('date', [$start->toDateString(), $end->toDateString()])->pluck('is_rest', 'date');
+        $leave = DB::table('leave_days as d')->join('leave_requests as l', 'l.id', '=', 'd.request_id')
+            ->where('l.user_id', $user->id)->where('l.status', 'approved')->where('l.kind', '!=', 'permission')
+            ->whereBetween('d.date', [$start->toDateString(), $end->toDateString()])->pluck('d.date')->flip();
         $monthWork = 0;
         $absent = 0;
         for ($d = $start; $d->lte($end); $d = $d->addDay()) {
@@ -219,7 +209,7 @@ class PayrollService
             }
             $monthWork++;
             $counts = $d->lt($today) && (! $hire || $d->gte($hire));
-            if ($counts && ! (isset($days[$d->toDateString()]) && $days[$d->toDateString()]->check_in)) {
+            if ($counts && ! $leave->has($d->toDateString()) && ! (isset($days[$d->toDateString()]) && $days[$d->toDateString()]->check_in)) {
                 $absent++;
             }
         }
@@ -229,6 +219,7 @@ class PayrollService
             'schedule' => $schedule,
             'month_work_days' => $monthWork,
             'present_days' => $present->count(),
+            'leave_days_without_punch' => $leave->keys()->filter(fn ($date) => $date <= $today->toDateString() && (! $hire || $date >= $hire->toDateString()) && ! $present->has($date))->count(),
             'absent_days' => $absent,
             'late_minutes' => (int) $present->sum('late_minutes'),
             'overtime_minutes' => (int) $present->sum('overtime_minutes'),

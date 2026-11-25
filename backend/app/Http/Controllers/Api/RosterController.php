@@ -66,6 +66,7 @@ class RosterController extends Controller
                     $current = DB::table('employee_shifts')->where($key)->value('schedule');
                     abort_if($day['version'] !== ($current ? hash('sha256', $current) : 'none'), 409, 'عُدّل الجدول من جهاز آخر. أعد تحميل الأسبوع قبل الحفظ.');
                 }
+                abort_if(DB::table('leave_requests')->where('user_id', $user->id)->where('status', 'approved')->where('starts', '<=', $day['date'])->where('ends', '>=', $day['date'])->exists(), 422, 'يجب مراجعة الإجازة أو الإذن المعتمد قبل تغيير المناوبة.');
                 if (AttendanceDay::where($key)->exists()) {
                     throw ValidationException::withMessages(['days' => 'سُجّل حضور لهذا اليوم. تعذّر تغيير المناوبة.']);
                 }

@@ -12,13 +12,14 @@ class PayrollBatch extends Model
     use HasUuid;
 
     protected $fillable = [
-        'uuid', 'branch_id', 'month', 'percent', 'is_final', 'title', 'status', 'total_net', 'employees_count',
+        'advance_ids', 'uuid', 'branch_id', 'month', 'percent', 'is_final', 'title', 'status', 'total_net', 'employees_count',
         'created_by', 'approved_by', 'approved_at', 'paid_by', 'paid_at', 'calculated_at',
     ];
 
     protected function casts(): array
     {
         return [
+            'advance_ids' => 'array',
             'percent' => 'float',
             'is_final' => 'boolean',
             'total_net' => 'float',

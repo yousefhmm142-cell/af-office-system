@@ -74,6 +74,8 @@ export interface Job {
 }
 export interface Attachment { id: number; type: string; name: string; mime: string; size: number; created_at: string }
 export interface EmployeeFile {
+  annual_leave: { year: number; days: number | null; used: number }
+  attendance: { month: string; late_minutes: number; absent_days: number }
   user: User; personal: Personal; job: Job; status: EmployeeStatus; termination_reason: string | null
   attachments: Attachment[]
   status_log: Array<{ from: string | null; to: EmployeeStatus; reason: string | null; by: string | null; at: string }>

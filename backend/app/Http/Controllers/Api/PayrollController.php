@@ -8,6 +8,7 @@ use App\Models\PayrollAdjustment;
 use App\Models\PayrollBatch;
 use App\Models\PayrollItem;
 use App\Models\PayrollSetting;
+use App\Models\Role;
 use App\Models\User;
 use App\Services\PayrollService;
 use App\Support\Access;
@@ -63,6 +64,8 @@ class PayrollController extends Controller
         if ($locked) {
             throw ValidationException::withMessages(['effective_from' => 'يوجد شهر معتمد بعد هذا التاريخ. اختر تاريخاً بعد آخر شهر معتمد.']);
         }
+        $data['late_mode'] = $data['absence_mode'] = 'none';
+        $data['late_value'] = $data['absence_value'] = 0;
         $setting = PayrollSetting::create($data + ['created_by' => $request->user()->id]);
         Audit::log('payroll.settings', $setting, null, $data, null, $setting->branch_id);
 
@@ -94,6 +97,9 @@ class PayrollController extends Controller
         ]);
         $target = User::findOrFail($data['user_id']);
         $this->authorizeBranch($request, 'payroll.manage', $target->branch_id);
+        if ($data['type'] === 'deduction') {
+            abort_unless($request->user()->role?->key === Role::HR, 403, 'قرار الخصم لشؤون الموظفين.');
+        }
         $adj = PayrollAdjustment::create($data + ['branch_id' => $target->branch_id, 'created_by' => $request->user()->id]);
         Audit::log('payroll.adjustment_added', $target, null, ['type' => $adj->type, 'amount' => $adj->amount, 'month' => $adj->month], $adj->reason, $target->branch_id);
 
@@ -177,6 +183,8 @@ class PayrollController extends Controller
     {
         $data = $request->validate([
             'month' => ['required', 'date_format:Y-m'],
+            'advance_ids' => ['sometimes', 'array'],
+            'advance_ids.*' => ['integer', 'distinct', Rule::exists('advances', 'id')],
             'percent' => ['required', 'numeric', 'min:1', 'max:100'],
             'branch_id' => ['nullable', 'integer', Rule::exists('branches', 'id')->whereNull('deleted_at')],
             'title' => ['nullable', 'string', 'max:120'],
@@ -186,11 +194,18 @@ class PayrollController extends Controller
         if ($used + $data['percent'] > 100.001) {
             throw ValidationException::withMessages(['percent' => 'مجموع دفعات هذا الشهر يتجاوز 100%. المتبقي: '.max(0, 100 - $used).'%.']);
         }
+        $ids = $data['advance_ids'] ?? [];
+        if ($ids) {
+            abort_unless($request->user()->role?->key === Role::HR, 403);
+            $valid = Advance::whereIn('id', $ids)->where('start_month', '<=', $data['month'])
+                ->when($data['branch_id'] ?? null, fn ($q, $id) => $q->where('branch_id', $id))->count();
+            abort_unless($valid === count($ids), 422, 'تأكد من شهر السلفة وفرع الموظف.');
+        }
         $final = abs($used + $data['percent'] - 100) < 0.001;
         $n = PayrollBatch::where('month', $data['month'])->where('branch_id', $data['branch_id'] ?? null)->count() + 1;
         $batch = PayrollBatch::create([
             'month' => $data['month'], 'percent' => $data['percent'], 'branch_id' => $data['branch_id'] ?? null, 'is_final' => $final, 'status' => 'draft',
-            'title' => ($data['title'] ?? null) ?: 'رواتب '.$this->monthName($data['month'])." · الدفعة {$n}", 'created_by' => $request->user()->id,
+            'advance_ids' => $ids, 'title' => ($data['title'] ?? null) ?: 'رواتب '.$this->monthName($data['month'])." · الدفعة {$n}", 'created_by' => $request->user()->id,
         ]);
         $batch = $this->svc->calculate($batch);
         Audit::log('payroll.batch_created', $batch, null, ['month' => $batch->month, 'percent' => $batch->percent, 'total' => $batch->total_net], null, $batch->branch_id);
@@ -225,10 +240,21 @@ class PayrollController extends Controller
     {
         $this->authorizeBranch($request, 'payroll.approve', $batch->branch_id);
         abort_unless($batch->status === 'draft', 422, 'الدفعة معتمدة من قبل.');
-        $batch->forceFill(['status' => 'approved', 'approved_by' => $request->user()->id, 'approved_at' => now()])->save();
-        Audit::log('payroll.batch_approved', $batch, ['status' => 'draft'], ['status' => 'approved', 'total' => $batch->total_net], null, $batch->branch_id);
+        DB::transaction(function () use ($batch, $request) {
+            $batch = PayrollBatch::whereKey($batch->id)->lockForUpdate()->firstOrFail();
+            abort_unless($batch->status === 'draft', 422, 'الدفعة معتمدة.');
+            abort_if($batch->items()->where(function ($q) use ($batch) {
+                $q->where('auto_deductions', '>', 0);
+                if (! $batch->advance_ids) {
+                    $q->orWhere('advance_deduction', '>', 0);
+                }
+            })->exists(), 422, 'الدفعة تحتوي على خصم تلقائي سابق. أعد حسابها ثم راجع الصافي للاعتماد.');
+            $batch->forceFill(['status' => 'approved', 'approved_by' => $request->user()->id, 'approved_at' => now()])->save();
+            Audit::log('payroll.batch_approved', $batch, ['status' => 'draft'], ['status' => 'approved', 'total' => $batch->total_net], null, $batch->branch_id);
 
-        return $this->showBatch($request, $batch);
+        });
+
+        return $this->showBatch($request, $batch->fresh());
     }
 
     public function markPaid(Request $request, PayrollBatch $batch): JsonResponse
@@ -348,7 +374,7 @@ class PayrollController extends Controller
 
         return [
             'id' => $a->id, 'user' => $a->user?->only('id', 'name'), 'amount' => $a->amount, 'installment' => $a->installment,
-            'start_month' => $a->start_month, 'reason' => $a->reason, 'paid' => $paid, 'remaining' => $a->remaining(),
+            'branch_id' => $a->branch_id, 'start_month' => $a->start_month, 'reason' => $a->reason, 'paid' => $paid, 'remaining' => $a->remaining(),
             'created_at' => $a->created_at?->toIso8601String(),
         ];
     }

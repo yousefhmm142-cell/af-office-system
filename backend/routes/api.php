@@ -12,6 +12,7 @@ use App\Http\Controllers\Api\DistributionController;
 use App\Http\Controllers\Api\EmployeeController;
 use App\Http\Controllers\Api\GenerationController;
 use App\Http\Controllers\Api\HolidayController;
+use App\Http\Controllers\Api\LeaveController;
 use App\Http\Controllers\Api\MessageController;
 use App\Http\Controllers\Api\PayrollController;
 use App\Http\Controllers\Api\PermissionController;
@@ -44,6 +45,10 @@ Route::middleware(['auth:sanctum', 'active'])->group(function () {
     });
 
     Route::middleware('password.changed')->group(function () {
+        Route::put('employees/{user}/leave-allowance', [LeaveController::class, 'allowance']);
+        Route::get('leaves', [LeaveController::class, 'index']);
+        Route::post('leaves', [LeaveController::class, 'store']);
+        Route::patch('leaves/{id}', [LeaveController::class, 'decide'])->whereNumber('id');
         Route::get('dashboard', [DashboardController::class, 'show']);
         Route::get('branches', [BranchController::class, 'index'])->middleware('perm:branches.view');
         Route::post('branches', [BranchController::class, 'store'])->middleware('perm:branches.manage');

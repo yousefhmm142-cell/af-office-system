@@ -4,6 +4,8 @@ namespace Tests\Feature;
 
 use App\Models\AttendanceDay;
 use App\Models\Branch;
+use App\Models\PayrollItem;
+use App\Models\PayrollSetting;
 use App\Models\Role;
 use App\Models\User;
 use App\Models\WorkSchedule;
@@ -55,6 +57,7 @@ class PayrollTest extends TestCase
         $emp = $this->employee();
         $this->actAs(Role::HR);
         $this->settings();
+        PayrollSetting::query()->update(['late_mode' => 'wage', 'late_value' => 1, 'absence_mode' => 'wage', 'absence_value' => 1]);
         $this->postJson('/api/payroll/adjustments', ['user_id' => $emp->id, 'type' => 'bonus', 'month' => '2026-10', 'amount' => 100, 'reason' => 'مكافأة'])->assertCreated();
         $this->postJson('/api/payroll/adjustments', ['user_id' => $emp->id, 'type' => 'deduction', 'month' => '2026-10', 'amount' => 50, 'reason' => 'غرامة'])->assertCreated();
         $this->postJson('/api/payroll/advances', ['user_id' => $emp->id, 'amount' => 500, 'installment' => 200, 'start_month' => '2026-10'])->assertCreated();
@@ -63,7 +66,7 @@ class PayrollTest extends TestCase
         $b1 = $this->postJson('/api/payroll/batches', ['month' => '2026-10', 'percent' => 50, 'branch_id' => $this->branch->id])
             ->assertCreated()->assertJsonPath('batch.is_final', false)->json('batch.id');
         $line = $this->getJson("/api/payroll/batches/{$b1}")->assertOk()->json('items.0');
-        $this->assertEquals([1500, 0, 100, 0, 50, 200, 1350], [$line['base'], $line['auto_deductions'], $line['bonuses'], $line['overtime'], $line['manual_deductions'], $line['advance_deduction'], $line['net']]);
+        $this->assertEquals([1500, 0, 100, 0, 50, 0, 1550], [$line['base'], $line['auto_deductions'], $line['bonuses'], $line['overtime'], $line['manual_deductions'], $line['advance_deduction'], $line['net']]);
         $this->assertSame('PalPay', $line['payment']['provider']);
 
         $this->getJson('/api/payroll/plan?month=2026-10&branch_id='.$this->branch->id)->assertJsonPath('left', 50);
@@ -74,12 +77,26 @@ class PayrollTest extends TestCase
             ->assertCreated()->assertJsonPath('batch.is_final', true)->json('batch.id');
         $line = $this->getJson("/api/payroll/batches/{$b2}")->json('items.0');
         $this->assertEquals(1500, $line['base']);
-        $this->assertEqualsWithDelta(12.10 + 193.55, $line['auto_deductions'], 0.02);
+        $this->assertEquals(0, $line['auto_deductions']);
         $this->assertEqualsWithDelta(36.29, $line['overtime'], 0.01);
         $this->assertEquals(0, $line['bonuses']); // already paid by the first batch
-        $this->assertEquals(200, $line['advance_deduction']);
-        $this->assertEqualsWithDelta(1130.65, $line['net'], 0.02);
+        $this->assertEquals(0, $line['advance_deduction']);
+        $this->assertEqualsWithDelta(1536.29, $line['net'], 0.02);
         $this->assertSame(2, $line['details']['absent_days']);
+    }
+
+    public function test_old_draft_with_automatic_deduction_requires_review_before_approval(): void
+    {
+        $this->employee();
+        $this->actAs(Role::HR);
+        $id = $this->postJson('/api/payroll/batches', ['month' => '2026-10', 'percent' => 100, 'branch_id' => $this->branch->id])->assertCreated()->json('batch.id');
+        PayrollItem::where('batch_id', $id)->update(['auto_deductions' => 25, 'net' => 2975]);
+        $this->actAs(Role::MANAGEMENT);
+        $this->postJson("/api/payroll/batches/$id/approve")->assertUnprocessable();
+        $this->actAs(Role::HR);
+        $this->postJson("/api/payroll/batches/$id/recalculate")->assertOk()->assertJsonPath('items.0.auto_deductions', 0);
+        $this->actAs(Role::MANAGEMENT);
+        $this->postJson("/api/payroll/batches/$id/approve")->assertOk()->assertJsonPath('batch.total_net', 3000);
     }
 
     public function test_daily_wage_follows_days_attended(): void
@@ -94,8 +111,8 @@ class PayrollTest extends TestCase
     {
         $emp = $this->employee('monthly', 300);
         $this->actAs(Role::HR);
-        $this->postJson('/api/payroll/advances', ['user_id' => $emp->id, 'amount' => 1000, 'installment' => 400, 'start_month' => '2026-10']);
-        $id = $this->postJson('/api/payroll/batches', ['month' => '2026-10', 'percent' => 50, 'branch_id' => $this->branch->id])->json('batch.id');
+        $advance = $this->postJson('/api/payroll/advances', ['user_id' => $emp->id, 'amount' => 1000, 'installment' => 400, 'start_month' => '2026-10'])->assertCreated()->json('advance.id');
+        $id = $this->postJson('/api/payroll/batches', ['advance_ids' => [$advance], 'month' => '2026-10', 'percent' => 50, 'branch_id' => $this->branch->id])->json('batch.id');
         $line = $this->getJson("/api/payroll/batches/{$id}")->json('items.0');
         $this->assertEquals([150, 150, 0], [$line['base'], $line['advance_deduction'], $line['net']]);
         $this->assertNotEmpty($line['details']['notes']);

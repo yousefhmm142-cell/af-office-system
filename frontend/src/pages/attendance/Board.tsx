@@ -194,7 +194,7 @@ function BranchDay({ data, onOpen, canEdit }: {
           <li key={row.user.id}>
             <button type="button" className="att-row card" disabled={!row.day && !canEdit(row)} onClick={() => onOpen(row)}>
               <Avatar name={row.user.name} size={38} />
-              <span className="att-name"><b>{row.user.name}</b><small>{[row.user.job_title, row.schedule].filter(Boolean).join(' · ')}</small></span>
+              <span className="att-name"><b>{row.user.name}</b><small>{[row.user.job_title, row.schedule, row.permission && `إذن معتمد ${row.permission}`].filter(Boolean).join(' · ')}</small></span>
               {row.day?.check_in && <span className="att-times"><InOut inAt={row.day.check_in} outAt={row.day.check_out} /></span>}
               <span className="att-tags">
                 <Pill tone={STATE[row.state].tone}>{STATE[row.state].label}</Pill>

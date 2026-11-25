@@ -26,6 +26,9 @@ export function EmployeeFile() {
   const navigate = useNavigate()
   const id = params.id ?? String(me.id)
   const { data, error, loading, setData } = useLoad<File_>(`/employees/${id}`)
+  const toast = useToast()
+  const [allowance,setAllowance] = useState('')
+  const [year,setYear] = useState(String(new Date().getFullYear()))
   const [edit, setEdit] = useState<'personal' | 'wallet' | 'job' | 'status' | null>(null)
 
   if (loading && !data) return <Loading />
@@ -92,6 +95,21 @@ export function EmployeeFile() {
           <Row k="الحضور" v={f.job.tracks_attendance ? (f.job.punch_anywhere ? 'يسجّل · الـQR من أي مكان' : 'يسجّل') : 'لا يسجّل الحضور'} />
         </Section>
 
+        {f.job.tracks_attendance && <Section icon={<History size={18} />} title={`ملخص الحضور · ${f.attendance.month}`}>
+          <Row k="دقائق التأخير" v={String(f.attendance.late_minutes)} num />
+          <Row k="أيام الغياب" v={String(f.attendance.absent_days)} num />
+        </Section>}
+        <Section icon={<History size={18} />} title={`رصيد الإجازة السنوية · ${f.annual_leave.year}`}>
+          <Row k="الأيام المستخدمة" v={String(f.annual_leave.used)} /><Row k="الأيام المتبقية" v={f.annual_leave.days === null ? 'لم يُحدّد الرصيد' : String(f.annual_leave.days-f.annual_leave.used)} />
+          {me.role?.key==='hr' && !mine && <form className="form-grid" onSubmit={async e=>{
+            e.preventDefault()
+            try { await api(`/employees/${id}/leave-allowance`,{method:'PUT',body:{year:Number(year),days:Number(allowance)}})
+              setData(await api<File_>(`/employees/${id}`)); setAllowance(''); toast('حُفظ الرصيد')
+            } catch(err) { toast(err instanceof ApiError ? err.message : 'تعذّر الحفظ','danger') }
+          }}><label>السنة<input className="input" type="number" min="2000" max="2100" required value={year} onChange={e=>setYear(e.target.value)} /></label>
+          <label>إجمالي الاستحقاق السنوي بالأيام<input className="input" type="number" min="0" max="366" required value={allowance} onChange={e=>setAllowance(e.target.value)} /></label>
+          <Button type="submit">حفظ الرصيد</Button></form>}
+        </Section>
         <Attachments file={f} onChange={(attachments) => setData({ ...f, attachments })} />
       </div>
 

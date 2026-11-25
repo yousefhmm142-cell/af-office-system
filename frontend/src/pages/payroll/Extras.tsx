@@ -1,6 +1,7 @@
 import { HandCoins, Minus, Plus, Trash2 } from 'lucide-react'
 import { useMemo, useState, type FormEvent } from 'react'
 import { api, ApiError } from '../../api/client'
+import { useUser } from '../../app/auth'
 import type { User } from '../../api/types'
 import { useLoad } from '../../lib/useLoad'
 import { useConfirm } from '../../ui/Confirm'
@@ -34,7 +35,8 @@ function Adjustments({ people }: { people: Person[] }) {
   const [month, setMonth] = useState(thisMonth)
   const { data, loading, reload } = useLoad<{ adjustments: Adjustment[] }>(`/payroll/adjustments?month=${month}`)
   const [person, setPerson] = useState<Person | null>(null)
-  const [type, setType] = useState<'deduction' | 'bonus'>('deduction')
+  const hr = useUser().role?.key === 'hr'
+  const [type, setType] = useState<'deduction' | 'bonus'>(hr ? 'deduction' : 'bonus')
   const [amount, setAmount] = useState('')
   const [reason, setReason] = useState('')
   const [busy, setBusy] = useState(false)
@@ -58,7 +60,7 @@ function Adjustments({ people }: { people: Person[] }) {
     <div className="af-grid2 af-extras">
       <form className="card glass af-pad form-grid" onSubmit={add}>
         <div className="segmented af-type" role="radiogroup" aria-label="النوع">
-          <button type="button" role="radio" aria-checked={type === 'deduction'} onClick={() => setType('deduction')}><Minus size={16} /> خصم</button>
+          {hr && <button type="button" role="radio" aria-checked={type === 'deduction'} onClick={() => setType('deduction')}><Minus size={16} /> خصم</button>}
           <button type="button" role="radio" aria-checked={type === 'bonus'} onClick={() => setType('bonus')}><Plus size={16} /> مكافأة</button>
         </div>
         <Field label="الموظف" error={fields.user_id}>{() => <PersonPicker people={people} value={person} onChange={setPerson} label="الموظف" />}</Field>
@@ -129,11 +131,11 @@ function Advances({ people }: { people: Person[] }) {
         <Field label="الموظف">{() => <PersonPicker people={people} value={person} onChange={setPerson} label="الموظف" />}</Field>
         <div className="af-row2">
           <Field label="مبلغ السلفة">{(id) => <input id={id} className="input num af-big-input" inputMode="decimal" dir="ltr" value={amount} onChange={(e) => setAmount(e.target.value.replace(/[^0-9.]/g, ''))} placeholder="0" />}</Field>
-          <Field label="القسط من كل دفعة">{(id) => <input id={id} className="input num af-big-input" inputMode="decimal" dir="ltr" value={installment} onChange={(e) => setInstallment(e.target.value.replace(/[^0-9.]/g, ''))} placeholder="0" />}</Field>
+          <Field label="قيمة القسط المقترح">{(id) => <input id={id} className="input num af-big-input" inputMode="decimal" dir="ltr" value={installment} onChange={(e) => setInstallment(e.target.value.replace(/[^0-9.]/g, ''))} placeholder="0" />}</Field>
         </div>
-        <Field label="يبدأ الخصم من شهر">{(id) => <input id={id} className="input num" type="month" value={month} onChange={(e) => e.target.value && setMonth(e.target.value)} />}</Field>
+        <Field label="أول شهر متاح للتسديد">{(id) => <input id={id} className="input num" type="month" value={month} onChange={(e) => e.target.value && setMonth(e.target.value)} />}</Field>
         <Field label="ملاحظة (اختياري)">{(id) => <input id={id} className="input" value={reason} onChange={(e) => setReason(e.target.value)} />}</Field>
-        {n > 0 && <p className="af-explain">تُسدَّد على <b className="num">{n}</b> {n === 1 ? 'دفعة' : 'دفعات'} تقريباً، بقسط <b className="num">{fmt(Number(installment))}</b> شيكل من كل دفعة.</p>}
+        {n > 0 && <p className="af-explain">تُسدَّد على <b className="num">{n}</b> {n === 1 ? 'دفعة' : 'دفعات'} تقريباً، بقسط <b className="num">{fmt(Number(installment))}</b> شيكل عند اعتماد شؤون الموظفين للقسط.</p>}
         <ErrorBanner text={error} />
         <Button type="submit" variant="primary" size="lg" busy={busy} disabled={!amount || !installment}>تسجيل السلفة</Button>
       </form>

@@ -126,10 +126,12 @@ class AttendanceController extends Controller
             ->where(fn ($query) => $query->whereNull('branch_id')->orWhereIn('branch_id', $branchIds))
             ->pluck('branch_id');
         $snapshots = DB::table('employee_shifts')->whereIn('branch_id', $branchIds)->where('date', $date)->get()->keyBy('user_id');
+        $leaves = DB::table('leave_days as d')->join('leave_requests as l', 'l.id', '=', 'd.request_id')
+            ->where('d.date', $date)->where('l.status', 'approved')->whereIn('l.branch_id', $branchIds)->get()->keyBy('user_id');
         $companyHoliday = $holidayBranches->containsStrict(null);
 
         return $people->groupBy('branch_id')->map(fn ($branchPeople) => $branchPeople->map(function (User $user) use (
-            $days, $dayDate, $now, $defaultSchedules, $holidayBranches, $companyHoliday, $snapshots
+            $days, $dayDate, $now, $defaultSchedules, $holidayBranches, $companyHoliday, $snapshots, $leaves
         ) {
             $day = $days->get($user->id);
             $schedule = $user->employee?->schedule ?? $defaultSchedules->get($user->branch_id);
@@ -143,6 +145,7 @@ class AttendanceController extends Controller
                 $day && $day->check_out !== null => 'left',
                 $day && $day->check_in !== null => $day->late_minutes > 0 ? 'late' : 'present',
                 ! $work => 'off',
+                $leaves->has($user->id) && $leaves[$user->id]->kind !== 'permission' => 'leave',
                 $this->isAbsent($dayDate, $now, $schedule) => 'absent',
                 default => 'not_yet',
             };
@@ -150,6 +153,7 @@ class AttendanceController extends Controller
             return [
                 'user' => ['id' => $user->id, 'name' => $user->name, 'job_title' => $user->employee?->job_title ?? $user->role?->name],
                 'state' => $state,
+                'permission' => ($leaves->get($user->id)?->kind === 'permission') ? substr($leaves[$user->id]->from_time, 0, 5).'–'.substr($leaves[$user->id]->to_time, 0, 5) : null,
                 'schedule_name' => $shift?->is_rest ? 'راحة أسبوعية' : $schedule?->name,
                 'schedule' => $schedule && ! $shift?->is_rest ? substr((string) $schedule->start_time, 0, 5).'–'.substr((string) $schedule->end_time, 0, 5) : null,
                 'day' => $day ? $this->day($day) : null,
@@ -160,7 +164,7 @@ class AttendanceController extends Controller
     private function boardSummary(Collection $rows): array
     {
         return [
-            'expected' => $rows->where('state', '!=', 'off')->count(),
+            'expected' => $rows->whereNotIn('state', ['off', 'leave'])->count(),
             'present' => $rows->whereIn('state', ['present', 'late', 'left'])->count(),
             'late' => $rows->filter(fn ($row) => ($row['day']['late_minutes'] ?? 0) > 0)->count(),
             'absent' => $rows->where('state', 'absent')->count(),

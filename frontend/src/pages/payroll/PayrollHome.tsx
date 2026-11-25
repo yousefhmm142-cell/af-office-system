@@ -39,7 +39,7 @@ export function PayrollHome() {
       {manage && (
         <nav className="af-tiles" aria-label="أقسام الرواتب">
           <Link to="/payroll/extras" className="af-tile glass"><span className="af-tile-ico"><HandCoins size={22} /></span><b>الخصومات والمكافآت والسلف</b><small>أضف بنداً لموظف في ثوانٍ</small></Link>
-          <Link to="/payroll/settings" className="af-tile glass"><span className="af-tile-ico"><Settings2 size={22} /></span><b>قواعد الحساب</b><small>التأخير، والغياب، والوقت الإضافي</small></Link>
+          <Link to="/payroll/settings" className="af-tile glass"><span className="af-tile-ico"><Settings2 size={22} /></span><b>قواعد الحساب</b><small>قواعد الوقت الإضافي</small></Link>
           <Link to="/my-pay" className="af-tile glass"><span className="af-tile-ico"><Wallet size={22} /></span><b>رواتبي</b><small>دفعاتك أنت وتفاصيلها</small></Link>
         </nav>
       )}
@@ -108,11 +108,14 @@ function NewBatchWizard({ onClose }: { onClose(): void }) {
   const [branchId, setBranchId] = useState<string>(all ? '' : String(me.branch?.id ?? ''))
   const [plan, setPlan] = useState<{ used: number; left: number; employees: number } | null>(null)
   const [percent, setPercent] = useState<number | null>(null)
+  const advances = useLoad<{ advances: {id:number; user:{name:string}; branch_id:number; start_month:string; remaining:number; installment:number}[] }>(me.role?.key === 'hr' ? '/payroll/advances' : null)
+  const [advanceIds, setAdvanceIds] = useState<number[]>([])
   const [custom, setCustom] = useState('')
   const [busy, setBusy] = useState(false)
   const [error, setError] = useState<string | null>(null)
 
   useEffect(() => {
+    setAdvanceIds([])
     setPlan(null)
     setPercent(null)
     api<{ used: number; left: number; employees: number }>(`/payroll/plan?month=${month}${branchId ? `&branch_id=${branchId}` : ''}`)
@@ -128,7 +131,7 @@ function NewBatchWizard({ onClose }: { onClose(): void }) {
   async function create() {
     setBusy(true); setError(null)
     try {
-      const res = await api<{ batch: Batch }>('/payroll/batches', { method: 'POST', body: { month, percent: chosen, branch_id: branchId ? Number(branchId) : null } })
+      const res = await api<{ batch: Batch }>('/payroll/batches', { method: 'POST', body: { month, percent: chosen, advance_ids: advanceIds, branch_id: branchId ? Number(branchId) : null } })
       toast('أُنشئت الدفعة وحُسبت')
       navigate(`/payroll/${res.batch.id}`)
     } catch (e) {
@@ -176,11 +179,14 @@ function NewBatchWizard({ onClose }: { onClose(): void }) {
               <p className="af-explain">
                 سيُصرف <b className="num">{chosen || 0}%</b> من راتب {monthLabel(month)} لـ <b className="num">{plan.employees}</b> موظفاً.
                 {plan.used > 0 && <> سبقته دفعات بنسبة <b className="num">{plan.used}%</b>.</>}
-                {final ? ' هذه الدفعة تُكمل الشهر، لذلك تُحسب فيها خصومات التأخير والغياب والوقت الإضافي.' : ' تُحسب خصومات الحضور والوقت الإضافي في الدفعة التي تُكمل الشهر.'}
+                {final ? ' هذه الدفعة تُكمل الشهر، لذلك تُحسب فيها ساعات العمل الإضافي.' : ' تُحسب ساعات العمل الإضافي في الدفعة التي تُكمل الشهر.'}
               </p>
             </>
           )}
         </section>
+        {me.role?.key === 'hr' && <fieldset className="form-grid"><legend>أقساط السلف المطلوب خصمها من هذه الدفعة</legend>
+          <p>حدّد السلفة لاعتماد خصم قسطها.</p>{advances.data?.advances.filter(a => a.remaining > 0 && a.start_month <= month && (!branchId || a.branch_id === Number(branchId))).map(a =>
+          <label key={a.id}><input type="checkbox" checked={advanceIds.includes(a.id)} onChange={e => setAdvanceIds(e.target.checked ? [...advanceIds,a.id] : advanceIds.filter(id => id !== a.id))} /> {a.user?.name} · {Math.min(a.installment,a.remaining)} شيكل</label>)}</fieldset>}
         <ErrorBanner text={error} />
       </div>
     </Dialog>

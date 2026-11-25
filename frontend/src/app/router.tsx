@@ -12,6 +12,7 @@ import { MyTasks } from '../pages/tasks/MyTasks'
 import { TaskSettings } from '../pages/tasks/Settings'
 import { BatchPage } from '../pages/payroll/BatchPage'
 import { Extras } from '../pages/payroll/Extras'
+import { Leaves } from '../pages/Leaves'
 import { MyPay } from '../pages/payroll/MyPay'
 import { PayrollHome } from '../pages/payroll/PayrollHome'
 import { PayrollSettings } from '../pages/payroll/SettingsPage'
@@ -107,6 +108,7 @@ export const router = createBrowserRouter([
           { path: 'tasks/settings', element: <Need permission="tasks.manage"><TaskSettings /></Need> },
           { path: 'messages', element: <Inbox /> },
           { path: 'messages/:id', element: <Inbox /> },
+          { path: 'leaves', element: <Leaves /> },
           { path: 'my-pay', element: <MyPay /> },
           { path: 'payroll', element: <NeedAny permissions={['payroll.view', 'payroll.manage']}><PayrollHome /></NeedAny> },
           { path: 'payroll/extras', element: <Need permission="payroll.manage"><Extras /></Need> },

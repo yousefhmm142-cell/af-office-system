@@ -16,7 +16,7 @@ export function MyPay() {
       <PageHead title="رواتبي" eyebrow="دفعاتك المعتمدة وتفاصيلها" />
       <ErrorBanner text={error} />
       {data?.advances.map((a) => (
-        <div key={a.id} className="banner info af-mb"><HandCoins size={18} /><p>عليك سلفة متبقٍّ منها <b className="num">{fmt(a.remaining)}</b> شيكل، يُخصم منها <b className="num">{fmt(a.installment)}</b> من كل دفعة.</p></div>
+        <div key={a.id} className="banner info af-mb"><HandCoins size={18} /><p>عليك سلفة متبقٍّ منها <b className="num">{fmt(a.remaining)}</b> شيكل، قيمة القسط <b className="num">{fmt(a.installment)}</b> عند اعتماد خصمه من شؤون الموظفين.</p></div>
       ))}
       {data?.items.length === 0 ? (
         <section className="card glass af-empty-hero"><span className="af-empty-ico"><Wallet size={34} /></span><h2>لا توجد دفعات بعد</h2><p className="eyebrow">تظهر هنا دفعاتك بعد اعتمادها.</p></section>

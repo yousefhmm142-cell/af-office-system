@@ -1,4 +1,4 @@
-import { AlarmClock, CalendarX2, Clock4, Save } from 'lucide-react'
+import { Clock4, Save } from 'lucide-react'
 import { useEffect, useState, type ReactNode } from 'react'
 import { api, ApiError } from '../../api/client'
 import type { Branch } from '../../api/types'
@@ -33,7 +33,7 @@ export function PayrollSettings() {
   async function save() {
     setBusy(true); setError(null)
     try {
-      await api('/payroll/settings', { method: 'POST', body: { ...s, branch_id: branchId ? Number(branchId) : null, effective_from: from } })
+      await api('/payroll/settings', { method: 'POST', body: { ...s, late_mode: 'none', absence_mode: 'none', branch_id: branchId ? Number(branchId) : null, effective_from: from } })
       toast('حُفظت القواعد')
       void reload()
     } catch (e) {
@@ -51,14 +51,7 @@ export function PayrollSettings() {
         </div>
       )}
       <div className="af-rules">
-        <Rule icon={<AlarmClock size={22} />} title="خصم التأخير" mode={s.late_mode} value={s.late_value}
-          onMode={(m) => set('late_mode', m)} onValue={(v) => set('late_value', v)}
-          wageLabel="معامل أجر الساعة" fixedLabel="المبلغ عن كل ساعة تأخير"
-          sentence={s.late_mode === 'none' ? 'لا يُخصم شيء على التأخير.' : s.late_mode === 'wage' ? `كل ساعة تأخير (بعد دقائق السماح) تُخصم بأجر ساعة × ${s.late_value}.` : `كل ساعة تأخير تُخصم ${s.late_value} شيكل، وتُحسب الدقائق بنسبتها.`} />
-        <Rule icon={<CalendarX2 size={22} />} title="خصم الغياب" mode={s.absence_mode} value={s.absence_value}
-          onMode={(m) => set('absence_mode', m)} onValue={(v) => set('absence_value', v)}
-          wageLabel="معامل أجر اليوم" fixedLabel="المبلغ عن كل يوم غياب"
-          sentence={s.absence_mode === 'none' ? 'لا يُخصم شيء على الغياب.' : s.absence_mode === 'wage' ? `كل يوم غياب يُخصم بأجر يوم × ${s.absence_value}. (لأصحاب الراتب الشهري؛ اليومية والأسبوعي يُدفعان عن أيام الحضور فقط.)` : `كل يوم غياب يُخصم ${s.absence_value} شيكل.`} />
+        <p>تُسجّل شؤون الموظفين أي خصم يدوياً مع المبلغ والسبب.</p>
         <Rule icon={<Clock4 size={22} />} title="الوقت الإضافي" mode={s.overtime_mode} value={s.overtime_value}
           onMode={(m) => set('overtime_mode', m)} onValue={(v) => set('overtime_value', v)}
           wageLabel="معامل أجر الساعة" fixedLabel="المبلغ عن كل ساعة إضافية"

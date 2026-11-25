@@ -9,6 +9,7 @@ use App\Models\EmployeeAttachment;
 use App\Models\EmployeeStatusLog;
 use App\Models\User;
 use App\Models\WorkSchedule;
+use App\Services\PayrollService;
 use App\Support\Access;
 use App\Support\Audit;
 use Illuminate\Http\JsonResponse;
@@ -259,7 +260,12 @@ class EmployeeController extends Controller
         $emp = $this->fileOf($user)->load('department', 'schedule', 'attachments', 'statusLog.changer');
         $manage = $actor->id !== $user->id || $actor->isSuperAdmin() ? $this->canManage($actor, $user) : false;
 
+        $month = now(config('app.business_timezone'))->format('Y-m');
+        $summary = app(PayrollService::class)->attendanceSummary($user, $month);
+
         return [
+            'annual_leave' => ['year' => (int) substr($month, 0, 4), 'days' => DB::table('annual_leave_allowances')->where('user_id', $user->id)->where('year', substr($month, 0, 4))->value('days'), 'used' => LeaveController::annualUsed($user->id, (int) substr($month, 0, 4))],
+            'attendance' => ['month' => $month, 'late_minutes' => $summary['late_minutes'], 'absent_days' => $summary['absent_days']],
             'user' => Present::user($user),
             'personal' => $emp->only(Employee::PERSONAL),
             'job' => ['hire_date' => $emp->hire_date?->format('Y-m-d')] + $emp->only(Employee::JOB) + [

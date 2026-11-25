@@ -45,7 +45,7 @@ export function AppShell() {
     ? [...primary.flatMap((to) => items.filter((item) => item.to === to)), { to: '/more', label: 'المزيد', icon: Ellipsis }]
     : items.slice(0, 5)
   const operatingRoutes = ['/', '/generation', '/distribution', '/tasks', '/attendance']
-  const followRoutes = ['/seals', '/tasks/seal-work', '/attendance/me', '/my-tasks', '/messages', '/my-pay', '/me', '/branches', '/payroll', '/permissions', '/audit']
+  const followRoutes = ['/seals', '/tasks/seal-work', '/leaves', '/attendance/me', '/my-tasks', '/messages', '/my-pay', '/me', '/branches', '/payroll', '/permissions', '/audit']
   const operations = operatingRoutes.flatMap((to) => items.filter((item) => item.to === to))
   const follow = followRoutes.flatMap((to) => items.filter((item) => item.to === to))
 
