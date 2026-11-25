@@ -36,7 +36,7 @@ export function WeekSheet({ branch, branchName, start, today, branchStyle, revis
   const sheet = useRef<HTMLDivElement>(null)
   const end = shiftDate(start, 6)
   const wholeWeek = Array.from({ length: 7 }, (_, index) => shiftDate(start, index))
-  const dates = branchStyle ? wholeWeek.slice(0, 6) : wholeWeek
+  const dates = branchStyle && !data?.find(day => day.date === end)?.rows.some(row => row.state !== 'off') ? wholeWeek.slice(0, 6) : wholeWeek
   const lastDate = dates.at(-1)!
   useEffect(() => {
     let active = true

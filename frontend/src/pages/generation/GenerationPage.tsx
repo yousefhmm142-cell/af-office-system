@@ -1,11 +1,8 @@
-import { Droplet, Send, Wrench, Zap } from 'lucide-react'
+import { ArrowLeft, Droplet, Gauge, Send, Wrench, Zap } from 'lucide-react'
 import { useState, type FormEvent } from 'react'
-import { useSearchParams } from 'react-router'
+import { Link, useNavigate } from 'react-router'
 import { api, ApiError } from '../../api/client'
 import { useUser } from '../../app/auth'
-import { config } from '../../config'
-import { clock12 } from '../../lib/format'
-import { formatAmount } from '../../lib/numbers'
 import { useDocumentTitle } from '../../lib/useDocumentTitle'
 import { useLoad } from '../../lib/useLoad'
 import { useConfirm } from '../../ui/Confirm'
@@ -13,15 +10,19 @@ import { ErrorBanner, Field } from '../../ui/Field'
 import { Loading } from '../../ui/PageHead'
 import { Button, Pill } from '../../ui/primitives'
 import { useToast } from '../../ui/Toast'
-import { dayName } from '../attendance/lib'
+import { dayName, describeDay, todayISO } from '../../lib/dates'
+import { useReportDate } from '../sheets/ReportDate'
+import { BackButton, DayJump } from '../sheets/ReportControls'
 import { Stepper } from '../sheets/Stepper'
-import { FuelStep, MaintenanceStep, NotesField, RunsStep, type Update } from './EntrySteps'
-import { FuelTable } from './FuelTable'
-import { applyAutoFigures, isEditableStatus, maintenanceLabel, missingItems, newReport, reconcileReport, statusInfo, type FuelType, type Generator, type SheetStatus, type SiteReport } from './model'
+import { FuelStep, MaintenanceStep, MissingList, NotesField, RunsStep, type Update } from './EntrySteps'
+import { applyAutoFigures, isEditableStatus, missingItems, newReport, reconcileReport, reportTotals, statusInfo, type FuelType, type Generator, type SheetStatus, type SiteReport } from './model'
+import { hasBandValues } from '../sheets/loads'
+import { advanceOnEnter } from '../../ui/form'
+import { formatAmount } from '../../lib/numbers'
 import '../../styles/generation.css'
 
 type SavedReport = SiteReport & { version: number }
-interface GenerationData {
+export interface GenerationData {
   branch_name: string
   report: SavedReport | null
   previous: SavedReport | null
@@ -38,42 +39,32 @@ const steps = [
   { key: 'submit', label: 'الإرسال', icon: Send },
 ]
 
-export function GenerationPage() {
-  useDocumentTitle('التوليد')
-  const [query, setQuery] = useSearchParams()
-  const today = new Intl.DateTimeFormat('en-CA', { timeZone: config.timeZone }).format(new Date())
-  const requested = query.get('date')
-  const date = requested && /^\d{4}-\d{2}-\d{2}$/.test(requested) && requested <= today ? requested : today
-  const selectDate = (next: string) => setQuery({ date: next })
-
-  return <div className="gen-page">
-    <GenerationDay key={date} date={date} today={today} onDate={selectDate} />
-  </div>
+export function GenerationEntryPage() {
+  useDocumentTitle('تعبئة تقرير التوليد')
+  const date = useReportDate()
+  return <div className="gen-page"><GenerationDay key={date} date={date} /></div>
 }
 
-function GenerationDay({ date, today, onDate }: { date: string; today: string; onDate(date: string): void }) {
+function GenerationDay({ date }: { date: string }) {
   const path = `/generation/${date}`
   const load = useLoad<GenerationData>(path)
+  const { weekday, date: longDate } = describeDay(date)
   return <div className="entry">
-    <header className="entry-head">
-      <div><h1>التوليد</h1>{load.data && <p className="muted">{load.data.branch_name} · {dayName(date)}</p>}</div>
-      <input className="input num" type="date" aria-label="تاريخ التقرير" max={today} value={date}
-        onChange={(event) => { if (event.target.value) onDate(event.target.value) }} />
-    </header>
+    <BackButton fallback={path} />
+    <header className="entry-head"><div><h1>{date === todayISO() ? "تقرير اليوم" : `تقرير ${dayName(date)}`}</h1><p className="muted">{weekday} · {longDate}{load.data?.branch_name && ` · ${load.data.branch_name}`}</p></div></header>
+    <DayJump date={date} hrefFor={(day) => `/entry/${day}`} />
     <ErrorBanner text={load.error} />
     {load.loading && !load.data && <Loading />}
-    {load.data && <ReportEditor path={path} date={date} data={load.data} />}
-    {!!load.data?.history.length && <Field label="التقارير السابقة">{(id) =>
-      <select id={id} className="input select" value={date} onChange={(event) => onDate(event.target.value)}>
-        {!load.data!.history.some((item) => item.report_date === date) && <option value={date}>{dayName(date)}</option>}
-        {load.data!.history.map((item) => <option key={item.report_date} value={item.report_date}>{dayName(item.report_date)} · {statusInfo[item.status].label}</option>)}
-      </select>
-    }</Field>}
+    {load.data && (load.data.can.fill && (!load.data.report || isEditableStatus(load.data.report.status) || load.data.can.approve)
+      ? <ReportEditor path={path} date={date} data={load.data} />
+      : <Link className="btn" to={path}>عرض التقرير</Link>)}
   </div>
 }
 
 function ReportEditor({ path, date, data }: { path: string; date: string; data: GenerationData }) {
   const user = useUser()
+  const navigate = useNavigate()
+  const editingClosed = !!data.report && !isEditableStatus(data.report.status)
   const toast = useToast()
   const confirm = useConfirm()
   const [options, setOptions] = useState(data)
@@ -85,10 +76,13 @@ function ReportEditor({ path, date, data }: { path: string; date: string; data: 
   const [error, setError] = useState<string | null>(null)
   const [busy, setBusy] = useState(false)
   const [fuelName, setFuelName] = useState('')
-  const [reason, setReason] = useState('')
-  const editable = data.can.fill && isEditableStatus(report.status)
   const generatorName = (id: number) => generators.find((item) => item.id === id)?.name ?? 'مولد'
-  const missing = missingItems(report, (id) => fuelTypes.find((item) => item.id === id)?.name ?? 'وقود', generatorName)
+  const fuelLabel = (id: number) => fuelTypes.find((item) => item.id === id)?.name ?? 'وقود'
+  const missing = [
+    { fuel: report.fuel }, { generators: report.generators }, { maintenance: report.maintenance },
+  ].flatMap((part, index) => missingItems({ ...report, fuel: [], generators: [], maintenance: [], ...part }, fuelLabel, generatorName)
+    .map((text) => ({ text, step: index })))
+  const totals = reportTotals(report)
 
   const update: Update = (change) => setReport((current) => {
     const draft = structuredClone(current)
@@ -130,7 +124,7 @@ function ReportEditor({ path, date, data }: { path: string; date: string; data: 
       const result = await api<{ report: SavedReport }>(path, {
         method: 'PUT',
         body: {
-          version,
+          version, edit_closed: editingClosed,
           fuel: report.fuel.map(({ totalQty, consumption, ...line }) => line),
           generators: report.generators.map(({ runHours, storedLoads, ...log }) => ({ ...log, ...(storedLoads ?? {}) })),
           maintenance: report.maintenance,
@@ -141,28 +135,20 @@ function ReportEditor({ path, date, data }: { path: string; date: string; data: 
       if (submit) {
         const closed = await api<{ report: SavedReport }>(`${path}/submit`, { method: 'POST', body: { version: result.report.version } })
         setSaved(closed.report)
+        navigate(path, { replace: true })
       }
-      toast(submit ? 'أُغلق وأُرسل التقرير' : 'حُفظت المسودة')
-    } catch (e) { reportError(e) } finally { setBusy(false) }
-  }
-
-  async function review(action: 'approve' | 'return') {
-    setBusy(true)
-    setError(null)
-    try {
-      const result = await api<{ report: SavedReport }>(`${path}/${action}`, { method: 'POST', body: { version, reason: reason.trim() || null } })
-      setSaved(result.report)
-      setReason('')
+      if (editingClosed) navigate(path, { replace: true })
+      toast(editingClosed ? "حُفظت التعديلات" : submit ? 'أُغلق وأُرسل التقرير' : 'حُفظت المسودة')
     } catch (e) { reportError(e) } finally { setBusy(false) }
   }
 
   return <>
+    {editingClosed && <div className="banner" role="status"><p>تعدّل التقرير المرسل. تُحفظ التعديلات وتبقى حالة الاعتماد.</p></div>}
     <div><Pill tone={statusInfo[report.status].tone}>{statusInfo[report.status].label}</Pill></div>
     <ErrorBanner text={error} />
     {report.returnedReason && <p className="card af-pad">سبب إعادة الفتح · {report.returnedReason}</p>}
-    {editable ? <>
-      <Stepper items={steps.map((item, index) => ({ ...item, done: index < step }))} current={step} onSelect={setStep} label="خطوات تعبئة التقرير" />
-      <div className="entry-body" key={step}>
+      <Stepper items={steps.map((item, index) => ({ ...item, done: index < 3 && !missing.some((item) => item.step === index) }))} current={step} onSelect={setStep} label="خطوات تعبئة التقرير" />
+      <div className="entry-body" key={step} onKeyDown={advanceOnEnter}>
         {step === 0 && <>
           <FuelStep report={report} fuelTypes={fuelTypes} previous={previous} update={update} />
           <form className="card fcard" onSubmit={addFuel}>
@@ -174,45 +160,21 @@ function ReportEditor({ path, date, data }: { path: string; date: string; data: 
         {step === 2 && <MaintenanceStep report={report} generators={generators} update={update} />}
         {step === 3 && <>
           <NotesField report={report} update={update} />
-          {missing.length > 0 && <ul className="card af-pad">{missing.map((item) => <li key={item}>{item}</li>)}</ul>}
+          <section className="card summary">
+            <div className="summary-row"><Droplet size={17} /><span>المحروقات</span><b className="num">استهلاك {formatAmount(totals.consumption)} · متبقي {formatAmount(totals.remaining)} لتر</b></div>
+            <div className="summary-row"><Zap size={17} /><span>التشغيل</span><b className="num">{totals.generatorsRan} مولدات · {formatAmount(totals.runHours)} ساعة</b></div>
+            <div className="summary-row"><Gauge size={17} /><span>الأحمال من كشف التوزيع</span><b className="num">{report.generators.filter((item) => item.didRun && hasBandValues(item.bandLoads)).length} من {totals.generatorsRan} مولدات معبّأة</b></div>
+            <div className="summary-row"><Wrench size={17} /><span>الصيانات</span><b className="num">{report.maintenance.length ? `${report.maintenance.length} عملية` : 'لا شيء'}</b></div>
+          </section>
+          <MissingList items={missing} onJump={setStep} />
         </>}
       </div>
-      <div className="entry-foot">
+      <footer className="entry-foot glass">
         {step > 0 && <Button disabled={busy} onClick={() => setStep(step - 1)}>السابق</Button>}
-        <Button disabled={busy} onClick={() => void save(false)}>حفظ المسودة</Button>
+        <Button disabled={busy} onClick={() => void save(false)}>{editingClosed ? "حفظ التعديلات والعودة" : "حفظ المسودة"}</Button>
         {step < steps.length - 1
-          ? <Button variant="primary" onClick={() => setStep(step + 1)}>التالي</Button>
-          : <Button variant="primary" disabled={busy} onClick={() => void save(true)}>إغلاق وإرسال</Button>}
-      </div>
-    </> : version ? <>
-      <FuelTable report={report} fuelTypes={fuelTypes} />
-      <section className="card fcard">
-        <h2>تشغيل المولدات</h2>
-        {report.generators.map((item) => <div key={item.id}>
-          <b>{generatorName(item.generatorId)}</b>
-          <p>{item.didRun ? `${formatAmount(item.runHours)} ساعة` : 'لم يعمل'}</p>
-          {item.runs.filter((run) => run.start || run.end).map((run) => <p key={run.id}>{clock12(run.start)} – {clock12(run.end)}</p>)}
-          {item.temperatureC !== null && <p>الحرارة {item.temperatureC} °C</p>}
-          {item.oilPressure !== null && <p>ضغط الزيت {item.oilPressure} {item.oilPressureUnit}</p>}
-          {item.bandLoads.some((value) => value !== null) && <p>الأحمال · {item.bandLoads.map((value) => formatAmount(value)).join(' / ')} {item.loadUnit}</p>}
-          {item.notes && <p>{item.notes}</p>}
-        </div>)}
-      </section>
-      <section className="card fcard">
-        <h2>الصيانات والملاحظات</h2>
-        {report.maintenance.map((item) => <div key={item.id}>
-          <b>{item.generatorId ? generatorName(item.generatorId) : 'صيانة عامة'}</b>
-          <p>{item.types.map(maintenanceLabel).join('، ')}</p>
-          <p>زيت جديد {formatAmount(item.oilNewLiters)} لتر · زيت مستخدم {formatAmount(item.oilUsedLiters)} لتر</p>
-          {item.description && <p>{item.description}</p>}
-        </div>)}
-        {report.generalNotes && <p>{report.generalNotes}</p>}
-      </section>
-      {data.can.approve && (report.status === 'submitted' || report.status === 'approved') && <div className="card fcard">
-        {report.status === 'submitted' && <Button variant="primary" disabled={busy} onClick={() => void review('approve')}>اعتماد التقرير</Button>}
-        <Field label="سبب إعادة فتح التقرير">{(id) => <input id={id} className="input" maxLength={500} value={reason} onChange={(event) => setReason(event.target.value)} />}</Field>
-        <Button disabled={busy || !reason.trim()} onClick={() => void review('return')}>إعادة فتح التقرير</Button>
-      </div>}
-    </> : <p className="card af-pad">لا يوجد تقرير لهذا اليوم.</p>}
+          ? <Button variant="primary" size="lg" block onClick={() => setStep(step + 1)}>التالي: {steps[step + 1]?.label}<ArrowLeft size={18} /></Button>
+          : editingClosed ? null : <Button variant="primary" size="lg" block busy={busy} icon={<Send size={18} />} onClick={() => void save(true)}>إغلاق اليوم وإرسال</Button>}
+      </footer>
   </>
 }

@@ -5,12 +5,18 @@ use App\Http\Controllers\Api\AttendancePointController;
 use App\Http\Controllers\Api\AuditController;
 use App\Http\Controllers\Api\AuthController;
 use App\Http\Controllers\Api\BranchController;
+use App\Http\Controllers\Api\BranchOperationsController;
+use App\Http\Controllers\Api\DashboardController;
 use App\Http\Controllers\Api\DepartmentController;
+use App\Http\Controllers\Api\DistributionController;
 use App\Http\Controllers\Api\EmployeeController;
+use App\Http\Controllers\Api\GenerationController;
 use App\Http\Controllers\Api\HolidayController;
 use App\Http\Controllers\Api\MessageController;
 use App\Http\Controllers\Api\PayrollController;
 use App\Http\Controllers\Api\PermissionController;
+use App\Http\Controllers\Api\RosterController;
+use App\Http\Controllers\Api\SealController;
 use App\Http\Controllers\Api\SetupController;
 use App\Http\Controllers\Api\TaskController;
 use App\Http\Controllers\Api\TaskLinkController;
@@ -38,7 +44,7 @@ Route::middleware(['auth:sanctum', 'active'])->group(function () {
     });
 
     Route::middleware('password.changed')->group(function () {
-        Route::get('dashboard', [App\Http\Controllers\Api\DashboardController::class, 'show']);
+        Route::get('dashboard', [DashboardController::class, 'show']);
         Route::get('branches', [BranchController::class, 'index'])->middleware('perm:branches.view');
         Route::post('branches', [BranchController::class, 'store'])->middleware('perm:branches.manage');
         Route::get('branches/{branch}', [BranchController::class, 'show'])->middleware('perm:branches.view');
@@ -46,6 +52,9 @@ Route::middleware(['auth:sanctum', 'active'])->group(function () {
         Route::put('branches/{branch}/modules', [BranchController::class, 'updateModules'])->middleware('perm:branches.manage');
         Route::delete('branches/{branch}', [BranchController::class, 'destroy'])->middleware('perm:branches.manage');
 
+        Route::get('branches/{branch}/roster/{user}', [RosterController::class, 'week'])->middleware('perm:schedules.manage');
+        Route::put('branches/{branch}/roster/{user}', [RosterController::class, 'save'])->middleware('perm:schedules.manage');
+        Route::put('branches/{branch}/departments/{department}', [DepartmentController::class, 'assign'])->middleware('perm:departments.manage');
         Route::get('schedules', [WorkScheduleController::class, 'index'])->middleware('perm:schedules.view');
         Route::post('schedules', [WorkScheduleController::class, 'store'])->middleware('perm:schedules.manage');
         Route::patch('schedules/{schedule}', [WorkScheduleController::class, 'update'])->middleware('perm:schedules.manage');
@@ -86,21 +95,21 @@ Route::middleware(['auth:sanctum', 'active'])->group(function () {
 
         // Attendance: everyone punches and sees their own; managers see and fix their branch.
         Route::post('attendance/punch', [AttendanceController::class, 'punch'])->middleware('throttle:30,1');
-        Route::post('generation/equipment/{kind}', [App\Http\Controllers\Api\GenerationController::class, 'equipment'])->whereIn('kind', ['generator', 'fuel']);
-        Route::get('generation/{date}', [App\Http\Controllers\Api\GenerationController::class, 'show']);
-        Route::put('generation/{date}', [App\Http\Controllers\Api\GenerationController::class, 'save']);
-        Route::post('generation/{date}/{action}', [App\Http\Controllers\Api\GenerationController::class, 'transition'])->whereIn('action', ['submit', 'approve', 'return']);
+        Route::post('generation/equipment/{kind}', [GenerationController::class, 'equipment'])->whereIn('kind', ['generator', 'fuel']);
+        Route::get('generation/{date}', [GenerationController::class, 'show']);
+        Route::put('generation/{date}', [GenerationController::class, 'save']);
+        Route::post('generation/{date}/{action}', [GenerationController::class, 'transition'])->whereIn('action', ['submit', 'approve', 'return']);
 
-        Route::post('distribution/zones', [App\Http\Controllers\Api\DistributionController::class, 'zone']);
-        Route::get('dashboard/branch-operations', App\Http\Controllers\Api\BranchOperationsController::class);
-        Route::get('distribution/{date}', [App\Http\Controllers\Api\DistributionController::class, 'show']);
-        Route::put('distribution/{date}', [App\Http\Controllers\Api\DistributionController::class, 'save']);
-        Route::post('distribution/{date}/{action}', [App\Http\Controllers\Api\DistributionController::class, 'transition'])->whereIn('action', ['submit', 'approve', 'return']);
-        Route::get('seals', [App\Http\Controllers\Api\SealController::class, 'show']);
-        Route::get('seals/{number}/tasks', [App\Http\Controllers\Api\SealController::class, 'tasks'])->whereNumber('number');
-        Route::get('seals/history', [App\Http\Controllers\Api\SealController::class, 'history']);
-        Route::post('seals/import', [App\Http\Controllers\Api\SealController::class, 'import']);
-        Route::post('seals/{action}', [App\Http\Controllers\Api\SealController::class, 'update'])
+        Route::post('distribution/zones', [DistributionController::class, 'zone']);
+        Route::get('dashboard/branch-operations', BranchOperationsController::class);
+        Route::get('distribution/{date}', [DistributionController::class, 'show']);
+        Route::put('distribution/{date}', [DistributionController::class, 'save']);
+        Route::post('distribution/{date}/{action}', [DistributionController::class, 'transition'])->whereIn('action', ['submit', 'approve', 'return']);
+        Route::get('seals', [SealController::class, 'show']);
+        Route::get('seals/{number}/tasks', [SealController::class, 'tasks'])->whereNumber('number');
+        Route::get('seals/history', [SealController::class, 'history']);
+        Route::post('seals/import', [SealController::class, 'import']);
+        Route::post('seals/{action}', [SealController::class, 'update'])
             ->whereIn('action', ['add-roll', 'update-roll', 'delete-roll', 'issue', 'assign-batch', 'update-batch', 'add-to-batch', 'delete-batch', 'record', 'return-to-stock']);
         Route::get('attendance/me', [AttendanceController::class, 'me']);
         Route::get('attendance/days/{day}/history', [AttendanceController::class, 'history']);

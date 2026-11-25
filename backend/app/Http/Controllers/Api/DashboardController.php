@@ -130,7 +130,7 @@ class DashboardController extends Controller
             'staff' => $staff->count(),
             'present' => $att ? $days->whereNotNull('check_in')->count() : null,
             'late' => $att ? $days->where('late_minutes', '>', 0)->count() : null,
-            'not_in' => $att ? max(0, $staff->count() - $days->whereNotNull('check_in')->count()) : null,
+            'not_in' => $att ? count($this->notIn($id, $today, $now)['not_in']) : null,
             'open_tasks' => $tasks ? $open->count() : null,
             'late_tasks' => $tasks ? $open->filter(fn ($t) => $t->isLate())->count() : 0,
             'done_today' => $tasks ? Task::where('branch_id', $id)->where('status', 'done')->where('completed_at', '>=', $now->startOfDay()->utc())->count() : null,

@@ -6,8 +6,9 @@ import { useToast } from './Toast'
 
 const excelMime = 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet'
 
-export function ReportDownloads({ sheet, name, headers, rows }: {
-  sheet: RefObject<HTMLElement | null>
+export function ReportDownloads({ sheet, name, headers, rows, excelOnly = false }: {
+  sheet?: RefObject<HTMLElement | null>
+  excelOnly?: boolean
   name: string
   headers: string[]
   rows: (string | number)[][]
@@ -18,7 +19,7 @@ export function ReportDownloads({ sheet, name, headers, rows }: {
   async function download(format: 'pdf' | 'xlsx') {
     setBusy(format)
     try {
-      if (format === 'pdf' && sheet.current) {
+      if (format === 'pdf' && sheet?.current) {
         const { sheetToPdf } = await import('../lib/sheetPdf')
         await saveFile(await sheetToPdf(sheet.current), `${name}.pdf`, 'application/pdf')
       } else if (format === 'xlsx') {
@@ -40,8 +41,8 @@ export function ReportDownloads({ sheet, name, headers, rows }: {
   }
 
   return <div className="af-report-downloads no-print">
-    <Button icon={<Printer size={17} />} disabled={!rows.length || !!busy} onClick={() => window.print()}>طباعة الكشف</Button>
+    {!excelOnly && <Button icon={<Printer size={17} />} disabled={!rows.length || !!busy} onClick={() => window.print()}>طباعة الكشف</Button>}
     <Button icon={<FileSpreadsheet size={17} />} busy={busy === 'xlsx'} disabled={!rows.length || !!busy} onClick={() => void download('xlsx')}>Excel</Button>
-    <Button icon={<FileText size={17} />} busy={busy === 'pdf'} disabled={!rows.length || !!busy} onClick={() => void download('pdf')}>PDF</Button>
+    {!excelOnly && <Button icon={<FileText size={17} />} busy={busy === 'pdf'} disabled={!rows.length || !!busy} onClick={() => void download('pdf')}>PDF</Button>}
   </div>
 }

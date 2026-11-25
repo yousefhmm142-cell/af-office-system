@@ -1,4 +1,6 @@
 import { Navigate, Outlet, createBrowserRouter, useLocation } from 'react-router'
+import { Guide } from '../pages/Guide'
+import { More } from '../pages/More'
 import { Account } from '../pages/Account'
 import { Audit } from '../pages/Audit'
 import { Inbox } from '../pages/messages/Inbox'
@@ -13,7 +15,9 @@ import { Extras } from '../pages/payroll/Extras'
 import { MyPay } from '../pages/payroll/MyPay'
 import { PayrollHome } from '../pages/payroll/PayrollHome'
 import { PayrollSettings } from '../pages/payroll/SettingsPage'
-import { DistributionPage } from '../pages/distribution/DistributionPage'
+import { SealWorkPage } from '../pages/tasks/SealWorkPage'
+import { DistributionEntryPage } from '../pages/distribution/DistributionPage'
+import { DistributionReportPage } from '../pages/distribution/DistributionReportPage'
 import { DistributionHistoryPage } from '../pages/distribution/DistributionHistoryPage'
 import { SealIssuePage } from '../pages/seals/IssuePage'
 import { SealLogPage } from '../pages/seals/LogPage'
@@ -23,7 +27,8 @@ import { SealLedger } from '../pages/seals/repo'
 import '../styles/seals.css'
 import '../styles/seals-night.css'
 import { Board } from '../pages/attendance/Board'
-import { GenerationPage } from '../pages/generation/GenerationPage'
+import { GenerationEntryPage } from '../pages/generation/GenerationPage'
+import { GenerationReportPage } from '../pages/generation/GenerationReportPage'
 import { MyAttendance } from '../pages/attendance/MyAttendance'
 import { Points } from '../pages/attendance/Points'
 import { Scan } from '../pages/attendance/Scan'
@@ -89,11 +94,15 @@ export const router = createBrowserRouter([
           { path: 'permissions', element: <Need permission="permissions.manage"><Permissions /></Need> },
           { path: 'audit', element: <Need permission="audit.view"><Audit /></Need> },
           { path: 'account', element: <Account /> },
+          { path: 'more', element: <More /> },
+          { path: 'guide', element: <Guide /> },
           { path: 'me', element: <EmployeeFile /> },
           { path: 'attendance/me', element: <MyAttendance /> },
           { path: 'my-tasks', element: <MyTasks /> },
           { path: 'tasks', element: <NeedAny permissions={['tasks.view', 'tasks.manage']}><TasksBoard /></NeedAny> },
           { path: 'subscriber', element: <NeedAny permissions={['tasks.view', 'tasks.manage']}><SubscriberTasks /></NeedAny> },
+          { path: 'tasks/seal-work', element: <Need permission="seals.view"><SealWorkPage /></Need> },
+          { path: 'my-attendance', element: <Navigate to="/attendance/me" replace /> },
           { path: 'tasks/daily', element: <NeedAny permissions={['tasks.view', 'tasks.manage']}><DailyTasks /></NeedAny> },
           { path: 'tasks/settings', element: <Need permission="tasks.manage"><TaskSettings /></Need> },
           { path: 'messages', element: <Inbox /> },
@@ -103,9 +112,9 @@ export const router = createBrowserRouter([
           { path: 'payroll/extras', element: <Need permission="payroll.manage"><Extras /></Need> },
           { path: 'payroll/settings', element: <Need permission="payroll.manage"><PayrollSettings /></Need> },
           { path: 'payroll/:id', element: <NeedAny permissions={['payroll.view', 'payroll.manage']}><BatchPage /></NeedAny> },
-          { path: 'distribution', element: <Need permission="distribution.view"><DistributionPage /></Need> },
+          { path: 'distribution', element: <Need permission="distribution.view"><DistributionReportPage /></Need> },
           { path: 'distribution/history', element: <Need permission="distribution.view"><DistributionHistoryPage /></Need> },
-          { path: 'distribution/:date', element: <Need permission="distribution.view"><DistributionPage /></Need> },
+          { path: 'distribution/:date', element: <Need permission="distribution.view"><DistributionReportPage /></Need> },
           { path: 'seals', element: <Need permission="seals.manage"><SealLedger><Outlet /></SealLedger></Need>, children: [
             { index: true, element: <SealIssuePage /> },
             { path: 'recent', element: <SealRecentPage /> },
@@ -113,7 +122,12 @@ export const router = createBrowserRouter([
             { path: 'log', element: <SealLogPage /> },
           ] },
           { path: 'attendance', element: <Need permission="attendance.view"><Board /></Need> },
-          { path: 'generation', element: <Need permission="generation.view"><GenerationPage /></Need> },
+          { path: 'generation', element: <Need permission="generation.view"><GenerationReportPage /></Need> },
+          { path: 'generation/:date', element: <Need permission="generation.view"><GenerationReportPage /></Need> },
+          { path: 'entry/:date', element: <Need permission="generation.fill"><GenerationEntryPage /></Need> },
+          { path: 'sheet', element: <Need permission="distribution.fill"><DistributionEntryPage /></Need> },
+          { path: 'sheet/:date', element: <Need permission="distribution.fill"><DistributionEntryPage /></Need> },
+          { path: 'distribution/entry/:date', element: <Need permission="distribution.fill"><DistributionEntryPage /></Need> },
           { path: 'attendance/points', element: <Need permission="attendance.points"><Points /></Need> },
           { path: 'employees/:id', element: <EmployeeFile /> },
           { path: '*', element: <Navigate to="/" replace /> },

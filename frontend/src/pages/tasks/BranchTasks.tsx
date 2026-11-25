@@ -1,6 +1,7 @@
 import { AlarmClock, CalendarDays, CheckCheck, ChevronLeft, ChevronRight, ListChecks, PhoneIncoming, Plus, Printer, Search, UserRound, X } from 'lucide-react'
-import { useState } from 'react'
+import { useState, type ReactNode } from 'react'
 import { Link } from 'react-router'
+import { can, useUser } from '../../app/auth'
 import { formatLongDate } from '../../lib/format'
 import { useDocumentTitle } from '../../lib/useDocumentTitle'
 import { ErrorBanner } from '../../ui/Field'
@@ -19,6 +20,7 @@ interface Props {
   today: string
   search: string
   canManage: boolean
+  subscriberImport?: ReactNode
   loading: boolean
   error: string | null
   onView(value: BranchTaskView): void
@@ -29,7 +31,8 @@ interface Props {
   onNew(prepare: boolean): void
 }
 
-export function BranchTasks({ view, tasks, options, day, today, search, canManage, loading, error, onView, onSearch, onDay, onStep, onOpen, onNew }: Props) {
+export function BranchTasks({ view, tasks, options, day, today, search, canManage, subscriberImport, loading, error, onView, onSearch, onDay, onStep, onOpen, onNew }: Props) {
+  const user = useUser()
   const [technician, setTechnician] = useState<number | null>(null)
   const active = tasks.filter((task) => !['new', 'done', 'cancelled'].includes(task.status))
   const waiting = tasks.filter((task) => task.status === 'new')
@@ -49,6 +52,7 @@ export function BranchTasks({ view, tasks, options, day, today, search, canManag
     <div className="tasks af-branch-tasks">
       <header className="ph">
         <div><h1>{title}</h1><p className="muted">جهّز المهمة وأرسلها للفني، ثم تابع وقت إنجازها.</p></div>
+        {subscriberImport && <div className="ph-actions">{subscriberImport}</div>}
       </header>
       <div className="task-search">
         <Search size={20} aria-hidden="true" />
@@ -82,6 +86,7 @@ export function BranchTasks({ view, tasks, options, day, today, search, canManag
       <div className="ph-actions task-actions">
         <Link className="btn tasks-daily-entry" to="/tasks/daily"><Printer size={18} /> كشف إنجاز الفنيين</Link>
         <Link className="btn" to="/tasks?view=archive"><ListChecks size={18} /> أرشيف الفنيين</Link>
+        {can(user, 'seals.view') && user.modules?.includes('seals') && <Link className="btn" to="/tasks/seal-work">كشف أعمال الأختام</Link>}
         <Link className="btn" to="/subscriber"><UserRound size={18} /> ملف مشترك</Link>
         {canManage && <>
           <Button icon={<Plus size={18} />} disabled={!options} onClick={() => onNew(false)}>مهمة جديدة</Button>

@@ -39,3 +39,8 @@
 .print-sheet .t-in { color: #0E6B3F; }
 .print-sheet .t-out { color: #7A1E55; }
 .print-sheet { -webkit-print-color-adjust: exact; print-color-adjust: exact; }
+
+@media print {
+  .report-page:has(.print-sheet) > :not(.print-sheet) { display: none !important; }
+  .report-page .print-sheet.landscape { page: attendance-landscape; }
+}

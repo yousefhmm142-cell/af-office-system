@@ -240,7 +240,7 @@ function PersonalDialog({ file, part, onClose, onSaved, onboarding = false }: { 
 
 function JobDialog({ file, onClose, onSaved }: { file: File_; onClose(): void; onSaved(f: File_): void }) {
   const j = file.job
-  const deps = useLoad<{ departments: Array<{ id: number; name: string; is_active: boolean }> }>('/departments')
+  const deps = useLoad<{ departments: Array<{ id: number; name: string; is_active: boolean }> }>(file.user.branch ? `/departments?branch_id=${file.user.branch.id}` : '/departments')
   const schedules = useLoad<{ schedules: Schedule[] }>(file.user.branch ? `/schedules?branch_id=${file.user.branch.id}` : null)
   const [form, setForm] = useState({
     job_title: j.job_title ?? '', department_id: String(j.department_id ?? ''), work_schedule_id: String(j.work_schedule_id ?? ''),

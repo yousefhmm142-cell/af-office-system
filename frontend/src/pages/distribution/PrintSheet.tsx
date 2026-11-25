@@ -24,7 +24,7 @@ const timeText = (z: ZoneEntry, i: number) => {
 }
 
 /** The sheet laid out like the paper form (landscape, runs 1–3 then 4–6), shown only when printing. */
-export function PrintSheet({ sheet, zoneNames }: { sheet: DistributionSheet; zoneNames: Map<number, string> }) {
+export function PrintSheet({ sheet, zoneNames, branchName }: { sheet: DistributionSheet; zoneNames: Map<number, string>; branchName?: string }) {
   const { weekday, date } = describeDay(sheet.sheetDate)
   // With the hourly table the runs keep their times only; the loads are in the table under them.
   const hourly = sheet.zones.some((z) => z.supplied && hasBandReadings(z.bands))
@@ -60,7 +60,7 @@ export function PrintSheet({ sheet, zoneNames }: { sheet: DistributionSheet; zon
       <header className="ps-head">
         <img src="/logo.webp" alt="" className="ps-logo" />
         <div className="ps-title">
-          <b>كشف متابعة التوزيع والأحمال فرع مخيم (2)</b>
+          <b>كشف متابعة التوزيع والأحمال{branchName && ` · ${branchName}`}</b>
           <span>شركة أبناء فارس أبو زايد</span>
         </div>
         <div className="ps-date">

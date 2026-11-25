@@ -1,4 +1,4 @@
-import { ChevronRight, LogOut, Settings } from 'lucide-react'
+import { BookOpen, ChevronRight, Ellipsis, LogOut, Settings } from 'lucide-react'
 import { useState } from 'react'
 import { Link, NavLink, Outlet, useLocation } from 'react-router'
 import { Avatar, Logo } from '../ui/primitives'
@@ -27,6 +27,7 @@ export function AppShell() {
   const items = navFor(user)
   const branchManager = user.role?.key === 'branch_manager'
   const settings = items.find((item) => item.to === '/settings')
+  const guide = { to: '/guide', label: 'دليل الاستخدام', icon: BookOpen }
   const unread = useUnread()
   const newTasks = useNewTasks(!!user.branch && !!user.modules?.includes('tasks'))
   const badge = (to: string) => {
@@ -39,10 +40,12 @@ export function AppShell() {
     try { localStorage.setItem(MINI_KEY, m ? '0' : '1') } catch { /* this visit only */ }
     return !m
   })
-  const primary = ['/', '/tasks', '/attendance', '/messages', '/settings']
-  const tabs = branchManager ? primary.flatMap((to) => items.filter((item) => item.to === to)) : items.slice(0, 5)
+  const primary = ['/', '/tasks', '/attendance', '/messages']
+  const tabs = branchManager
+    ? [...primary.flatMap((to) => items.filter((item) => item.to === to)), { to: '/more', label: 'المزيد', icon: Ellipsis }]
+    : items.slice(0, 5)
   const operatingRoutes = ['/', '/generation', '/distribution', '/tasks', '/attendance']
-  const followRoutes = ['/seals', '/attendance/me', '/my-tasks', '/messages', '/my-pay', '/me', '/branches', '/payroll', '/permissions', '/audit']
+  const followRoutes = ['/seals', '/tasks/seal-work', '/attendance/me', '/my-tasks', '/messages', '/my-pay', '/me', '/branches', '/payroll', '/permissions', '/audit']
   const operations = operatingRoutes.flatMap((to) => items.filter((item) => item.to === to))
   const follow = followRoutes.flatMap((to) => items.filter((item) => item.to === to))
 
@@ -81,7 +84,7 @@ export function AppShell() {
         </div>
         <div className="sb-foot">
           {branchManager && settings && <div className="sb-label">النظام</div>}
-          <nav className="sb-nav" aria-label="الحساب">{branchManager && settings && link(settings)}{link({ to: '/account', label: 'حسابي', icon: items[items.length - 1]!.icon })}</nav>
+          <nav className="sb-nav" aria-label="الحساب">{branchManager && settings && link(settings)}{branchManager && link(guide)}{link({ to: '/account', label: 'حسابي', icon: items[items.length - 1]!.icon })}</nav>
         </div>
       </aside>
 

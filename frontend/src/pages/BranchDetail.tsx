@@ -1,3 +1,4 @@
+import { BranchDepartments, BranchRoster } from './BranchPlanning'
 import { CalendarClock, Pencil, Plus, Trash2 } from 'lucide-react'
 import { useState, type FormEvent } from 'react'
 import { useParams } from 'react-router'
@@ -110,6 +111,8 @@ export function BranchDetail() {
           </ScrollTable>
         ) : <p className="eyebrow">لا توجد دوامات لهذا الفرع.</p>}
       </section>
+      {can(me, 'departments.manage') && <BranchDepartments key={branch.id} branch={branch.id} />}
+      {manageSchedules && <BranchRoster key={branch.id} branch={branch.id} staff={staff.data?.users ?? []} schedules={schedules} />}
       {editing && <ScheduleDialog branchId={branch.id} schedule={editing === 'new' ? null : editing} onClose={() => setEditing(null)} onSaved={() => { setEditing(null); void reload() }} />}
     </>
   )
@@ -121,6 +124,7 @@ function ScheduleDialog({ branchId, schedule, onClose, onSaved }: { branchId: nu
     name: schedule?.name ?? '',
     start_time: schedule?.start_time ?? '08:00',
     end_time: schedule?.end_time ?? '16:00',
+    overnight: !!schedule && schedule.end_time < schedule.start_time,
     grace_minutes: String(schedule?.grace_minutes ?? 10),
     work_days: schedule?.work_days ?? [1, 2, 3, 4, 5, 6, 7],
     is_default: schedule?.is_default ?? false,
@@ -153,6 +157,7 @@ function ScheduleDialog({ branchId, schedule, onClose, onSaved }: { branchId: nu
           <Field label="البداية" error={fields.start_time}>{(id) => <TimeField id={id} label="بداية الدوام" value={form.start_time} onChange={(value) => set('start_time', value)} />}</Field>
           <Field label="النهاية" error={fields.end_time}>{(id) => <TimeField id={id} label="نهاية الدوام" value={form.end_time} onChange={(value) => set('end_time', value)} />}</Field>
         </div>
+        <Switch label="الانصراف في اليوم التالي" on={form.overnight} onChange={v => set('overnight', v)} />
         <Field label="دقائق السماح للتأخير" error={fields.grace_minutes}>{(id) => <input id={id} className="input num" type="number" min={0} max={120} value={form.grace_minutes} onChange={(e) => set('grace_minutes', e.target.value)} />}</Field>
         <div className="field">
           <label>أيام الدوام</label>

@@ -10,7 +10,7 @@ export interface Totals { days: number; worked_minutes: number; late_minutes: nu
 export interface PunchResult { ok: boolean; status: string; message: string; wait_until: string | null; day: Day | null }
 export interface Mine {
   month: string; today: string; next: { status: string; message: string; wait_until: string | null }
-  today_day: Day | null; schedule: { name: string; start_time: string; end_time: string } | null; days: Day[]; totals: Totals
+  is_work_day?: boolean; today_day: Day | null; schedule: { name: string; start_time: string; end_time: string } | null; days: Day[]; totals: Totals
 }
 export interface BoardRow { user: { id: number; name: string; job_title: string | null }; state: State; schedule: string | null; schedule_name?: string | null; day: Day | null }
 export type State = 'present' | 'late' | 'left' | 'absent' | 'not_yet' | 'off'

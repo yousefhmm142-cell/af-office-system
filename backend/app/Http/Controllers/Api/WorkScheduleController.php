@@ -11,6 +11,7 @@ use Illuminate\Http\JsonResponse;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Validation\Rule;
+use Illuminate\Validation\ValidationException;
 
 class WorkScheduleController extends Controller
 {
@@ -88,8 +89,9 @@ class WorkScheduleController extends Controller
 
         $start = $data['start_time'] ?? substr((string) $schedule?->start_time, 0, 5);
         $end = $data['end_time'] ?? substr((string) $schedule?->end_time, 0, 5);
-        if ($end <= $start) {
-            throw \Illuminate\Validation\ValidationException::withMessages(['end_time' => 'يجب أن يكون وقت نهاية الدوام بعد بدايته.']);
+        $overnight = $request->validate(['overnight' => ['sometimes', 'boolean']])['overnight'] ?? ($schedule && $schedule->end_time < $schedule->start_time);
+        if ($end === $start || (($end < $start) !== (bool) $overnight)) {
+            throw ValidationException::withMessages(['end_time' => 'تحقق من وقت النهاية وخيار الانصراف في اليوم التالي.']);
         }
         if (isset($data['work_days'])) {
             $data['work_days'] = collect($data['work_days'])->map(fn ($d) => (int) $d)->sort()->values()->all();

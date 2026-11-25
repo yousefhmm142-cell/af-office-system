@@ -107,6 +107,16 @@ class AttendanceService
         return DB::transaction(function () use ($user, $o, $at, $date, $point, $offline, $cfg) {
             // One punch at a time per person.
             User::whereKey($user->id)->lockForUpdate()->first();
+            $local = $at->setTimezone($this->tz());
+            $previousDate = $local->subDay();
+            $previous = AttendanceDay::where('user_id', $user->id)->where('date', $previousDate->toDateString())->whereNotNull('check_in')->first();
+            $recentCheckout = $previous?->check_out && $at->betweenIncluded($previous->check_out, $previous->check_out->copy()->addMinutes($cfg['repeat_minutes']));
+            if ($previous && (! $previous->check_out || $recentCheckout)) {
+                $shift = $this->scheduleFor($user, $previousDate);
+                if ($shift && $shift->end_time < $shift->start_time && $local->format('H:i') < substr($shift->start_time, 0, 5)) {
+                    $date = $previousDate->toDateString();
+                }
+            }
             $day = AttendanceDay::where('user_id', $user->id)->where('date', $date)->first();
 
             $next = $this->nextStep($day, $at, $cfg);
@@ -159,8 +169,8 @@ class AttendanceService
     public function recompute(AttendanceDay $day, ?User $user = null): void
     {
         $user ??= $day->user;
-        $schedule = $this->scheduleFor($user);
         $date = CarbonImmutable::parse($day->date->format('Y-m-d'), $this->tz());
+        $schedule = $this->scheduleFor($user, $date);
         $workDay = $schedule ? $this->isWorkDay($schedule, $date, $user->branch_id) : true;
 
         $day->work_schedule_id = $schedule?->id;
@@ -174,6 +184,9 @@ class AttendanceService
         if ($schedule && $workDay) {
             $start = $date->setTimeFromTimeString((string) $schedule->start_time);
             $end = $date->setTimeFromTimeString((string) $schedule->end_time);
+            if ($end->lessThan($start)) {
+                $end = $end->addDay();
+            }
             if ($in && $in->greaterThan($start->addMinutes($schedule->grace_minutes))) {
                 $late = intdiv((int) $start->diffInSeconds($in), 60);
             }
@@ -190,11 +203,24 @@ class AttendanceService
         $day->overtime_minutes = min($overtime, 65535);
     }
 
-    public function scheduleFor(User $user): ?WorkSchedule
+    public function scheduleFor(User $user, ?CarbonImmutable $date = null): ?WorkSchedule
+    {
+        $snapshot = DB::table('employee_shifts')->where('user_id', $user->id)->where('branch_id', $user->branch_id)
+            ->where('date', ($date ?? $this->now())->toDateString())->value('schedule');
+
+        return $snapshot ? $this->fromSnapshot($snapshot) : $this->baseSchedule($user);
+    }
+
+    public function fromSnapshot(string $snapshot): WorkSchedule
+    {
+        return (new WorkSchedule)->forceFill(json_decode($snapshot, true, flags: JSON_THROW_ON_ERROR));
+    }
+
+    public function baseSchedule(User $user): ?WorkSchedule
     {
         $user->loadMissing('employee');
         if ($user->employee?->work_schedule_id) {
-            $s = WorkSchedule::find($user->employee->work_schedule_id);
+            $s = WorkSchedule::where('branch_id', $user->branch_id)->find($user->employee->work_schedule_id);
             if ($s) {
                 return $s;
             }

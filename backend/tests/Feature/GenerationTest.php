@@ -39,8 +39,11 @@ class GenerationTest extends TestCase
         $this->putJson($url, $body)->assertConflict();
         $this->postJson("{$url}/submit", ['version' => 1])->assertOk()->assertJsonPath('report.status', 'submitted');
         $this->postJson("{$url}/approve", ['version' => 2])->assertOk()->assertJsonPath('report.status', 'approved');
-        $this->postJson("{$url}/return", ['version' => 3])->assertUnprocessable();
-        $this->postJson("{$url}/return", ['version' => 3, 'reason' => 'مراجعة الرصيد'])->assertOk()
+        $this->putJson($url, array_replace($body, ['version' => 3]))->assertConflict();
+        $this->putJson($url, array_replace($body, ['version' => 3, 'edit_closed' => true, 'generalNotes' => 'تعديل المدير']))
+            ->assertOk()->assertJsonPath('report.status', 'approved')->assertJsonPath('report.generalNotes', 'تعديل المدير');
+        $this->postJson("{$url}/return", ['version' => 4])->assertUnprocessable();
+        $this->postJson("{$url}/return", ['version' => 4, 'reason' => 'مراجعة الرصيد'])->assertOk()
             ->assertJsonPath('report.status', 'returned');
         $this->getJson("{$url}?branch_id={$other->id}")->assertForbidden();
         $this->actAs(Role::EMPLOYEE, $branch);

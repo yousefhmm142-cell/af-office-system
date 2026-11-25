@@ -9,6 +9,7 @@ import { Loading, PageHead } from '../../ui/PageHead'
 import { Avatar, Button, Pill } from '../../ui/primitives'
 import { TaskArchive } from './TaskArchive'
 import { BranchTasks, type BranchTaskView } from './BranchTasks'
+import { SubscriberImport } from './SubscriberImport'
 import { NewTask } from './NewTask'
 import { TaskSheet } from './TaskSheet'
 import { PRIORITY, durationText, useMinutesSince, type Options, type Task } from './lib'
@@ -37,7 +38,11 @@ export function TasksBoard() {
   const [q, setQ] = useState('')
   const [params, setParams] = useSearchParams()
   const archive = manager && params.get('view') === 'archive'
-  const { data, error, loading, reload } = useLoad<{ tasks: Task[]; can_manage: boolean }>(chosen && !archive ? `/tasks?branch_id=${chosen}&day=${day}${q ? `&search=${encodeURIComponent(q)}` : ''}` : null)
+  const { data: taskData, error, loading, reload } = useLoad<{ branch_id: number; tasks: Task[]; can_manage: boolean }>(chosen && !archive ? `/tasks?branch_id=${chosen}&day=${day}${q ? `&search=${encodeURIComponent(q)}` : ''}` : null)
+  const data = taskData && String(taskData.branch_id) === chosen ? taskData : null
+  const branchName = branches.data?.branches.find((branch) => String(branch.id) === chosen)?.name ?? me.branch?.name
+  const subscriberImport = data?.can_manage && chosen
+    ? <SubscriberImport key={chosen} branchId={chosen} branchName={branchName} /> : null
   const options = useLoad<Options>(chosen ? `/tasks/options?branch_id=${chosen}` : null)
   const preparing = manager && params.get('new') === 'prepare'
   const status = params.get('status')
@@ -65,11 +70,11 @@ export function TasksBoard() {
   if (manager) return (
     <>
       {archive ? <TaskArchive branch={chosen} branchName={me.branch?.name} options={options.data} today={todayGaza()} onOpen={setOpen} /> : <BranchTasks view={managerView} tasks={tasks} options={options.data} day={day} today={todayGaza()} search={search}
-        canManage={data?.can_manage ?? false} loading={loading} error={error}
+        canManage={data?.can_manage ?? false} subscriberImport={subscriberImport} loading={loading} error={error}
         onView={(view) => setParams((current) => { const next = new URLSearchParams(current); next.set('status', view); return next }, { replace: true })}
         onSearch={setSearch} onDay={setDay} onStep={(amount) => setDay(shiftDay(day, amount))}
         onOpen={setOpen} onNew={(prepare) => setCreating(true, prepare)} />}
-      {creating && data?.can_manage && options.data && <NewTask branchStyle prepare={preparing} options={options.data}
+      {creating && data?.can_manage && options.data && String(options.data.branch_id) === chosen && <NewTask branchStyle prepare={preparing} options={options.data}
         onClose={() => setCreating(false)}
         onSaved={(task, keepOpen) => {
           if (keepOpen) {
@@ -103,6 +108,7 @@ export function TasksBoard() {
       <PageHead title="المهام الميدانية" eyebrow={dayLabel(day)}
         actions={data && (
           <>
+            {subscriberImport}
             <Link to="/tasks/daily" className="btn">كشف إنجاز الفنيين</Link>
             {data.can_manage && <Link to={`/tasks/settings?branch_id=${chosen}`} className="btn"><Settings2 size={18} /> الأنواع والمناطق</Link>}
             {data.can_manage && <Button variant="primary" size="lg" icon={<ClipboardPlus size={20} />} disabled={!options.data} onClick={() => setCreating(true)}>مهمة جديدة</Button>}
@@ -145,7 +151,7 @@ export function TasksBoard() {
         </div>
       )}
 
-      {creating && data?.can_manage && options.data && <NewTask options={options.data} onClose={() => setCreating(false)} onSaved={(t) => { setCreating(false); void reload(); void options.reload(); setOpen(t.id) }} />}
+      {creating && data?.can_manage && options.data && String(options.data.branch_id) === chosen && <NewTask options={options.data} onClose={() => setCreating(false)} onSaved={(t) => { setCreating(false); void reload(); void options.reload(); setOpen(t.id) }} />}
       {open && <TaskSheet id={open} options={options.data} onClose={() => setOpen(null)} onChanged={() => { void reload(); void options.reload() }} />}
     </>
   )

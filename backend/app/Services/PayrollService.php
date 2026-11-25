@@ -197,7 +197,7 @@ class PayrollService
         $start = CarbonImmutable::parse("{$month}-01", $tz);
         $end = $start->endOfMonth();
         $today = CarbonImmutable::now($tz)->startOfDay();
-        $schedule = $this->attendance->scheduleFor($user);
+        $schedule = $this->attendance->baseSchedule($user);
         $hire = $user->employee?->hire_date ? CarbonImmutable::parse($user->employee->hire_date->format('Y-m-d'), $tz) : null;
 
         $holidays = Holiday::whereBetween('date', [$start->toDateString(), $end->toDateString()])
@@ -208,10 +208,12 @@ class PayrollService
         $days = AttendanceDay::where('user_id', $user->id)->whereBetween('date', [$start->toDateString(), $end->toDateString()])->get()
             ->keyBy(fn ($d) => $d->date->format('Y-m-d'));
 
+        $shifts = DB::table('employee_shifts')->where('user_id', $user->id)->where('branch_id', $user->branch_id)
+            ->whereBetween('date', [$start->toDateString(), $end->toDateString()])->pluck('is_rest', 'date');
         $monthWork = 0;
         $absent = 0;
         for ($d = $start; $d->lte($end); $d = $d->addDay()) {
-            $isWork = in_array($d->dayOfWeekIso, $workDays, true) && ! isset($holidays[$d->toDateString()]);
+            $isWork = ($shifts->has($d->toDateString()) ? ! $shifts[$d->toDateString()] : in_array($d->dayOfWeekIso, $workDays, true)) && ! isset($holidays[$d->toDateString()]);
             if (! $isWork) {
                 continue;
             }

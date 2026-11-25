@@ -3,6 +3,7 @@
 namespace App\Http\Controllers\Api;
 
 use App\Http\Controllers\Controller;
+use App\Http\Present;
 use App\Models\AttendanceDay;
 use App\Models\AttendanceEdit;
 use App\Models\AttendancePunch;
@@ -65,8 +66,9 @@ class AttendanceController extends Controller
             'month' => $month,
             'today' => $this->svc->now()->toDateString(),
             'next' => ['status' => $next['status'], 'message' => $next['message'], 'wait_until' => $next['wait_until'] ?? null],
+            'is_work_day' => ! $schedule || $this->svc->isWorkDay($schedule, $this->svc->now(), $user->branch_id),
             'today_day' => $next['day'] ? $this->day($next['day']) : null,
-            'schedule' => $schedule ? \App\Http\Present::schedule($schedule) : null,
+            'schedule' => $schedule ? Present::schedule($schedule) : null,
             'days' => $days->map(fn ($d) => $this->day($d)),
             'totals' => $this->totals($days),
         ]);
@@ -123,13 +125,18 @@ class AttendanceController extends Controller
         $holidayBranches = Holiday::where('date', $date)
             ->where(fn ($query) => $query->whereNull('branch_id')->orWhereIn('branch_id', $branchIds))
             ->pluck('branch_id');
+        $snapshots = DB::table('employee_shifts')->whereIn('branch_id', $branchIds)->where('date', $date)->get()->keyBy('user_id');
         $companyHoliday = $holidayBranches->containsStrict(null);
 
         return $people->groupBy('branch_id')->map(fn ($branchPeople) => $branchPeople->map(function (User $user) use (
-            $days, $dayDate, $now, $defaultSchedules, $holidayBranches, $companyHoliday
+            $days, $dayDate, $now, $defaultSchedules, $holidayBranches, $companyHoliday, $snapshots
         ) {
             $day = $days->get($user->id);
             $schedule = $user->employee?->schedule ?? $defaultSchedules->get($user->branch_id);
+            $shift = $snapshots->get($user->id);
+            if ($shift && $shift->branch_id == $user->branch_id) {
+                $schedule = $this->svc->fromSnapshot($shift->schedule);
+            }
             $work = ! $companyHoliday && ! $holidayBranches->contains($user->branch_id)
                 && (! $schedule || in_array($dayDate->dayOfWeekIso, $schedule->work_days ?? [], true));
             $state = match (true) {
@@ -143,8 +150,8 @@ class AttendanceController extends Controller
             return [
                 'user' => ['id' => $user->id, 'name' => $user->name, 'job_title' => $user->employee?->job_title ?? $user->role?->name],
                 'state' => $state,
-                'schedule_name' => $schedule?->name,
-                'schedule' => $schedule ? substr((string) $schedule->start_time, 0, 5).'–'.substr((string) $schedule->end_time, 0, 5) : null,
+                'schedule_name' => $shift?->is_rest ? 'راحة أسبوعية' : $schedule?->name,
+                'schedule' => $schedule && ! $shift?->is_rest ? substr((string) $schedule->start_time, 0, 5).'–'.substr((string) $schedule->end_time, 0, 5) : null,
                 'day' => $day ? $this->day($day) : null,
             ];
         }));
@@ -208,11 +215,18 @@ class AttendanceController extends Controller
         $tz = $this->svc->tz();
         $in = $data['check_in'] ? CarbonImmutable::parse("{$data['date']} {$data['check_in']}", $tz)->utc() : null;
         $out = $data['check_out'] ? CarbonImmutable::parse("{$data['date']} {$data['check_out']}", $tz)->utc() : null;
+        if ($in && $out && $out->lt($in)) {
+            $shift = $this->svc->scheduleFor($target, CarbonImmutable::parse($data['date'], $tz));
+            if ($shift && $shift->end_time < $shift->start_time) {
+                $out = $out->setTimezone($tz)->addDay()->utc();
+            }
+        }
         if ($in && $out && $out->lessThanOrEqualTo($in)) {
             throw ValidationException::withMessages(['check_out' => 'يجب أن يكون الانصراف بعد الحضور.']);
         }
 
-        $day = DB::transaction(function () use ($target, $data, $in, $out, $actor, $tz) {
+        $day = DB::transaction(function () use ($target, $data, $in, $out, $actor) {
+            User::whereKey($target->id)->lockForUpdate()->firstOrFail();
             $day = AttendanceDay::firstOrNew(['user_id' => $target->id, 'date' => $data['date']]);
             $old = $day->exists ? ['check_in' => $this->hm($day->check_in), 'check_out' => $this->hm($day->check_out)] : null;
             $day->branch_id ??= $target->branch_id;
@@ -289,15 +303,15 @@ class AttendanceController extends Controller
 
     private function isAbsent(CarbonImmutable $date, CarbonImmutable $now, $schedule): bool
     {
-        if ($date->toDateString() < $now->toDateString()) {
-            return true;
+        if (! $schedule) {
+            return $date->toDateString() < $now->toDateString();
         }
-        if ($date->toDateString() > $now->toDateString() || ! $schedule) {
-            return false;
+        $cut = $date->setTimeFromTimeString($schedule->absent_after ?: $schedule->end_time);
+        if ($schedule->end_time < $schedule->start_time && $cut->lt($date->setTimeFromTimeString($schedule->start_time))) {
+            $cut = $cut->addDay();
         }
-        $cut = $schedule->absent_after ?: $schedule->end_time;
 
-        return $now->format('H:i:s') >= (string) $cut;
+        return $now->gte($cut);
     }
 
     private function monthRange(string $month): array

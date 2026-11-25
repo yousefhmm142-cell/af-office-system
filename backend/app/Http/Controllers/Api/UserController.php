@@ -4,6 +4,7 @@ namespace App\Http\Controllers\Api;
 
 use App\Http\Controllers\Controller;
 use App\Http\Present;
+use App\Models\Branch;
 use App\Models\Role;
 use App\Models\User;
 use App\Support\Access;
@@ -66,12 +67,25 @@ class UserController extends Controller
         $data['branch_id'] = $this->branchFor($role, $data['branch_id'] ?? null);
         $this->assertCanManage($actor, $role, $data['branch_id']);
 
+        $job = $request->validate([
+            'department_id' => ['sometimes', 'required', Rule::exists('branch_department', 'department_id')->where('branch_id', $data['branch_id']), Rule::exists('departments', 'id')->whereNull('deleted_at')->where('is_active', true)],
+            'salary_type' => ['sometimes', 'required', Rule::in(['monthly', 'weekly', 'daily', 'contract'])],
+            'work_schedule_id' => ['sometimes', 'nullable', Rule::exists('work_schedules', 'id')->where('branch_id', $data['branch_id'])->whereNull('deleted_at')],
+        ]);
+        if ($job) {
+            self::assertCanManage($actor, $role, $data['branch_id'], 'employees.manage');
+        }
+
         // The person sets their own password the first time they sign in.
-        $user = DB::transaction(function () use ($data, $role) {
+        $user = DB::transaction(function () use ($data, $role, $job) {
             $user = User::create($data + [
                 'must_change_password' => true,
                 'needs_profile_completion' => $role->key !== Role::SUPER_ADMIN,
             ]);
+            if ($job) {
+                $user->employee()->update($job);
+                Audit::log('employee.job', $user, null, $job);
+            }
             Audit::log('user.created', $user, null, $user->only('name', 'username', 'role_id', 'branch_id', 'is_active'));
 
             return $user;
@@ -115,7 +129,7 @@ class UserController extends Controller
         }
         // A manager moved out of a branch no longer manages it.
         if (array_key_exists('branch_id', $new) || array_key_exists('role_id', $new) || ($new['is_active'] ?? null) === false) {
-            \App\Models\Branch::where('manager_user_id', $user->id)->where('id', '!=', $user->branch_id ?? 0)->update(['manager_user_id' => null]);
+            Branch::where('manager_user_id', $user->id)->where('id', '!=', $user->branch_id ?? 0)->update(['manager_user_id' => null]);
         }
 
         return response()->json(['user' => Present::user($user->fresh())]);
@@ -148,7 +162,7 @@ class UserController extends Controller
         abort_if($actor->id === $user->id, 403, 'لا يمكنك حذف حسابك بنفسك.');
         $this->assertCanManage($actor, $user->role, $user->branch_id);
         $user->tokens()->delete();
-        \App\Models\Branch::where('manager_user_id', $user->id)->update(['manager_user_id' => null]);
+        Branch::where('manager_user_id', $user->id)->update(['manager_user_id' => null]);
         $user->delete();
         Audit::log('user.deleted', $user, $user->only('name', 'username', 'role_id', 'branch_id'));
 

@@ -9,6 +9,7 @@ use App\Support\Access;
 use App\Support\Audit;
 use App\Support\DistributionLoads;
 use Carbon\CarbonImmutable;
+use Illuminate\Database\Query\Builder;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\DB;
@@ -52,6 +53,7 @@ class GenerationController extends Controller
         $number = ['nullable', 'numeric', 'min:0', 'max:99999999'];
         $clock = ['nullable', 'date_format:H:i'];
         $data = $request->validate([
+            'edit_closed' => ['sometimes', 'boolean'],
             'version' => ['required', 'integer', 'min:0'],
             'fuel' => ['present', 'array', 'list', 'max:50'],
             'fuel.*' => ['array:id,fuelTypeId,openingBalance,receivedQty,closingBalance,shipmentNo,supplier,unitPrice,notes'],
@@ -96,18 +98,27 @@ class GenerationController extends Controller
             'generalNotes' => ['nullable', 'string', 'max:4000'],
         ]);
 
-        $report = DB::transaction(function () use ($branch, $date, $data, $request) {
+        $editClosed = $request->boolean('edit_closed');
+        abort_if($editClosed && ! Access::allowsBranch($request->user(), 'generation.approve', $branch->id), 403);
+
+        $report = DB::transaction(function () use ($branch, $date, $data, $request, $editClosed) {
             Branch::whereKey($branch->id)->lockForUpdate()->firstOrFail();
             $query = $this->reports($branch)->where('report_date', $date);
             $current = $query->first();
             abort_if((int) ($current->version ?? 0) !== (int) $data['version'], 409, 'حُدّث التقرير. أعد فتحه قبل الحفظ.');
-            abort_if($current && ! in_array($current->status, ['draft', 'returned'], true), 409, 'التقرير مغلق. أعد فتحه قبل التعديل.');
+            $closed = $current && in_array($current->status, ['submitted', 'approved'], true);
+            abort_if($closed && ! $editClosed, 409, 'التقرير مغلق. أعد فتحه قبل التعديل.');
+            abort_if($editClosed && ! $closed, 409, 'تغيّرت حالة السجل. افتحه مرة أخرى.');
             $previous = $this->reports($branch)->where('report_date', '<', $date)->whereIn('status', ['submitted', 'approved'])
                 ->orderByDesc('report_date')->first();
             $figures = $this->figures($data, $previous);
             $values = ['figures' => json_encode($figures, JSON_THROW_ON_ERROR), 'version' => $data['version'] + 1, 'updated_at' => now()];
             if ($current) {
                 $query->update($values);
+                if ($editClosed) {
+                    Audit::log('generation.edit_closed', null, ['version' => $current->version],
+                        ['date' => $date, 'version' => $values['version'], 'status' => $current->status], null, $branch->id);
+                }
             } else {
                 DB::table('generation_reports')->insert($values + [
                     'branch_id' => $branch->id, 'report_date' => $date, 'created_by' => $request->user()->id, 'created_at' => now(),
@@ -149,6 +160,7 @@ class GenerationController extends Controller
             abort_unless(in_array($current->status, $allowed, true), 409, 'لا يمكن تنفيذ هذا الإجراء في حالة التقرير الحالية.');
             $query->update($changes + ['version' => $current->version + 1, 'updated_at' => $now]);
             Audit::log('generation.'.$action, null, ['status' => $current->status], ['date' => $date, 'status' => $changes['status']], $data['reason'] ?? null, $branch->id);
+
             return $query->first();
         });
 
@@ -206,7 +218,7 @@ class GenerationController extends Controller
         validator(['date' => $date], ['date' => ['required', 'date_format:Y-m-d', 'before_or_equal:'.CarbonImmutable::now(config('app.business_timezone'))->toDateString()]])->validate();
     }
 
-    private function reports(Branch $branch): \Illuminate\Database\Query\Builder
+    private function reports(Branch $branch): Builder
     {
         return DB::table('generation_reports')->where('branch_id', $branch->id);
     }

@@ -408,3 +408,10 @@
 
 }
 @keyframes live-pulse { to { box-shadow: 0 0 0 8px transparent; } }
+
+.gen-page .report-page .ph-actions {
+  margin-inline-start: auto;
+  display: flex;
+  gap: 8px;
+  flex-wrap: wrap;
+}

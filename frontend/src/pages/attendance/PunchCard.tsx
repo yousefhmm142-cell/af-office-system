@@ -95,7 +95,7 @@ export function PunchCard() {
   return (
     <section className="card glass af-punch" data-state={next.status}>
       <div className="af-punch-info">
-        <p className="eyebrow">حضور اليوم{data.schedule ? ` · دوامك ${data.schedule.start_time}–${data.schedule.end_time}` : ''}</p>
+        <p className="eyebrow">حضور اليوم{data.is_work_day === false ? ' · يوم راحة' : data.schedule ? ` · دوامك ${data.schedule.start_time}–${data.schedule.end_time}` : ''}</p>
         <div className="af-punch-times">
           <span><LogIn size={16} /> حضور <b className="num">{day?.check_in ?? '—'}</b></span>
           <span><LogOut size={16} /> انصراف <b className="num">{day?.check_out ?? '—'}</b></span>

@@ -17,6 +17,7 @@ export function navFor(user: User): NavItem[] {
   if (can(user, 'generation.view') && user.modules?.includes('generation')) items.push({ to: '/generation', label: 'التوليد', icon: Zap })
   if (can(user, 'distribution.view') && user.modules?.includes('distribution')) items.push({ to: '/distribution', label: 'التوزيع', icon: LayoutGrid })
   if (can(user, 'seals.manage') && user.modules?.includes('seals')) items.push({ to: '/seals', label: 'الأختام', icon: Stamp })
+  if (can(user, 'seals.view') && user.modules?.includes('seals')) items.push({ to: '/tasks/seal-work', label: 'كشف أعمال الأختام', icon: ClipboardList })
   if (can(user, 'branches.view')) items.push({ to: '/branches', label: 'الفروع', icon: Building2 })
   if (can(user, 'users.view')) items.push({ to: '/users', label: 'الموظفين', icon: Users })
   if (can(user, 'permissions.manage')) items.push({ to: '/permissions', label: 'الصلاحيات', icon: KeyRound })

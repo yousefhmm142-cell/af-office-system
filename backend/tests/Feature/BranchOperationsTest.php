@@ -28,6 +28,9 @@ class BranchOperationsTest extends TestCase
         $this->postJson("{$url}/submit", ['version' => 1])->assertOk();
         $this->getJson('/api/dashboard/branch-operations')->assertOk()->assertJsonPath('sheets.0.status', 'submitted');
         $this->postJson("{$url}/approve", ['version' => 2])->assertOk()->assertJsonPath('sheet.status', 'approved');
+        $this->putJson($url, array_replace($body, ['version' => 3]))->assertConflict();
+        $this->putJson($url, array_replace($body, ['version' => 3, 'edit_closed' => true, 'notes' => 'تعديل المدير']))
+            ->assertOk()->assertJsonPath('sheet.status', 'approved')->assertJsonPath('sheet.notes', 'تعديل المدير');
         $this->getJson("{$url}?branch_id={$elsewhere->id}")->assertForbidden();
         BranchModule::updateOrCreate(['branch_id' => $branch->id, 'module' => 'distribution'], ['is_enabled' => false]);
         $this->getJson($url)->assertForbidden();

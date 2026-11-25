@@ -2,7 +2,7 @@ import { KeyRound, Lock, Pencil, Plus, Search, Trash2, UserPlus } from 'lucide-r
 import { useMemo, useState, type FormEvent } from 'react'
 import { Link, useSearchParams } from 'react-router'
 import { api, ApiError } from '../api/client'
-import { STATUS_LABEL, type Branch, type Role, type User } from '../api/types'
+import { SALARY_TYPES, type Schedule, STATUS_LABEL, type Branch, type Role, type User } from '../api/types'
 import { can, scopeOf, useUser } from '../app/auth'
 import { useLoad } from '../lib/useLoad'
 import { useConfirm } from '../ui/Confirm'
@@ -140,6 +140,7 @@ function UserDialog({ user, roles, branches, onClose, onSaved, branchStyle }: { 
   const assignable = roles.filter((r) => r.assignable || r.id === user?.role?.id)
   const [form, setForm] = useState({
     name: user?.name ?? '',
+    department_id: '', salary_type: '', work_schedule_id: '',
     username: user?.username ?? '',
     password: user ? '' : tempPassword(),
     role_id: String(user?.role?.id ?? assignable.find((r) => r.key === 'employee')?.id ?? ''),
@@ -152,10 +153,15 @@ function UserDialog({ user, roles, branches, onClose, onSaved, branchStyle }: { 
   const set = (k: keyof typeof form, v: string) => setForm((f) => ({ ...f, [k]: v }))
   const role = roles.find((r) => String(r.id) === form.role_id)
 
+  const hiring = !user && role?.key === 'employee' && !!form.branch_id && can(me, 'employees.manage')
+  const departments = useLoad<{ departments: { id: number; name: string; is_active: boolean }[] }>(hiring ? `/departments?branch_id=${form.branch_id}` : null)
+  const schedules = useLoad<{ schedules: Schedule[] }>(hiring && can(me, 'schedules.view') ? `/schedules?branch_id=${form.branch_id}` : null)
+
   async function save(e?: FormEvent) {
     e?.preventDefault()
     setBusy(true); setFields({}); setError(null)
     const body: Record<string, unknown> = { name: form.name, username: form.username, role_id: Number(form.role_id), branch_id: form.branch_id ? Number(form.branch_id) : null }
+    if (hiring) Object.assign(body, { department_id: form.department_id, salary_type: form.salary_type, work_schedule_id: form.work_schedule_id || null })
     try {
       if (user) {
         await api(`/users/${user.id}`, { method: 'PATCH', body })
@@ -215,7 +221,7 @@ function UserDialog({ user, roles, branches, onClose, onSaved, branchStyle }: { 
           </Field>
           <Field label="الفرع" error={fields.branch_id} hint={role && !role.needs_branch ? 'اتركه فارغاً إذا كان يعمل على جميع الفروع' : undefined}>
             {(id) => (
-              <select id={id} className="input select" value={form.branch_id} onChange={(e) => set('branch_id', e.target.value)} disabled={scopeOf(me, 'users.manage') === 'branch'}>
+              <select id={id} className="input select" value={form.branch_id} onChange={(e) => setForm({ ...form, branch_id: e.target.value, department_id: '', work_schedule_id: '' })} disabled={scopeOf(me, 'users.manage') === 'branch'}>
                 {!role?.needs_branch && <option value="">— كل الفروع —</option>}
                 {role?.needs_branch && !form.branch_id && <option value="">اختر الفرع</option>}
                 {branches.map((b) => <option key={b.id} value={b.id}>{b.name}</option>)}
@@ -223,6 +229,15 @@ function UserDialog({ user, roles, branches, onClose, onSaved, branchStyle }: { 
             )}
           </Field>
         </div>
+        {hiring && <>
+          <Field label="قسم الموظف" error={fields.department_id} hint="تُحدّد الأقسام الوظيفية من صفحة الفرع">{id => <select id={id} className="input select" value={form.department_id} onChange={e => set('department_id', e.target.value)}>
+            <option value="">اختر القسم</option>{!departments.loading && departments.data?.departments.filter(d => d.is_active).map(d => <option key={d.id} value={d.id}>{d.name}</option>)}</select>}</Field>
+          <Field label="نوع الراتب" error={fields.salary_type}>{id => <select id={id} className="input select" value={form.salary_type} onChange={e => set('salary_type', e.target.value)}>
+            <option value="">اختر نوع الراتب</option>{SALARY_TYPES.map(([key, name]) => <option key={key} value={key}>{name}</option>)}</select>}</Field>
+          <Field label="الدوام الأساسي" error={fields.work_schedule_id}>{id => <select id={id} className="input select" value={form.work_schedule_id} onChange={e => set('work_schedule_id', e.target.value)}>
+            <option value="">الأساسي للفرع</option>{!schedules.loading && schedules.data?.schedules.map(s => <option key={s.id} value={s.id}>{s.name}</option>)}</select>}</Field>
+          <ErrorBanner text={departments.error || schedules.error} />
+        </>}
         <ErrorBanner text={error} />
       </form>
     </Dialog>

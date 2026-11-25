@@ -1,14 +1,13 @@
-import { CheckCheck, ClipboardPlus, MessageCircle, PhoneIncoming, Save, Send, UserRound } from 'lucide-react'
-import { useMemo, useRef, useState } from 'react'
+import { CheckCheck, ClipboardPlus, MessageCircle, PhoneIncoming, Save, Send } from 'lucide-react'
+import { useMemo, useState } from 'react'
 import { api, ApiError } from '../../api/client'
 import { useLoad } from '../../lib/useLoad'
-import { useConfirm } from '../../ui/Confirm'
 import { Dialog } from '../../ui/Dialog'
 import { ErrorBanner, Field } from '../../ui/Field'
 import { Avatar, Button } from '../../ui/primitives'
 import { useToast } from '../../ui/Toast'
 import { SubscriberField } from './SubscriberField'
-import { readSubscribersFile, type Subscriber } from './subscribers'
+import { type Subscriber } from './subscribers'
 import { MINUTES, PRIORITY, durationText, whatsappText, whatsappUrl, type Options, type Priority, type Task } from './lib'
 
 /**
@@ -17,11 +16,8 @@ import { MINUTES, PRIORITY, durationText, whatsappText, whatsappUrl, type Option
  */
 export function NewTask({ options, onClose, onSaved, branchStyle = false, prepare = false }: { options: Options; branchStyle?: boolean; prepare?: boolean; onClose(): void; onSaved(t: Task, keepOpen?: boolean): void }) {
   const toast = useToast()
-  const confirm = useConfirm()
-  const input = useRef<HTMLInputElement>(null)
-  const [importing, setImporting] = useState(false)
   const directoryPath = `/tasks/subscribers?branch_id=${options.branch_id}`
-  const directory = useLoad<{ subscribers: Subscriber[] }>(branchStyle ? directoryPath : null)
+  const directory = useLoad<{ subscribers: Subscriber[] }>(directoryPath)
   const subscribers = directory.data?.subscribers ?? []
 
   const types = options.types.filter((t) => t.is_active)
@@ -83,61 +79,24 @@ export function NewTask({ options, onClose, onSaved, branchStyle = false, prepar
     } finally { setBusy(null) }
   }
 
-  async function importList(file: File) {
-    setImporting(true)
-    try {
-      const list = await readSubscribersFile(file)
-      if (!list.length) throw new Error('empty')
-      const replace = await confirm({
-        title: 'استيراد قائمة المشتركين؟',
-        message: `سيصبح دليل هذا الفرع ${list.length} مشتركًا من الملف المحدد. أول الأسماء: ${list.slice(0, 3).map((item) => item.n).join('، ')}.`,
-        confirmLabel: 'استيراد القائمة',
-      })
-      if (!replace) return
-      const result = await api<{ count: number }>(directoryPath, { method: 'PUT', body: { subscribers: list } })
-      await directory.reload()
-      toast(`تم تحميل ${result.count} مشترك`)
-    } catch (e) {
-      const messages: Record<string, string> = {
-        no_header: 'يلزم عمود «اسم المشترك» وعمود للجوال أو المنطقة أو الطبلون.',
-        frameset: 'اختر ملف Excel أو ورقة الجدول من مجلد الملفات.',
-        too_large: 'حجم الملف أكبر من 5 ميغابايت.',
-        pdf_layout: 'يتطلب الاستيراد PDF نصيًا بجدول عناوين وأعمدة واضحة. استخدم Excel للملفات المصوّرة.',
-        empty: 'لا توجد أسماء مشتركين في الملف.',
-      }
-      toast(e instanceof ApiError ? Object.values(e.fields)[0] ?? e.message
-        : (e instanceof Error ? messages[e.message] : undefined) ?? 'تعذّرت قراءة الملف.', 'danger')
-    } finally {
-      setImporting(false)
-      if (input.current) input.current.value = ''
-    }
-  }
-
   const contactFields = (
     <div className={branchStyle ? 'form-card' : 'form-grid'}>
-        {branchStyle && <>
-          <input ref={input} type="file" accept=".xlsx,.xltx,.xlsm,.csv,.htm,.html,.pdf" hidden
-            onChange={(event) => { const file = event.target.files?.[0]; if (file) void importList(file) }} />
-          <Button variant="ghost" busy={importing} disabled={importing} icon={<UserRound size={18} />} onClick={() => input.current?.click()}>
-            قائمة المشتركين{subscribers.length ? ` (${subscribers.length})` : ''} · استيراد Excel أو PDF
-          </Button>
-          <ErrorBanner text={directory.error} />
-        </>}
+        <ErrorBanner text={directory.error} />
         <div className="af-row2">
-          {branchStyle ? <SubscriberField label="المشترك (اختياري)" list={subscribers} value={subscriber} onChange={setSubscriber} onPick={(item) => {
+          <SubscriberField label="المشترك (اختياري)" list={subscribers} value={subscriber} onChange={setSubscriber} onPick={(item) => {
             const localPhone = (item.p ?? '').replace(/^(?:00)?(?:970|972)(?=5[0-9]{8}$)/, '0')
             setPhone(/^05[0-9]{8}$/.test(localPhone) ? localPhone : '')
             const zone = options.zones.find((entry) => entry.is_active && entry.name === item.a)
             setZoneId(zone?.id ?? null)
             setPlace(zone ? '' : (item.a ?? ''))
             setBoard(item.b ?? '')
-          }} /> : <Field label="المشترك (اختياري)" error={fields.subscriber_name}>{(id) => <input id={id} className="input" value={subscriber} onChange={(e) => setSubscriber(e.target.value)} />}</Field>}
-          {branchStyle && fields.subscriber_name && <span className="field-error">{fields.subscriber_name}</span>}
+          }} />
+          {fields.subscriber_name && <span className="field-error">{fields.subscriber_name}</span>}
           <Field label="جوال المشترك" error={fields.subscriber_phone}>{(id) => <input id={id} className="input num" inputMode="tel" dir="ltr" placeholder="05xxxxxxxx" value={phone} onChange={(e) => setPhone(e.target.value.replace(/\D/g, '').slice(0, 10))} />}</Field>
         </div>
 
-        {branchStyle && <Field label="الطبلون">{(id) => <input id={id} className="input num" maxLength={80}
-          placeholder="رقم أو اسم الطبلون" value={board} onChange={(event) => setBoard(event.target.value)} />}</Field>}
+        <Field label="الطبلون">{(id) => <input id={id} className="input num" maxLength={80}
+          placeholder="رقم أو اسم الطبلون" value={board} onChange={(event) => setBoard(event.target.value)} />}</Field>
         {options.zones.some((z) => z.is_active) && (
           <div className="field">
             <label>المنطقة</label>

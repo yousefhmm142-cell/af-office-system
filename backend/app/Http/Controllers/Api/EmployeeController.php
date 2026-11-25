@@ -3,6 +3,7 @@
 namespace App\Http\Controllers\Api;
 
 use App\Http\Controllers\Controller;
+use App\Http\Present;
 use App\Models\Employee;
 use App\Models\EmployeeAttachment;
 use App\Models\EmployeeStatusLog;
@@ -17,6 +18,7 @@ use Illuminate\Support\Facades\Storage;
 use Illuminate\Validation\Rule;
 use Illuminate\Validation\ValidationException;
 use Symfony\Component\HttpFoundation\StreamedResponse;
+use Symfony\Component\HttpKernel\Exception\HttpException;
 
 /**
  * The employee file. The person sees their own file and edits the personal part and
@@ -105,6 +107,11 @@ class EmployeeController extends Controller
             'daily_hours' => ['sometimes', 'numeric', 'min:1', 'max:16'],
             'hire_date' => ['sometimes', 'nullable', 'date_format:Y-m-d'],
         ]);
+        if ($user->branch_id && ! empty($data['department_id']) && $data['department_id'] != $emp->department_id) {
+            if (! DB::table('branch_department')->where('branch_id', $user->branch_id)->where('department_id', $data['department_id'])->exists()) {
+                throw ValidationException::withMessages(['department_id' => 'اختر قسماً تابعاً لفرع الموظف.']);
+            }
+        }
         if (! empty($data['work_schedule_id'])) {
             $ok = WorkSchedule::whereKey($data['work_schedule_id'])->where('branch_id', $user->branch_id)->exists();
             if (! $ok) {
@@ -241,7 +248,7 @@ class EmployeeController extends Controller
             UserController::assertCanManage($actor, $target->role, $target->branch_id, 'employees.manage');
 
             return true;
-        } catch (\Symfony\Component\HttpKernel\Exception\HttpException) {
+        } catch (HttpException) {
             return false;
         }
     }
@@ -253,7 +260,7 @@ class EmployeeController extends Controller
         $manage = $actor->id !== $user->id || $actor->isSuperAdmin() ? $this->canManage($actor, $user) : false;
 
         return [
-            'user' => \App\Http\Present::user($user),
+            'user' => Present::user($user),
             'personal' => $emp->only(Employee::PERSONAL),
             'job' => ['hire_date' => $emp->hire_date?->format('Y-m-d')] + $emp->only(Employee::JOB) + [
                 'department' => $emp->department?->only('id', 'name'),

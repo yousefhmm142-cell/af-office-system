@@ -57,6 +57,7 @@ class DistributionController extends Controller
         $number = ['nullable', 'numeric', 'min:0', 'max:99999999'];
         $clock = ['nullable', 'date_format:H:i'];
         $data = $request->validate([
+            'edit_closed' => ['sometimes', 'boolean'],
             'version' => ['required', 'integer', 'min:0'],
             'zones' => ['present', 'array', 'list', 'max:100'],
             'zones.*' => ['array:id,zoneId,supplied,runs,bands'],
@@ -86,12 +87,17 @@ class DistributionController extends Controller
             'notes' => ['nullable', 'string', 'max:4000'],
         ]);
 
-        $report = DB::transaction(function () use ($branch, $date, $data, $request) {
+        $editClosed = $request->boolean('edit_closed');
+        abort_if($editClosed && ! Access::allowsBranch($request->user(), 'distribution.approve', $branch->id), 403);
+
+        $report = DB::transaction(function () use ($branch, $date, $data, $request, $editClosed) {
             Branch::whereKey($branch->id)->lockForUpdate()->firstOrFail();
             $query = $this->reports($branch)->where('sheet_date', $date);
             $current = $query->first();
             abort_if((int) ($current->version ?? 0) !== (int) $data['version'], 409, 'حُدّث الكشف. أعد فتحه قبل الحفظ.');
-            abort_if($current && ! in_array($current->status, ['draft', 'returned'], true), 409, 'الكشف مغلق. أعد فتحه قبل التعديل.');
+            $closed = $current && in_array($current->status, ['submitted', 'approved'], true);
+            abort_if($closed && ! $editClosed, 409, 'الكشف مغلق. أعد فتحه قبل التعديل.');
+            abort_if($editClosed && ! $closed, 409, 'تغيّرت حالة السجل. افتحه مرة أخرى.');
             foreach ($data['generatorLoadEdits'] ?? [] as $row) {
                 DistributionLoads::query($branch->id)->updateOrInsert(
                     ['branch_id' => $branch->id, 'date' => $date, 'generator_id' => $row['generator_id']],
@@ -102,6 +108,10 @@ class DistributionController extends Controller
             $values = ['figures' => json_encode($figures, JSON_THROW_ON_ERROR), 'version' => $data['version'] + 1, 'updated_at' => now()];
             if ($current) {
                 $query->update($values);
+                if ($editClosed) {
+                    Audit::log('distribution.edit_closed', null, ['version' => $current->version],
+                        ['date' => $date, 'version' => $values['version'], 'status' => $current->status], null, $branch->id);
+                }
             } else {
                 DB::table('distribution_sheets')->insert($values + [
                     'branch_id' => $branch->id, 'sheet_date' => $date, 'created_by' => $request->user()->id, 'created_at' => now(),
