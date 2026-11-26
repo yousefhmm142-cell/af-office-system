@@ -26,18 +26,18 @@ export function LeaveRequestForm({onSent}:{onSent():void}) {
     try {
       await api('/leaves',{method:'POST',body})
       onSent()
-      toast('تم حفظ الطلب')
+      toast('أُرسل الطلب')
     } catch(e) { setError(e instanceof ApiError ? Object.values(e.fields)[0] || e.message : 'تعذّر حفظ الطلب') }
     finally { setBusy(false) }
   }
   return <><ErrorBanner text={error} />
     <form onSubmit={submit} className="card glass af-pad form-grid">
       <label>نوع الطلب<ChoiceField className="input" value={kind} onChange={e=>setKind(e.target.value as keyof typeof kinds)}>{Object.entries(kinds).map(([key,name])=><option key={key} value={key}>{name}</option>)}</ChoiceField></label>
-      <label>تاريخ بداية المناوبة<input className="input" type="date" required value={start} onChange={e=>{setStart(e.target.value);if(end<e.target.value)setEnd(e.target.value)}} /></label>
+      <label>{kind === 'permission' ? 'تاريخ الإذن' : 'من تاريخ'}<input className="input" type="date" required value={start} onChange={e=>{setStart(e.target.value);if(end<e.target.value)setEnd(e.target.value)}} /></label>
       {kind === 'permission' ? <div className="af-row2"><label>من الساعة<input className="input" type="time" required value={from} onChange={e=>setFrom(e.target.value)} /></label>
         <label>حتى الساعة<input className="input" type="time" required value={to} onChange={e=>setTo(e.target.value)} /></label></div> :
         <label>حتى تاريخ<input className="input" type="date" min={start} required value={end} onChange={e=>setEnd(e.target.value)} /></label>}
       <label>السبب<textarea className="input" required maxLength={300} value={reason} onChange={e=>setReason(e.target.value)} /></label>
-      <Button type="submit" variant="send" busy={busy}>إرسال الطلب</Button></form>
+      <Button type="submit" variant="primary" busy={busy}>إرسال الطلب</Button></form>
   </>
 }

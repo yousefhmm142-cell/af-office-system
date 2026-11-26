@@ -261,14 +261,28 @@ class TaskController extends Controller
         return response()->json([
             'types' => TaskType::where(fn ($q) => $q->whereNull('branch_id')->orWhere('branch_id', $branchId))->orderBy('sort_order')->orderBy('name')->get(),
             'zones' => Zone::where('branch_id', $branchId)->orderBy('sort_order')->orderBy('name')->get(),
-            'technicians' => User::where('branch_id', $branchId)->where('is_active', true)->with('employee:id,user_id,job_title,phone,wa_code,department_id', 'employee.department:id,name')
-                ->orderBy('name')->get()->map(fn ($u) => [
+            'technicians' => $this->fieldWorkers($branchId)->map(fn ($u) => [
                     'id' => $u->id, 'name' => $u->name, 'job_title' => $u->employee?->job_title, 'department' => $u->employee?->department?->name,
                     'phone' => $u->employee?->phone, 'wa_code' => $u->employee?->wa_code ?? 970,
                     'open' => Task::whereIn('status', Task::OPEN)->whereHas('assignees', fn ($a) => $a->where('users.id', $u->id))->count(),
                 ]),
             'branch_id' => $branchId,
         ]);
+    }
+
+    /**
+     * The branch's field workers: a «فني» job title or department, or anyone given a task before.
+     * When nobody matches (titles not filled yet), everyone active, so the office can still assign.
+     */
+    private function fieldWorkers(int $branchId)
+    {
+        $people = User::where('branch_id', $branchId)->where('is_active', true)
+            ->with('employee:id,user_id,job_title,phone,wa_code,department_id', 'employee.department:id,name')->orderBy('name')->get();
+        $assigned = \Illuminate\Support\Facades\DB::table('task_assignees')->whereIn('user_id', $people->pluck('id'))->distinct()->pluck('user_id')->flip();
+        $field = $people->filter(fn (User $u) => str_contains((string) $u->employee?->job_title, 'فني')
+            || str_contains((string) $u->employee?->department?->name, 'فني') || isset($assigned[$u->id]));
+
+        return ($field->isEmpty() ? $people : $field)->values();
     }
 
     public function saveType(Request $request, ?TaskType $type = null): JsonResponse

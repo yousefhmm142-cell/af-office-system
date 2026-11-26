@@ -75,7 +75,7 @@ export function TasksBoard() {
         canManage={data?.can_manage ?? false} subscriberImport={subscriberImport} loading={loading} error={error}
         onView={(view) => setParams((current) => { const next = new URLSearchParams(current); next.set('status', view); return next }, { replace: true })}
         onSearch={setSearch} onDay={setDay} onStep={(amount) => setDay(shiftDay(day, amount))}
-        onOpen={setOpen} onNew={(prepare) => setCreating(true, prepare)} />}
+        onOpen={setOpen} onNew={(prepare) => setCreating(true, prepare)} onChanged={() => { void reload(); void options.reload() }} />}
       {creating && data?.can_manage && options.data && String(options.data.branch_id) === chosen && <NewTask branchStyle prepare={preparing} options={options.data}
         onClose={() => setCreating(false)}
         onSaved={(task, keepOpen) => {

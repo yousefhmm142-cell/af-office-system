@@ -1,4 +1,4 @@
-import { AlarmClock, CalendarDays, CheckCheck, ChevronLeft, ChevronRight, ListChecks, PhoneIncoming, Plus, Printer, Search, UserRound, X } from 'lucide-react'
+import { AlarmClock, ArrowRightLeft, CalendarDays, CheckCheck, Undo2, ChevronLeft, ChevronRight, ListChecks, PhoneIncoming, Plus, Printer, Search, UserRound, X } from 'lucide-react'
 import { useState, type ReactNode } from 'react'
 import { Link } from 'react-router'
 import { can, useUser } from '../../app/auth'
@@ -7,6 +7,10 @@ import { useDocumentTitle } from '../../lib/useDocumentTitle'
 import { ErrorBanner } from '../../ui/Field'
 import { Loading } from '../../ui/PageHead'
 import { Button, Pill } from '../../ui/primitives'
+import { api, ApiError } from '../../api/client'
+import { useConfirm } from '../../ui/Confirm'
+import { Dialog } from '../../ui/Dialog'
+import { useToast } from '../../ui/Toast'
 import { durationText, PRIORITY, STATUS, useMinutesSince, type Options, type Task } from './lib'
 
 export type BranchTaskView = 'waiting' | 'assigned' | 'late' | 'done'
@@ -28,9 +32,11 @@ interface Props {
   onStep(amount: number): void
   onOpen(id: number): void
   onNew(prepare: boolean): void
+  /** After «تم» or «إرجاع لانتظار فني» from the list. */
+  onChanged?(): void
 }
 
-export function BranchTasks({ view, tasks, options, day, today, search, canManage, subscriberImport, loading, error, onView, onSearch, onDay, onStep, onOpen, onNew }: Props) {
+export function BranchTasks({ view, tasks, options, day, today, search, canManage, subscriberImport, loading, error, onView, onSearch, onDay, onStep, onOpen, onNew, onChanged }: Props) {
   const user = useUser()
   const [technician, setTechnician] = useState<number | null>(null)
   const active = tasks.filter((task) => !['new', 'done', 'cancelled'].includes(task.status))
@@ -93,15 +99,18 @@ export function BranchTasks({ view, tasks, options, day, today, search, canManag
         </>}
       </div>
       {(!live || view !== 'waiting') && names.size > 0 && <div className="chips task-filters" role="group" aria-label="الفني">
-        <button type="button" className="chip" aria-pressed={technician === null} onClick={() => setTechnician(null)}>كل الفنيين</button>
-        {[...names.entries()].map(([id, name]) => <button key={id} type="button" className="chip" aria-pressed={technician === id}
-          onClick={() => setTechnician(id)}>{name}</button>)}
+        <button type="button" className="chip" aria-pressed={technician === null} onClick={() => setTechnician(null)}>الكل</button>
+        {[...names.entries()].map(([id, name]) => {
+          const n = active.filter((task) => task.assignees.some((person) => person.id === id)).length
+          return <button key={id} type="button" className="chip" aria-pressed={technician === id}
+            onClick={() => setTechnician(technician === id ? null : id)}>{name}{n > 0 && <span className="chip-count num">{n}</span>}</button>
+        })}
       </div>}
       <ErrorBanner text={error} />
       {loading && !tasks.length ? <Loading /> : shown.length ? (
         <section className={live && view === 'waiting' ? 'card prep-card' : undefined}>
           {live && view === 'waiting' && <div className="card-h"><PhoneIncoming size={18} /><h2>مهام مجهزة بانتظار فني</h2></div>}
-          <ul className="task-list">{shown.map((task) => <li key={task.id}><LegacyTaskRow task={task} onOpen={() => onOpen(task.id)} /></li>)}</ul>
+          <ul className="task-list">{shown.map((task) => <TaskItem key={task.id} task={task} canManage={canManage} onOpen={() => onOpen(task.id)} onChanged={() => onChanged?.()} />)}</ul>
         </section>
       ) : <p className="card af-pad">{search.trim() ? 'لا توجد مهام تطابق البحث.' : 'لا توجد مهام في هذا العرض.'}</p>}
     </div>
@@ -120,9 +129,81 @@ function LegacyTaskRow({ task, onOpen }: { task: Task; onOpen(): void }) {
         <span className="task-meta">{[task.subscriber_name, task.zone?.name, task.location_text, task.assignees.map((person) => person.name).join('، ')].filter(Boolean).join(' · ')}</span>
       </span>
       <span className="task-side">
-        <Pill tone={STATUS[task.status].tone}>{STATUS[task.status].label}</Pill>
-        {duration !== null && <span className="task-clock num">{durationText(duration)}</span>}
+        <Pill tone={task.late ? 'danger' : STATUS[task.status].tone}>{task.late ? 'تجاوزت وقتها' : STATUS[task.status].label}</Pill>
+        <span className="task-clock num">
+          {task.status === 'new' ? 'لم تُرسل بعد' : task.status === 'cancelled' ? 'أُلغيت' : task.status === 'done' ? (duration !== null ? `أُنجزت في ${durationText(duration)}` : 'أُنجزت')
+            : duration !== null ? `${durationText(duration)} من ${durationText(task.expected_minutes)}` : ''}
+        </span>
       </span>
     </button>
+  )
+}
+
+/** One task in the list, as in the office's old page: «تم» on its side, transfer and return under it. */
+function TaskItem({ task, canManage, onOpen, onChanged }: { task: Task; canManage: boolean; onOpen(): void; onChanged(): void }) {
+  const toast = useToast()
+  const confirm = useConfirm()
+  const [completing, setCompleting] = useState(false)
+  const [busy, setBusy] = useState(false)
+  const open = !['done', 'cancelled'].includes(task.status)
+  const canReassign = canManage && task.assignees.length > 0 && ['new', 'sent', 'seen'].includes(task.status)
+
+  async function returnToWaiting() {
+    if (!(await confirm({ title: `إرجاع المهمة ${task.number} لانتظار فني؟`, message: 'تعود بالرقم والبيانات نفسها، ويُلغى إسنادها إلى الفنيين.', confirmLabel: 'إرجاع' }))) return
+    setBusy(true)
+    try {
+      await api(`/tasks/${task.id}`, { method: 'PATCH', body: { assignees: [] } })
+      toast('أُرجعت المهمة إلى «بانتظار فني»')
+      onChanged()
+    } catch (e) {
+      toast(e instanceof ApiError ? (Object.values(e.fields)[0] ?? e.message) : 'تعذّر الإرجاع.', 'danger')
+    } finally { setBusy(false) }
+  }
+
+  return (
+    <li className="task-li">
+      <div className={`task-card${canReassign ? ' can-reassign' : ''}`}>
+        <LegacyTaskRow task={task} onOpen={onOpen} />
+        {canReassign && (
+          <div className="task-card-actions">
+            <button type="button" disabled={busy} className="task-transfer" aria-label={`تحويل المهمة ${task.number} لفني آخر`} onClick={onOpen}><ArrowRightLeft size={14} />تحويل لفني آخر</button>
+            <button type="button" disabled={busy} className="task-transfer" aria-label={`إرجاع المهمة ${task.number} لانتظار فني`} onClick={() => void returnToWaiting()}><Undo2 size={14} />{busy ? 'جارٍ الإرجاع…' : 'إرجاع لانتظار فني'}</button>
+          </div>
+        )}
+      </div>
+      {canManage && open && task.assignees.length > 0 && (
+        <button type="button" className="done-btn" aria-label={`تم إنجاز المهمة ${task.number}`} title="أنجزها الفني: سجّلها منجزة" onClick={() => setCompleting(true)}>
+          <CheckCheck size={20} /><span>تم</span><small className="done-more">أنجزها الفني</small>
+        </button>
+      )}
+      {completing && <CompleteDialog task={task} onClose={() => setCompleting(false)} onDone={() => { setCompleting(false); onChanged() }} />}
+    </li>
+  )
+}
+
+function CompleteDialog({ task, onClose, onDone }: { task: Task; onClose(): void; onDone(): void }) {
+  const toast = useToast()
+  const [notes, setNotes] = useState('')
+  const [busy, setBusy] = useState(false)
+  async function save() {
+    setBusy(true)
+    try {
+      await api(`/tasks/${task.id}/complete`, { method: 'POST', body: { notes: notes.trim() || null } })
+      toast(`سُجّلت المهمة ${task.number} منجزة`)
+      onDone()
+    } catch (e) {
+      toast(e instanceof ApiError ? (Object.values(e.fields)[0] ?? e.message) : 'تعذّر الحفظ.', 'danger')
+      setBusy(false)
+    }
+  }
+  return (
+    <Dialog open onClose={onClose} title={`إنجاز المهمة ${task.number}`} subtitle={task.type?.name}
+      footer={<><Button variant="ghost" onClick={onClose}>إلغاء</Button><Button variant="primary" icon={<CheckCheck size={18} />} busy={busy} onClick={() => void save()}>تم الإنجاز</Button></>}>
+      <div className="form-grid">
+        <p className="muted">{task.assignees.length > 1 ? 'مهمة مشتركة: يُسجَّل إنجازها مرة واحدة ويُحسب لكل فني فيها.' : `الفني: ${task.assignees[0]?.name ?? ''}`}</p>
+        <label className="field"><span className="label">ما الذي أُنجز؟ (اختياري)</span>
+          <textarea className="input textarea" rows={3} value={notes} onChange={(e) => setNotes(e.target.value)} placeholder="مثال: بُدّلت الساعة وفُحص الخط" /></label>
+      </div>
+    </Dialog>
   )
 }
