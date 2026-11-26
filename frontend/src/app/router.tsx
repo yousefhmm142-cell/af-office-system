@@ -1,6 +1,7 @@
 import { Navigate, Outlet, createBrowserRouter, useLocation } from 'react-router'
 import { Guide } from '../pages/Guide'
 import { RouteError } from '../pages/states'
+import { ReportsPage } from '../pages/reports/ReportsPage'
 import { More } from '../pages/More'
 import { Account } from '../pages/Account'
 import { Audit } from '../pages/Audit'
@@ -97,6 +98,7 @@ export const router = createBrowserRouter([
           { path: 'account', element: <Account /> },
           { path: 'more', element: <More /> },
           { path: 'guide', element: <Guide /> },
+          { path: 'reports', element: <NeedAny permissions={['permissions.branch_manage', 'generation.view', 'tasks.view']}><ReportsPage /></NeedAny> },
           { path: 'me', element: <EmployeeFile /> },
           { path: 'attendance/me', element: <MyAttendance /> },
           { path: 'my-tasks', element: <MyTasks /> },

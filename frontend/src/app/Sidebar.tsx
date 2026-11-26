@@ -10,7 +10,7 @@ import type { NavItem } from './nav'
 // with small counters. On phones the bottom bar is used instead.
 
 const OPERATION = ['/', '/generation', '/distribution', '/tasks', '/attendance']
-const FOLLOW = ['/readings', '/seals', '/tasks/seal-work', '/reports', '/messages']
+const FOLLOW = ['/seals', '/tasks/seal-work', '/reports', '/messages']
 const MINE = ['/my-tasks', '/attendance/me', '/my-pay', '/me']
 // For a branch manager these open from the settings (the team, the branch hours), as in the old system.
 const IN_SETTINGS = ['/branches', '/users']

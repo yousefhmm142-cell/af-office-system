@@ -1,4 +1,4 @@
-import { Building2, CalendarCheck2, ClipboardCheck, ClipboardList, ListTodo, History, House, IdCard, KeyRound, Mail, Settings, UserRound, Users, Wallet, WalletCards, Zap, LayoutGrid, Stamp } from 'lucide-react'
+import { FileBarChart, Building2, CalendarCheck2, ClipboardCheck, ClipboardList, ListTodo, History, House, IdCard, KeyRound, Mail, Settings, UserRound, Users, Wallet, WalletCards, Zap, LayoutGrid, Stamp } from 'lucide-react'
 import type { User } from '../api/types'
 import { can, scopeOf } from './auth'
 
@@ -19,6 +19,8 @@ export function navFor(user: User): NavItem[] {
   if (can(user, 'distribution.view') && user.modules?.includes('distribution')) items.push({ to: '/distribution', label: 'التوزيع', icon: LayoutGrid })
   if (can(user, 'seals.manage') && user.modules?.includes('seals')) items.push({ to: '/seals', label: 'الأختام', icon: Stamp })
   if (can(user, 'seals.view') && user.modules?.includes('seals')) items.push({ to: '/tasks/seal-work', label: 'كشف أعمال الأختام', icon: ClipboardList })
+  // Weekly and monthly reports of the branch (generation, distribution, tasks, attendance).
+  if (user.branch && (can(user, 'permissions.branch_manage') || can(user, 'generation.view') || can(user, 'tasks.view'))) items.push({ to: '/reports', label: 'التقارير', icon: FileBarChart })
   if (can(user, 'branches.view')) items.push({ to: '/branches', label: 'الفروع', icon: Building2 })
   if (can(user, 'users.view')) items.push({ to: '/users', label: 'الموظفين', icon: Users })
   if (can(user, 'permissions.manage')) items.push({ to: '/permissions', label: 'الصلاحيات', icon: KeyRound })
