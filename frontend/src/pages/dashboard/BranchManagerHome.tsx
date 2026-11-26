@@ -68,7 +68,7 @@ export function BranchManagerHome({ user, data, error, loading }: { user: User; 
 
       <div id="today-attention">
         {attention.length > 0 && <section className="card" aria-label="يتطلب انتباهك">
-          <div className="card-h"><h2>بدّه انتباهك</h2></div>
+          <div className="card-h"><h2>يحتاج انتباهك</h2></div>
           <div className="af-attention">{attention.map(({ kind, count, link }) => {
             const item = ATTENTION[kind]
             return item && <Link key={kind} to={link} className={`af-attn ${item.tone}`}>{item.icon}<span>{item.text(count)}</span><ArrowLeft size={16} /></Link>
@@ -117,15 +117,15 @@ export function TechniciansToday() {
   if (!data) return null
   const completed = data.tasks.filter((task) => task.completedAt && toISODate(new Date(task.completedAt)) === today)
   const people = data.team.filter((person) => person.title?.includes('فني'))
-  return <section className="card fx-techs fx-decoration"><header className="card-h"><h2>الفنيين اليوم</h2></header>
-    {!people.length ? <p className="card-empty">ما في فنيين فعّالين بعد.</p> : <div className="fx-tech-grid">{people.map(p => {
+  return <section className="card fx-techs fx-decoration"><header className="card-h"><h2>الفنيون اليوم</h2></header>
+    {!people.length ? <p className="card-empty">لا يوجد فنيون فعّالون بعد.</p> : <div className="fx-tech-grid">{people.map(p => {
       const own = data.tasks.filter(t => t.assignees.includes(p.id))
       const done = completed.filter(t=>t.assignees.includes(p.id)).length
       const open = own.filter((task) => task.status !== 'done' && task.status !== 'cancelled').length
       const pct = done + open ? done / (done + open) * 100 : 0
-      return <Link key={p.id} to="/tasks" className="fx-tech" aria-label={`${p.name}، خلص ${done}، معه ${open}`}>
+      return <Link key={p.id} to="/tasks" className="fx-tech" aria-label={`${p.name}، أنجز ${done}، ولديه ${open}`}>
         <span className="fx-tech-avatar"><svg viewBox="0 0 68 68" aria-hidden="true"><circle cx="34" cy="34" r="30" fill="none" stroke="var(--track)" strokeWidth="3" /><circle className="fx-tech-ring" cx="34" cy="34" r="30" fill="none" stroke="var(--ok)" strokeWidth="3" pathLength="100" strokeDasharray={`${pct} 100`} transform="rotate(-90 34 34)" /></svg><Avatar name={p.name} size={48} /></span>
-        <b>{p.name}</b><small>خلص {done} · معه {open}</small>
+        <b>{p.name}</b><small>أنجز {done} · لديه {open}</small>
       </Link>
     })}</div>}
   </section>
@@ -144,7 +144,7 @@ function TeamCard() {
           {Array.from({ length: 4 }, (_, i) => <span key={i} />)}
         </div>
       ) : team.length === 0 ? (
-        <p className="card-empty">لا يوجد أحد بعد. يضيف مسؤول النظام الفريق من الإعدادات.</p>
+        <p className="card-empty">لا يوجد أحد بعد. يضيف مدير الفرع الفريق من الإعدادات.</p>
       ) : (
         <ul className="team-list">
           {team.map((e) => (

@@ -69,7 +69,7 @@ export function BandGrid({ bands=BANDS, rows, values, onChange, max, average, un
             {average[b] === null || average[b] === undefined ? <span className="bg-dash">—</span> : <b className="num">{formatAmount(average[b]!)}</b>}
           </div>
         ))}
-      {average && <p className="bg-cap" style={{ gridColumn: '1 / -1', gridRow: rows + 3 }}>الصف الأخير: المتوسط الحسابي للقراءات الثلاثة{unit ? ` (${unit})` : ''}</p>}
+      {average && <p className="bg-cap" style={{ gridColumn: '1 / -1', gridRow: rows + 3 }}>الصف الأخير: المتوسط الحسابي للقراءات الثلاث{unit ? ` (${unit})` : ''}</p>}
     </div></div>
   )
 }

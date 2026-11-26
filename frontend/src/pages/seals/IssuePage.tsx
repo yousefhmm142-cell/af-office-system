@@ -47,7 +47,7 @@ export function SealIssuePage() {
       <header className="ph">
         <div>
           <h1>الأختام</h1>
-          <p className="muted">سجّل رولات الأختام، واصرف لكل فني دفعته. كل شيء يُحفظ هنا لحاله، ومنه يُصدَّر ملف Excel.</p>
+          <p className="muted">سجّل رولات الأختام، واصرف لكل فني دفعته. كل شيء يُحفظ هنا مستقلاً، ومنه يُصدَّر ملف Excel.</p>
         </div>
         <div className="ph-actions">
           <Button variant="secondary" icon={<FileSpreadsheet size={17} />} busy={exporting} onClick={() => void exportExcel()}>تصدير Excel</Button>
@@ -91,7 +91,7 @@ export function SealIssuePage() {
         <section className="empty card">
           <span className="halo"><Stamp size={30} /></span>
           <h3>ابدأ بتسجيل أول رول</h3>
-          <p>اكتب رقم أول ختم في الرول، وآخر ختم (أو اتركه فاضي: 100 ختم).</p>
+          <p>اكتب رقم أول ختم في الرول، وآخر ختم (أو اتركه فارغاً: 100 ختم).</p>
           <div className="ph-actions" style={{ justifyContent: 'center' }}>
             <Button variant="primary" icon={<Plus size={17} />} onClick={() => setDialog('roll')}>رول جديد</Button>
           </div>
@@ -143,7 +143,7 @@ function RollActions({ rollId, canDelete, disabled, onIssue, onEdit }: { rollId:
           className="danger"
           icon={<Trash2 size={15} />}
           onClick={async () => {
-            const yes = await confirm({ title: 'حذف الرول؟', message: 'يُحذف الرول وأختامه (ما انصرف منه شي).', confirmLabel: 'حذف الرول', danger: true })
+            const yes = await confirm({ title: 'حذف الرول؟', message: 'يُحذف الرول وأختامه (لم يُصرف منه شيء).', confirmLabel: 'حذف الرول', danger: true })
             if (!yes) return
             try {
               await deleteRoll(rollId)

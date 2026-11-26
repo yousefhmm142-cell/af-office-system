@@ -291,7 +291,7 @@ function EditDay({ row, date, onClose, onSaved }: { row: BoardRow; date: string;
             <Field label="الحضور" error={fields.check_in}>{(id) => <TimeField id={id} label="وقت الحضور" value={inT} onChange={setIn} />}</Field>
             <Field label="الانصراف" error={fields.check_out}>{(id) => <TimeField id={id} label="وقت الانصراف" value={outT} onChange={setOut} />}</Field>
           </div>
-          <Field label="السبب (اختياري)" error={fields.reason}>{(id) => <input id={id} className="input" value={reason} onChange={(e) => setReason(e.target.value)} placeholder="مثال: الجوال كان طافي" />}</Field>
+          <Field label="السبب (اختياري)" error={fields.reason}>{(id) => <input id={id} className="input" value={reason} onChange={(e) => setReason(e.target.value)} placeholder="مثال: كان الجوال مطفأً" />}</Field>
         </div>
         <ErrorBanner text={error ?? fields.date ?? null} />
       </form>

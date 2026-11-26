@@ -1,5 +1,6 @@
 import { Navigate, Outlet, createBrowserRouter, useLocation } from 'react-router'
 import { Guide } from '../pages/Guide'
+import { RouteError } from '../pages/states'
 import { More } from '../pages/More'
 import { Account } from '../pages/Account'
 import { Audit } from '../pages/Audit'
@@ -77,9 +78,10 @@ function BranchSettingsGate() {
 
 export const router = createBrowserRouter([
   // A technician's private task link: opens without signing in.
-  { path: 't/:token', element: <LinkPage /> },
+  { path: 't/:token', element: <LinkPage />, errorElement: <RouteError /> },
   {
     element: <Gate />,
+    errorElement: <RouteError />,
     children: [
       { path: 'a/:code', element: <Scan /> },
       {

@@ -77,8 +77,8 @@ export function ReportView({ report, ctx }: { report: SiteReport; ctx: ReturnTyp
           </div>
           {forecast && (
             <div className="kpi-sub fc-line">
-              بيخلص تقريباً <b>{describeDay(forecast.runOutDate).weekday} {shortDate(forecast.runOutDate)}</b> · اطلب قبل <b>{describeDay(forecast.orderBy).weekday} {shortDate(forecast.orderBy)}</b>
-              {forecast.rough && <small> (تقدير تقريبي: بيانات قليلة)</small>}
+              ينفد تقريباً <b>{describeDay(forecast.runOutDate).weekday} {shortDate(forecast.runOutDate)}</b> · اطلب قبل <b>{describeDay(forecast.orderBy).weekday} {shortDate(forecast.orderBy)}</b>
+              {forecast.rough && <small> (تقدير تقريبي: البيانات قليلة)</small>}
             </div>
           )}
         </div>
@@ -223,7 +223,7 @@ function GeneratorsTable({ report, generators, settings }: { report: SiteReport;
                         {hasBandValues(log.bandLoads) && log.loads.every((l) => l === null) ? (
                           <div className="phases">
                             <b className="num avg" title="المتوسط الحسابي للساعات المكتوبة">متوسط {formatAmount(valuesDayAverage(log.bandLoads))}</b>
-                            <small className="muted">{log.loadUnit === 'A' ? 'أمبير' : 'كيلوواط'} · التفاصيل بجدول الساعات</small>
+                            <small className="muted">{log.loadUnit === 'A' ? 'أمبير' : 'كيلوواط'} · التفاصيل في جدول الساعات</small>
                           </div>
                         ) : (
                         <div className="phases">
@@ -272,7 +272,7 @@ function HourlyLoads({ report, generators }: { report: SiteReport; generators: G
   const maxima = (unit: string) => Math.max(0, ...rows.filter(log => log.loadUnit === unit).flatMap(log => log.bandLoads.filter((v): v is number => v !== null)))
   return (
     <section className="card">
-      <div className="card-h"><span className="ico-round"><Gauge size={16} /></span><h2>الأحمال حسب الساعة</h2><HeatLegend /><span className="meta">الفاضي = شحطة</span></div>
+      <div className="card-h"><span className="ico-round"><Gauge size={16} /></span><h2>الأحمال حسب الساعة</h2><HeatLegend /><span className="meta">الخانة الفارغة = شَرطة</span></div>
       <div className="tw">
         <table className="tbl hourly">
           <thead>
@@ -307,7 +307,7 @@ function GeneratorGauges({ report, generators, settings }: { report: SiteReport;
       const reading=generatorLoadSummary(log,gen?.capacityKva,settings.phaseVoltage)
       const {kva,percent:pct,peak,average}=reading
       const unit=log.loadUnit==='A'?'أمبير':'كيلوواط'
-      const detail=peak===null?'ما في أحمال مسجّلة لهذا اليوم':pct===null?'قدرة المولد غير مسجّلة لحساب النسبة':`نحو ${formatAmount(Math.round(kva!))} kVA من ${formatAmount(gen!.capacityKva)}`
+      const detail=peak===null?'لا توجد أحمال مسجّلة لهذا اليوم':pct===null?'قدرة المولد غير مسجّلة لحساب النسبة':`نحو ${formatAmount(Math.round(kva!))} kVA من ${formatAmount(gen!.capacityKva)}`
       const oil = log.oilPressure === null ? null : toBar(log.oilPressure, log.oilPressureUnit)
       return <article className="card fx-generator" key={log.id}>
         <header><b>{gen?.name ?? 'مولد'}</b><small>{gen?.brand}</small></header>

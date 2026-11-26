@@ -123,7 +123,7 @@ export function SealLogPage() {
       <header className="ph">
         <div>
           <h1>تسجيل الأختام والبحث</h1>
-          <p className="muted">ابحث برقم الختم أو أول أرقامه، أو الطبلون، أو الفني، أو المشترك، وسجّل ما صار لكل ختم.</p>
+          <p className="muted">ابحث برقم الختم أو أول أرقامه، أو الطبلون، أو الفني، أو المشترك، وسجّل ما حدث لكل ختم.</p>
         </div>
         <div className="ph-actions">
           <Button variant="secondary" icon={<FileSpreadsheet size={17} />} busy={exporting} onClick={() => void exportExcel()}>تصدير Excel</Button>
@@ -195,7 +195,7 @@ export function SealLogPage() {
           {result.groups.length === 0 ? (
             <section className="empty card">
               <span className="halo"><Search size={28} /></span>
-              <h3>{active ? 'ما لقيت شيء' : 'ما في أختام مصروفة بعد'}</h3>
+              <h3>{active ? 'لم نجد شيئاً' : 'لا توجد أختام مصروفة بعد'}</h3>
               <p>{active ? 'جرّب رقماً أقصر (أول رقمين)، أو امسح الفلاتر.' : 'ابدأ من صفحة «صرف الأختام»، أو استورد ملفاتك القديمة.'}</p>
             </section>
           ) : view === 'groups' ? (

@@ -4,7 +4,7 @@ import { reportTotals, toBar, type Generator, type SiteReport } from './model'
 // Is a generator getting worse little by little? (plan 2, L6) Each day alone looks fine; the trend
 // over weeks does not. Only figures typed on site are used, and nothing is said without enough days.
 //  · Diesel per running hour: only from days it ran ALONE (otherwise nobody knows which one used what);
-//    the last 7 such days against the 7 before. 10% more = «صار يصرف أكثر».
+//    the last 7 such days against the 7 before. 10% more = «أصبح يصرف أكثر».
 //  · Temperature and oil pressure: the last 7 days it ran against the 7 before (+5°C, −0.3 bar).
 
 export type Trend = 'worse' | 'same' | 'better' | 'unknown'

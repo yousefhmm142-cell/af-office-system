@@ -106,7 +106,7 @@ export function FuelStep({ report, fuelTypes, previous, update }: {
                 label="الاستهلاك"
                 unit="لتر"
                 value={line.consumption}
-                hint={line.consumption !== null && line.consumption < 0 ? 'تنبيه: المتبقي أكبر من المجموع، راجع الأرقام' : 'يُحسب لحاله: المجموع − المتبقي'}
+                hint={line.consumption !== null && line.consumption < 0 ? 'تنبيه: المتبقي أكبر من المجموع، راجع الأرقام' : 'يُحسب تلقائياً: المجموع − المتبقي'}
               />
               <TextField label="رقم الإرسالية" numeric value={line.shipmentNo} onChange={(v) => set((l) => (l.shipmentNo = v))} />
               {(line.receivedQty ?? 0) > 0 && (
@@ -164,7 +164,7 @@ export function RunsStep({ report, generators, update, onEquipmentSaved }: { rep
             <Plus size={15} /> مولد جديد
           </button>
         </div>
-        {!report.generators.some((g) => g.didRun) && <p className="field-hint">اضغط المولد اللي اشتغل لتظهر خاناته.</p>}
+        {!report.generators.some((g) => g.didRun) && <p className="field-hint">اضغط على المولد الذي عمل لتظهر خاناته.</p>}
       </section>
       {order.map((i) => report.generators[i]!).map((log) => {
         const i = report.generators.indexOf(log)

@@ -56,7 +56,7 @@ export function NewRollDialog({ onClose }: { onClose(): void }) {
           <input inputMode="numeric" autoFocus value={from} placeholder="181301" onChange={(e) => setFrom(e.target.value)} onKeyDown={(e) => e.key === 'Enter' && void save()} />
         </label>
         <label className="seal-field">
-          <span className="label">رقم آخر ختم (اتركه فاضي = 100 ختم)</span>
+          <span className="label">رقم آخر ختم (اتركه فارغاً = 100 ختم)</span>
           <input inputMode="numeric" value={to} placeholder={f ? String(f + 99) : '181400'} onChange={(e) => setTo(e.target.value)} onKeyDown={(e) => e.key === 'Enter' && void save()} />
         </label>
         <div className="issue-count"><span>عدد الأختام في الرول</span><b className="num">{f && t >= f ? t - f + 1 : '—'}</b></div>
@@ -134,9 +134,9 @@ export function IssueDialog({ data, onClose, onDone, preset }: { data: SealData;
     }
   }
 
-  const why = tech === null && rows.length > 0 && rows.every((r) => !r.bad) ? 'اختر الفني، أو «لاحقاً» لتجهيز الأختام وتسمية الدفعة بعدين.' : null
+  const why = tech === null && rows.length > 0 && rows.every((r) => !r.bad) ? 'اختر الفني، أو «لاحقاً» لتجهيز الأختام وتسمية الدفعة فيما بعد.' : null
 
-  const techName = tech === LATER ? 'لاحقاً (بدون اسم)' : technicians.find((t) => t.id === tech)?.fullName ?? ''
+  const techName = tech === LATER ? 'لاحقاً (دون اسم)' : technicians.find((t) => t.id === tech)?.fullName ?? ''
   const aside = (
     <SummaryAside
       title="ملخص الدفعة"
@@ -144,7 +144,7 @@ export function IssueDialog({ data, onClose, onDone, preset }: { data: SealData;
       big={<span className="num">{rows.length}</span>}
       rows={[['الرول', roll ? <span className="num">{roll.fromNo}–{roll.toNo}</span> : ''], ['من', rows[0] ? <span className="num">{rows[0].n}</span> : ''], ['إلى', rows.length > 1 ? <span className="num">{rows[rows.length - 1]!.n}</span> : '']]}
       more={[['الفني', techName], ['اليوم', dayLabel(date)]]}
-      note={<span>{rows.some((r) => r.bad) ? 'في أرقام عليها ملاحظة بالأحمر، صحّحها قبل الصرف.' : 'بعد الصرف بتطلع بـ «آخر ما صُرف» وبتقدر تطبع ورقة الصرف.'}</span>}
+      note={<span>{rows.some((r) => r.bad) ? 'توجد أرقام عليها ملاحظة بالأحمر، صحّحها قبل الصرف.' : 'بعد الصرف تظهر في «آخر ما صُرف» ويمكنك طباعة ورقة الصرف.'}</span>}
     />
   )
 
@@ -154,7 +154,7 @@ export function IssueDialog({ data, onClose, onDone, preset }: { data: SealData;
       open
       onClose={onClose}
       title="تجهيز دفعة أختام"
-      subtitle="اكتب آخر الرقم بس، وبداية الرول جاهزة."
+      subtitle="اكتب آخر الرقم فقط، وبداية الرول جاهزة."
       icon={<Stamp size={20} />}
       aside={aside}
       footer={
@@ -181,7 +181,7 @@ export function IssueDialog({ data, onClose, onDone, preset }: { data: SealData;
         )}
         <label className="field">
           <span className="label">
-            {roll ? <>اكتب أرقام الأختام. أول الرقم <b className="num roll-fixed">{prefix}</b> جاهز، وكل ما تضغط <b>مسافة</b> بيجيك من جديد وإنت كمّل الباقي (وبتقدر تعدّل عليه)</> : 'اكتب أرقام الأختام كاملة (حروف WK تُتجاهل)'}
+            {roll ? <>اكتب أرقام الأختام. أول الرقم <b className="num roll-fixed">{prefix}</b> جاهز، وكلما ضغطت <b>مسافة</b> يظهر لك من جديد وتكمل الباقي (ويمكنك تعديله)</> : 'اكتب أرقام الأختام كاملة (حروف WK تُتجاهل)'}
           </span>
           <textarea
             ref={area}
@@ -213,7 +213,7 @@ export function IssueDialog({ data, onClose, onDone, preset }: { data: SealData;
           {parsed.duplicates.length > 0 && <small>مكرر وتم تجاهله: {parsed.duplicates.join('، ')}</small>}
         </div>
         <div className="issue-count">
-          <span>{mixed ? 'الأرقام من أكثر من رول، جهّز كل رول لحاله' : 'عدد الأختام'}</span>
+          <span>{mixed ? 'الأرقام من أكثر من رول، جهّز كل رول وحده' : 'عدد الأختام'}</span>
           <b className="num">{rows.length}</b>
         </div>
         <div className="field">
@@ -275,7 +275,7 @@ export function AssignDialog({ batch, data, onClose }: { batch: SealBatch; data:
       open
       onClose={onClose}
       title={`لمن الدفعة ${batch.label?.trim() || ordinalWord(batch.batchNo)}؟`}
-      subtitle="اختر الفني اللي استلم الأختام."
+      subtitle="اختر الفني الذي استلم الأختام."
       icon={<UserRound size={20} />}
       aside={aside}
       footer={
@@ -287,7 +287,7 @@ export function AssignDialog({ batch, data, onClose }: { batch: SealBatch; data:
       }
     >
       <div className="issue-form" onKeyDown={saveOnCtrlEnter(() => void save())}>
-        <p className="field-hint"><span className="num">{count}</span> أختام جاهزة بدون اسم. اختر الفني اللي استلمها.</p>
+        <p className="field-hint"><span className="num">{count}</span> أختام جاهزة دون اسم. اختر الفني الذي استلمها.</p>
         <div className="chips">
           {technicians.map((t) => <Chip key={t.id} pressed={tech === t.id} onClick={() => setTech(t.id)}>{t.fullName}</Chip>)}
         </div>

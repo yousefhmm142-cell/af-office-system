@@ -27,7 +27,7 @@ export function SealPill({ seal, hit, dim, skipped, onClick }: { seal: Seal; hit
       <span className="num">{seal.sealNo}</span>{seal.taskId && <small>مهمة</small>}
     </>
   )
-  const title = `${seal.sealNo} · ${info.label}${skipped ? ' · قفز عنه: انسجّل اللي قبله واللي بعده' : ''}${seal.details ? ` · ${seal.details}` : ''}`
+  const title = `${seal.sealNo} · ${info.label}${skipped ? ' · تُجووز: سُجّل ما قبله وما بعده' : ''}${seal.details ? ` · ${seal.details}` : ''}`
   return onClick ? (
     <button type="button" className="seal-pill" data-status={seal.status} data-hit={hit || undefined} data-dim={dim || undefined} data-skipped={skipped || undefined} title={title} onClick={onClick}>{content}</button>
   ) : (
@@ -79,14 +79,14 @@ export function TechNav({ data, value, onChange }: { data: SealData; value: stri
     <nav className="tech-nav" aria-label="الفنيون">
       <button type="button" className="tech-item" aria-current={value === null ? 'true' : undefined} onClick={() => onChange(null)}>
         <span className="tech-dot all">الكل</span>
-        <span className="tech-text"><b>كل الفنيين</b><small className="num">{all} عندهم لم تُستخدم</small></span>
+        <span className="tech-text"><b>كل الفنيين</b><small className="num">{all} لديهم لم تُستخدم</small></span>
       </button>
       {rows.map((r) => (
         <button key={r.id} type="button" className="tech-item" aria-current={value === r.id ? 'true' : undefined} onClick={() => onChange(value === r.id ? null : r.id)}>
           <Avatar name={r.name} size={34} />
           <span className="tech-text">
             <b>{r.name}</b>
-            <small className="num">{r.open ? `${r.open} عنده الآن` : 'لا شيء عنده'} · {r.total} ختم</small>
+            <small className="num">{r.open ? `${r.open} لديه الآن` : 'لا شيء لديه'} · {r.total} ختم</small>
           </span>
           {r.open > 0 && <span className="tech-badge num">{r.open}</span>}
         </button>

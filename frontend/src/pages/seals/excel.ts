@@ -55,7 +55,7 @@ const batchNumbers = (data: SealData, b: SealBatch): number[] =>
  */
 export function buildIssueWorkbook(ExcelJS: ExcelJS, data: SealData): ExcelJSType.Workbook {
   const wb = new ExcelJS.Workbook()
-  wb.creator = 'نظام مخيم 2'
+  wb.creator = 'نظام إدارة المكاتب'
   wb.created = new Date()
   const rollById = new Map(data.rolls.map((r) => [r.id, r]))
   const byReceived = (a: SealRoll, b: SealRoll) => a.receivedOn.localeCompare(b.receivedOn) || a.fromNo - b.fromNo
@@ -137,7 +137,7 @@ const stateWord = (s: Seal) => (s.status === 'used' ? 'مستخدم' : s.status 
  */
 export function buildUsageWorkbook(ExcelJS: ExcelJS, data: SealData): ExcelJSType.Workbook {
   const wb = new ExcelJS.Workbook()
-  wb.creator = 'نظام مخيم 2'
+  wb.creator = 'نظام إدارة المكاتب'
   wb.created = new Date()
   const rollById = new Map<string, SealRoll>(data.rolls.map((r) => [r.id, r]))
   const sealByNo = new Map(data.seals.map((s) => [s.sealNo, s]))

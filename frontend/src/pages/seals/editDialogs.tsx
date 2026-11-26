@@ -45,7 +45,7 @@ export function EditBatchDialog({ batch, data, onClose }: { batch: SealBatch; da
     try {
       if (!addOk) { setBusy(false); return }
       await updateBatch(batch.id, tech === batch.technicianId ? null : tech, date, numbers, [...removed])
-      const parts = [rows.length > 0 ? `أُضيف ${rows.length}` : '', removed.size > 0 ? `رجع للمخزن ${removed.size}` : ''].filter(Boolean)
+      const parts = [rows.length > 0 ? `أُضيف ${rows.length}` : '', removed.size > 0 ? `عاد إلى المخزن ${removed.size}` : ''].filter(Boolean)
       toast(parts.length ? `عُدّلت الدفعة: ${parts.join('، ')}` : 'عُدّلت الدفعة')
       onClose()
     } catch (e) {
@@ -70,7 +70,7 @@ export function EditBatchDialog({ batch, data, onClose }: { batch: SealBatch; da
       open
       onClose={onClose}
       title={`تعديل الدفعة ${ordinalWord(batch.batchNo)}`}
-      subtitle="غيّر الفني أو التاريخ، أضف أختام أو احذفها."
+      subtitle="غيّر الفني أو التاريخ، وأضف أختاماً أو احذفها."
       icon={<Stamp size={20} />}
       aside={aside}
       footer={
@@ -108,7 +108,7 @@ export function EditBatchDialog({ batch, data, onClose }: { batch: SealBatch; da
                     data-bad={out ? true : undefined}
                     disabled={locked}
                     aria-pressed={out}
-                    title={locked ? 'ختم مستخدم، ما بينحذف من هون' : out ? 'سيُحذف، اضغط للتراجع' : 'اضغط للحذف'}
+                    title={locked ? 'ختم مستخدم، لا يُحذف من هنا' : out ? 'سيُحذف، اضغط للتراجع' : 'اضغط للحذف'}
                     onClick={() => flip(s.sealNo)}
                     style={out ? { textDecoration: 'line-through', opacity: 0.7 } : undefined}
                   >
@@ -123,7 +123,7 @@ export function EditBatchDialog({ batch, data, onClose }: { batch: SealBatch; da
         )}
         <label className="field">
           <span className="label">
-            إضافة أختام جديدة للدفعة{roll ? <> (من الرول <b className="num">{roll.fromNo}–{roll.toNo}</b>). أول الرقم <b className="num roll-fixed">{prefix}</b> جاهز، وكل ما تضغط <b>مسافة</b> بيجيك من جديد</> : ''}
+            إضافة أختام جديدة للدفعة{roll ? <> (من الرول <b className="num">{roll.fromNo}–{roll.toNo}</b>). أول الرقم <b className="num roll-fixed">{prefix}</b> جاهز، وكلما ضغطت <b>مسافة</b> يظهر لك من جديد</> : ''}
           </span>
           <textarea
             className="seal-input"
@@ -147,7 +147,7 @@ export function EditBatchDialog({ batch, data, onClose }: { batch: SealBatch; da
             ))}
           </div>
         )}
-        <p className="field-hint">الفني والتاريخ يتغيّران لكل أختام الدفعة، والأختام الجديدة تلتحق بها. تقدر ترجع تعدّلها وتضيف أكثر. لتغيير ختم بعينه افتحه من «سجل الأختام».</p>
+        <p className="field-hint">الفني والتاريخ يتغيّران لكل أختام الدفعة، والأختام الجديدة تلتحق بها. ويمكنك تعديلها لاحقاً وإضافة المزيد. لتغيير ختم بعينه افتحه من «سجل الأختام».</p>
         {error && <p className="field-error" role="alert">{error}</p>}
       </div>
     </Dialog>
@@ -195,7 +195,7 @@ export function EditRollDialog({ roll, onClose }: { roll: SealRoll; onClose(): v
           <input type="date" className="input" max={todayISO()} value={date} onChange={(e) => setDate(e.target.value)} />
         </label>
         <TextField label="ملاحظة" value={note} onChange={setNote} />
-        <p className="field-hint">أرقام الرول نفسها لا تتغيّر. إن سجّلتها غلط، احذف الرول (وهو فاضي) وسجّله من جديد.</p>
+        <p className="field-hint">أرقام الرول نفسها لا تتغيّر. إن سجّلتها خطأً، احذف الرول (وهو فارغ) وسجّله من جديد.</p>
         {error && <p className="field-error" role="alert">{error}</p>}
       </div>
     </Dialog>

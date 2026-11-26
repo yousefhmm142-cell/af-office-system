@@ -5,7 +5,7 @@ import { everyText, leftText, maintenanceSchedule, type DueState } from './maint
 import type { AlertSettings, Generator, SiteReport } from './model'
 
 const TONE: Record<DueState, Tone> = { ok: 'ok', soon: 'warn', due: 'danger', unknown: 'neutral' }
-const WORD: Record<DueState, string> = { ok: 'تمام', soon: 'قرّبت', due: 'حان موعدها', unknown: 'ما في سجل' }
+const WORD: Record<DueState, string> = { ok: 'في موعدها', soon: 'اقترب موعدها', due: 'حان موعدها', unknown: 'لا يوجد سجل' }
 
 /**
  * The maintenance schedule of the generators as of this report: per generator, each kind of maintenance
@@ -24,7 +24,7 @@ export function MaintenanceCard({ report, history, generators, settings }: { rep
       <div className="card-h">
         <span className="ico-round"><CalendarClock size={16} /></span>
         <h2>جدول الصيانة</h2>
-        <span className="meta">{due ? `${due} حان موعدها` : soon ? `${soon} قرّبت` : 'كله بموعده'}</span>
+        <span className="meta">{due ? `${due} حان موعدها` : soon ? `${soon} اقترب موعدها` : 'كلها في موعدها'}</span>
       </div>
       <div className="mp-grid">
         {rows.map(({ g, items }) => (
@@ -52,7 +52,7 @@ export function MaintenanceCard({ report, history, generators, settings }: { rep
             </ul>
             {items.some((i) => i.state === 'unknown') && (
               <p className="mp-unknown muted">
-                ما في سجل لـ: {items.filter((i) => i.state === 'unknown').map((i) => i.label).join('، ')}. بتبلش تنحسب أول ما تنسجّل بالصيانات.
+                لا يوجد سجل لـ: {items.filter((i) => i.state === 'unknown').map((i) => i.label).join('، ')}. يبدأ حسابها عند تسجيلها في الصيانات.
               </p>
             )}
           </article>

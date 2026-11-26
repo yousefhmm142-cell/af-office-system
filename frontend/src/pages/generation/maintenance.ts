@@ -62,15 +62,15 @@ export const everyText = (e: { hours?: number; days?: number }) =>
 
 /** «باقي 40 ساعة» / «متأخرة 3 أيام». */
 export function leftText(i: DueItem): string {
-  if (i.state === 'unknown') return 'ما في سجل'
+  if (i.state === 'unknown') return 'لا يوجد سجل'
   const parts: string[] = []
   if (i.every.hours && i.hoursSince !== null) {
     const left = i.every.hours - i.hoursSince
-    parts.push(left >= 0 ? `باقي ${left} ساعة` : `متأخرة ${-left} ساعة`)
+    parts.push(left >= 0 ? `متبقٍّ ${left} ساعة` : `متأخرة ${-left} ساعة`)
   }
   if (i.every.days && i.daysSince !== null) {
     const left = i.every.days - i.daysSince
-    parts.push(left >= 0 ? `باقي ${left} يوم` : `متأخرة ${-left} يوم`)
+    parts.push(left >= 0 ? `متبقٍّ ${left} يوم` : `متأخرة ${-left} يوم`)
   }
   return parts.join(' · ')
 }

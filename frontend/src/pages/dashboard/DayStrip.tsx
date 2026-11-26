@@ -32,6 +32,6 @@ export function DayStrip() {
       <span className="fx-day-now" style={{ insetInlineStart: `${position(minute(now))}%` }}><b>هلأ</b></span>
     </div></div>
     {selected && <div className="fx-day-bubble" aria-live="polite"><button className="link-btn" type="button" onClick={() => setChosen(null)}>إغلاق</button>{selected.map(e => <p key={e.id}><time className="num">{formatTime(new Date(e.at))}</time> · <b>{e.who}</b> {e.text} {e.route && <Link to={e.route}>افتح</Link>}</p>)}</div>}
-    {!feed ? <p className="card-empty">جاري قراءة حركات اليوم…</p> : !events.length && <p className="card-empty">لسّا ما في حركات مسجّلة اليوم.</p>}
+    {!feed ? <p className="card-empty">جارٍ تحميل حركات اليوم…</p> : !events.length && <p className="card-empty">لم تُسجَّل حركات اليوم بعد.</p>}
   </section>
 }

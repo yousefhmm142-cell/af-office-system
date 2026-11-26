@@ -105,9 +105,9 @@ function Timeline({ sheet, zoneNames, imbalanceWarn }: { sheet: DistributionShee
       <div className="card-h">
         <span className="ico-round"><Clock size={16} /></span>
         <h2>التغذية والأحمال خلال اليوم</h2>
-        <span className="meta">من 6 الصبح لـ 4 الفجر باليوم التالي · ارتفاع الشكل = متوسط الحمل من الصفر{peak && <> · الخط المتقطع = أعلى حمل اليوم <b className="num">{peak}</b></>} · <span className="tl-key-ok">● حمل طبيعي</span> · <span className="tl-key-warn">● فازات مش متوازنة</span></span>
+        <span className="meta">من السادسة صباحاً إلى الرابعة فجر اليوم التالي · ارتفاع الشكل = متوسط الحمل من الصفر{peak && <> · الخط المتقطع = أعلى حمل اليوم <b className="num">{peak}</b></>} · <span className="tl-key-ok">● حمل طبيعي</span> · <span className="tl-key-warn">● فازات غير متوازنة</span></span>
       </div>
-      <div className="tl" style={{'--tl-hours': SPAN / 60} as CSSProperties} role="img" aria-label="أوقات تغذية المناطق وأحمالها من 6 الصبح إلى 4 الفجر باليوم التالي">
+      <div className="tl" style={{'--tl-hours': SPAN / 60} as CSSProperties} role="img" aria-label="أوقات تغذية المناطق وأحمالها من السادسة صباحاً إلى الرابعة فجر اليوم التالي">
         <div className="tl-row tl-axis" aria-hidden="true">
           <span />
           <div className="tl-ticks">
@@ -167,7 +167,7 @@ function Timeline({ sheet, zoneNames, imbalanceWarn }: { sheet: DistributionShee
                       key={`${r.id}-${k}`}
                       className="tl-run"
                       style={{ insetInlineStart: `${(a / SPAN) * 100}%`, width: `${((b - a) / SPAN) * 100}%` }}
-                      title={`التشغيلة ${RUN_NAMES[i]}: ${clock12(r.start)} ← ${clock12(r.end)}${avg !== null ? ` · متوسط الحمل ${formatAmount(avg)} ${r.loadUnit}${phases ? ` · ${phases}` : ''}` : ''}${warn ? ` · الفازات مش متوازنة (فرق ${Math.round(gap!)}%)` : ''}`}
+                      title={`التشغيلة ${RUN_NAMES[i]}: ${clock12(r.start)} ← ${clock12(r.end)}${avg !== null ? ` · متوسط الحمل ${formatAmount(avg)} ${r.loadUnit}${phases ? ` · ${phases}` : ''}` : ''}${warn ? ` · الفازات غير متوازنة (فرق ${Math.round(gap!)}%)` : ''}`}
                     >
                       {avg !== null && k === 0 && <b className="tl-val num" data-warn={warn || undefined} style={{ bottom: `${Math.max(16, 16 + (h / 100) * 46 - 20)}px` }}>{warn && '⚠ '}{formatAmount(avg)}<small>{r.loadUnit}</small></b>}
                       <span className="tl-seg" />
@@ -245,7 +245,7 @@ function HourlyLoads({ sheet, zoneNames, imbalanceWarn }: { sheet: DistributionS
       <div className="card-h">
         <span className="ico-round"><LayoutGrid size={16} /></span>
         <h2>الأحمال حسب الساعة</h2><HeatLegend />
-        <span className="meta">كل خانة: القراءات الثلاثة ثم المتوسط{all !== null && <> · متوسط كل المناطق <b className="num">{formatAmount(all)}</b></>}</span>
+        <span className="meta">كل خانة: القراءات الثلاث ثم المتوسط{all !== null && <> · متوسط كل المناطق <b className="num">{formatAmount(all)}</b></>}</span>
       </div>
       <div className="tw">
         <table className="tbl hourly">

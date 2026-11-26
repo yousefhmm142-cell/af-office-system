@@ -17,8 +17,8 @@ export function GeneratorLoadsPanel({ readings, onChange }: {
   onChange?: (id: number, changes: Record<number, number | null>, unit?: LoadUnit) => void
 }) {
   return <section id="generator-loads" className="distribution-generator-loads" onKeyDown={advanceOnEnter} aria-label="أحمال المولدات اليومية">
-    <header><h2>أحمال المولدات</h2><p className="muted">تعبئة واحدة لليوم كله، وبتظهر في تقرير التوليد أيضًا.</p></header>
-    {readings.length === 0 ? <p className="muted">ما في مولدات مسجّلة لهذا اليوم.</p> : readings.map((row) =>
+    <header><h2>أحمال المولدات</h2><p className="muted">تعبئة واحدة لليوم كله، وتظهر في تقرير التوليد أيضاً.</p></header>
+    {readings.length === 0 ? <p className="muted">لا توجد مولدات مسجّلة لهذا اليوم.</p> : readings.map((row) =>
       <fieldset key={row.generator_id} className="fcard gloads" disabled={!onChange}>
         <header className="gen-head zloads-head">
           <div><h3 className="fcard-title">{row.name}</h3><small className="muted">{row.brand}{row.capacity_kva ? ` · ${formatAmount(row.capacity_kva)} kVA` : ''}</small></div>

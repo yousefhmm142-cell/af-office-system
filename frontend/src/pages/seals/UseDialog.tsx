@@ -98,7 +98,7 @@ export function UseDialog({ data, seal, onClose }: { data: SealData; seal?: Seal
       const wasOut = found.status === 'issued'
       const no = found.sealNo
       await record(no, status, date, line, status === 'used' ? board.trim() : '', status === 'used' && canLink ? taskId || null : undefined)
-      toast(`سُجّل الختم ${no}`, 'ok', wasOut ? { label: 'تراجع', run: async () => { try { await record(no, 'issued', null, '', ''); toast(`رجع الختم ${no} «غير مستخدم»`) } catch { toast('ما قدرنا نتراجع. افتح الختم وألغِ تسجيله.', 'danger') } } } : undefined)
+      toast(`سُجّل الختم ${no}`, 'ok', wasOut ? { label: 'تراجع', run: async () => { try { await record(no, 'issued', null, '', ''); toast(`رجع الختم ${no} «غير مستخدم»`) } catch { toast('تعذّر التراجع. افتح الختم وألغِ تسجيله.', 'danger') } } } : undefined)
       if (next && !seal) {
         setNo('');setTaskId('')
         setBoard('')
@@ -150,7 +150,7 @@ export function UseDialog({ data, seal, onClose }: { data: SealData; seal?: Seal
       big={found ? <span className="num">{found.sealNo}</span> : ''}
       rows={[['الفني', found?.technicianId ? data.names.get(found.technicianId) ?? '' : ''], ['الحالة', status === 'used' ? 'مستخدم' : status === 'damaged' ? 'تالف' : 'ضائع'], ['التاريخ', dayLabel(date)]]}
       more={status === 'used' ? [[subs.filter((x) => x.trim()).length > 1 ? 'المشتركين' : 'المشترك', subscriberLine], ['الطبلون', board.trim()], ['العمل', work.trim()]] : [['ملاحظة', work.trim()]]}
-      note={line ? <span>بينكتب بالسجل: «{line}»</span> : undefined}
+      note={line ? <span>يُكتب في السجل: «{line}»</span> : undefined}
     />
   )
 
@@ -200,7 +200,7 @@ export function UseDialog({ data, seal, onClose }: { data: SealData; seal?: Seal
         ) : null}
 
         {status==='used' && canLink && found?.technicianId && /^\d+$/.test(found.technicianId) && <TaskPicker key={found.sealNo} technician={data.names.get(found.technicianId) ?? 'الفني'} value={taskId} choices={candidates} selectedChoice={selectedTask} query={taskQuery} onSearch={setTaskQuery} loading={tasks.loading} error={!!tasks.error} onChange={applyChoice}/>}
-        <div className="chips" role="radiogroup" aria-label="ما صار للختم">
+        <div className="chips" role="radiogroup" aria-label="ما حدث للختم">
           {outcomes.map((o) => (
             <Chip key={o.value} pressed={status === o.value} onClick={() => setStatus(o.value)}>{o.label}</Chip>
           ))}
@@ -217,7 +217,7 @@ export function UseDialog({ data, seal, onClose }: { data: SealData; seal?: Seal
               <div key={i} className="seal-sub">
                 <SubscriberField
                   list={directory.data?.subscribers ?? []}
-                  label={i === 0 ? 'اسم المشترك (اختياري) · اكتب اسمين وبيطلع الطبلون' : `المشترك ${i + 1} على نفس الطبلون`}
+                  label={i === 0 ? 'اسم المشترك (اختياري) · اكتب اسمين فيظهر الطبلون' : `المشترك ${i + 1} على نفس الطبلون`}
                   value={v}
                   onChange={(x) => setSub(i, x)}
                   onPick={(x) => { if (x.b && (i === 0 || !board.trim())) setBoard(x.b) }}
@@ -228,7 +228,7 @@ export function UseDialog({ data, seal, onClose }: { data: SealData; seal?: Seal
                     <Plus size={14} aria-hidden="true" />مشترك آخر
                   </button>
                 ) : (
-                  <button type="button" className="seal-sub-btn drop" onClick={() => dropSub(i)} aria-label={`شيل المشترك ${i + 1}`}>
+                  <button type="button" className="seal-sub-btn drop" onClick={() => dropSub(i)} aria-label={`إزالة المشترك ${i + 1}`}>
                     <X size={14} aria-hidden="true" />شيل
                   </button>
                 )}
@@ -244,7 +244,7 @@ export function UseDialog({ data, seal, onClose }: { data: SealData; seal?: Seal
               const last = before[0]
               return last ? (
                 <p className="seal-prev" role="status">
-                  على هالطبلون ختم سابق <b className="num">{last.sealNo}</b>{last.usedOn ? <> من <span className="num">{dayLabel(last.usedOn)}</span></> : null}
+                  على هذا الطبلون ختم سابق <b className="num">{last.sealNo}</b>{last.usedOn ? <> من <span className="num">{dayLabel(last.usedOn)}</span></> : null}
                   {last.technicianId ? ` (${data.names.get(last.technicianId) ?? '—'})` : ''}
                   {before.length > 1 && <> و{before.length - 1} قبله</>}
                 </p>

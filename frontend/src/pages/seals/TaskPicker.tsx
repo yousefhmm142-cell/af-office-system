@@ -23,21 +23,21 @@ export function TaskPicker({technician,value,choices,selectedChoice,loading,erro
    {query && <button type="button" className="seal-task-search-action" aria-label="مسح بحث المهام" onClick={()=>{onSearch('');search.current?.focus()}}><X size={17}/></button>}
    <button type="button" className="seal-task-search-action" aria-label="إغلاق قائمة المهام" onClick={()=>close(true)}><ChevronDown size={18} className="turned"/></button>
   </div>:<button ref={trigger} type="button" className="seal-task-trigger" aria-label="اختيار مهمة للفني" aria-expanded={false} aria-controls={id} onClick={()=>{onSearch('');setOpen(true)}} onKeyDown={e=>{if(e.key==='ArrowDown'){e.preventDefault();onSearch('');setOpen(true)}}}>
-   <ClipboardList size={19}/><span>{selected?<><b>{selected.work} · <bdi className="seal-task-selected-number">#{selected.number}</bdi></b><small className="seal-task-subscriber">{selected.subscriber || 'بدون اسم مشترك'}</small></>:<b>{value?'المهمة المرتبطة المحفوظة':'اختار مهمة للفني'}</b>}</span><ChevronDown size={18}/>
+   <ClipboardList size={19}/><span>{selected?<><b>{selected.work} · <bdi className="seal-task-selected-number">#{selected.number}</bdi></b><small className="seal-task-subscriber">{selected.subscriber || 'بدون اسم مشترك'}</small></>:<b>{value?'المهمة المرتبطة المحفوظة':'اختيار مهمة للفني'}</b>}</span><ChevronDown size={18}/>
   </button>}
   <div className="seal-task-accordion" data-open={open || undefined} aria-hidden={!open} inert={!open}><div id={id} className="seal-task-options" role="group" aria-busy={loading} aria-label={`اختيار مهمة للفني ${technician}`} onKeyDown={e=>{
    if(e.key==='Escape'){e.preventDefault();e.stopPropagation();close(true)}
    if(e.key==='ArrowDown'||e.key==='ArrowUp'){e.preventDefault();const buttons=[...e.currentTarget.querySelectorAll<HTMLButtonElement>('button')],i=buttons.indexOf(document.activeElement as HTMLButtonElement);if(e.key==='ArrowUp' && i===0)search.current?.focus();else buttons[(i+(e.key==='ArrowDown'?1:-1)+buttons.length)%buttons.length]?.focus()}
   }}>
    <div className="seal-task-list-head"><b>{technician} والمجهّزة بدون فني</b><small role="status">{query.trim()?`نتائج البحث · ${total}`:`آخر 7 أيام · ${choices.length}`}</small></div>
-   <button type="button" tabIndex={open?undefined:-1} className="seal-task-option automatic" aria-pressed={!value} onClick={()=>pick(null)}><Link2 size={17}/><span><b>بدون اختيار مهمة</b><small>بتقدر تكتب الشغل بنفسك.</small></span>{!value && <Check className="seal-task-check" size={17}/>}</button>
+   <button type="button" tabIndex={open?undefined:-1} className="seal-task-option automatic" aria-pressed={!value} onClick={()=>pick(null)}><Link2 size={17}/><span><b>بدون اختيار مهمة</b><small>يمكنك كتابة العمل بنفسك.</small></span>{!value && <Check className="seal-task-check" size={17}/>}</button>
    {error && <p role="status">تعذّر تحديث النتائج. جرّب مرة أخرى.</p>}
-   {loading?<div className="seal-task-skeleton"><Skeleton kind="list" rows={3}/></div>:!choices.length?<p role="status">{query.trim()?'ما في مهام مطابقة. جرّب اسم أو رقم أو عمل ثاني.':'ما في مهام حديثة حاليًا.'}</p>:choices.map(t=><button key={t.id} type="button" tabIndex={open?undefined:-1} className="seal-task-option" aria-pressed={value===t.id} onClick={()=>pick(t)}>
+   {loading?<div className="seal-task-skeleton"><Skeleton kind="list" rows={3}/></div>:!choices.length?<p role="status">{query.trim()?'لا توجد مهام مطابقة. جرّب اسماً أو رقماً أو عملاً آخر.':'لا توجد مهام حديثة حالياً.'}</p>:choices.map(t=><button key={t.id} type="button" tabIndex={open?undefined:-1} className="seal-task-option" aria-pressed={value===t.id} onClick={()=>pick(t)}>
     <span className="seal-task-number num">#{t.number}</span><span><span className="seal-task-title"><b>{t.work}</b><small className="seal-task-state" data-done={!t.task_status || t.task_status==='done' || undefined}>{choiceStatus(t)}</small></span><span className="seal-task-subscriber">{t.subscriber || 'بدون اسم مشترك'}</span><small>{dayLabel(t.task_on || t.completed_on || '')}{t.board?` · طبلون ${t.board}`:''}</small></span>{value===t.id && <Check className="seal-task-check" size={17}/>}</button>)}
-   {!loading && total>choices.length && <p>ظاهر أول {choices.length} من {total} نتيجة؛ اكتب تفاصيل أكثر لتلاقي المهمة المطلوبة.</p>}
+   {!loading && total>choices.length && <p>معروضة أولاً {choices.length} من {total} نتيجة؛ اكتب تفاصيل أكثر لتجد المهمة المطلوبة.</p>}
   </div></div>
-  <small className="field-hint">البحث يشمل كل التواريخ. الاختيار بيعبّي المشترك والشغل والطبلون والتاريخ المتوفّرين فيها.</small>
+  <small className="field-hint">البحث يشمل كل التواريخ. ويملأ الاختيار المشترك والعمل والطبلون والتاريخ المتوفرة فيها.</small>
   {selected?.task_status && selected.task_status!=='done' && <small className="field-hint">{selected.is_prepared?'عند حفظ الختم تُعيّن هذه المهمة لصاحب الختم وتُنجز ويُربط الختم بها معًا.':'عند حفظ الختم تُنجز هذه المهمة تلقائيًا ويُربط الختم بها.'}</small>}
-  {error && !open && <small className="field-error">تعذّر تحميل مهام الفني. بيانات الختم المحفوظة ما تغيّرت.</small>}
+  {error && !open && <small className="field-error">تعذّر تحميل مهام الفني. بيانات الختم المحفوظة لم تتغيّر.</small>}
  </div>
 }

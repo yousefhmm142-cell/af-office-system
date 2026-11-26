@@ -44,11 +44,11 @@ export function UsageChart() {
   <div className="hc-h">
    <div className="hc-titles"><h2>{metric==='fuel'?'استهلاك السولار يومًا بيوم':'مجموع ساعات تشغيل المولدات يومًا بيوم'}</h2><small>{range==='all'?'كل الأيام':`آخر ${range} يوم`} · {known} تقرير مسجّل من {days.length} يوم</small></div>
    <span className="grow"/>
-   <div className="hc-seg" role="group" aria-label="شو نعرض"><button type="button" className={metric==='fuel'?'on':''} aria-pressed={metric==='fuel'} onClick={()=>setMetric('fuel')}>السولار</button><button type="button" className={metric==='hours'?'on':''} aria-pressed={metric==='hours'} onClick={()=>setMetric('hours')}>ساعات التشغيل</button></div>
-   <div className="hc-seg" role="group" aria-label="المدة">{([7,30,90,'all'] as const).map(r=><button key={r} type="button" aria-pressed={range===r} className={range===r?'on':''} onClick={()=>setRange(r)}>{r==='all'?'كل الأيام':r===90?'3 شهور':`${r} يوم`}</button>)}</div>
+   <div className="hc-seg" role="group" aria-label="ما نعرضه"><button type="button" className={metric==='fuel'?'on':''} aria-pressed={metric==='fuel'} onClick={()=>setMetric('fuel')}>السولار</button><button type="button" className={metric==='hours'?'on':''} aria-pressed={metric==='hours'} onClick={()=>setMetric('hours')}>ساعات التشغيل</button></div>
+   <div className="hc-seg" role="group" aria-label="المدة">{([7,30,90,'all'] as const).map(r=><button key={r} type="button" aria-pressed={range===r} className={range===r?'on':''} onClick={()=>setRange(r)}>{r==='all'?'كل الأيام':r===90?'3 أشهر':`${r} يوم`}</button>)}</div>
   </div>
-  <p className="hc-daily-explain">{metric==='fuel'?'كل نقطة هي السولار المستهلك في يوم واحد باللتر، وليست رصيد الخزان.':'كل نقطة تجمع ساعات المولدات التي اشتغلت في اليوم. مثال: مولّدان × 5 ساعات = 10 ساعات تشغيل.'} الفراغ يعني لا يوجد تقرير، والصفر يعني قيمة صفرية مسجّلة.</p>
-  <DailyUsagePlot days={days} metric={metric}/>{!known && <p className="hc-daily-note">ما وصلت تقارير توليد بهالمدة؛ الأيام معروضة بدون قيم.</p>}
+  <p className="hc-daily-explain">{metric==='fuel'?'كل نقطة هي السولار المستهلك في يوم واحد باللتر، وليست رصيد الخزان.':'كل نقطة تجمع ساعات المولدات التي عملت في اليوم. مثال: مولّدان × 5 ساعات = 10 ساعات تشغيل.'} الفراغ يعني لا يوجد تقرير، والصفر يعني قيمة صفرية مسجّلة.</p>
+  <DailyUsagePlot days={days} metric={metric}/>{!known && <p className="hc-daily-note">لم تصل تقارير توليد في هذه المدة؛ الأيام معروضة دون قيم.</p>}
   <div className="hc-minis"><div><small>إجمالي الاستهلاك</small><b className="num">{formatNumber(totals.used)} لتر</b></div><div><small>إجمالي الوارد</small><b className="num">{formatNumber(totals.received)} لتر</b></div><div><small>إجمالي ساعات المولدات</small><b className="num">{formatNumber(totals.hours)} ساعة</b></div><div><small>الاستهلاك لكل ساعة تشغيل</small><b className="num">{totals.hours?formatNumber(totals.used/totals.hours):'—'} لتر/ساعة</b></div></div>
   <details className="hc-daily-data"><summary>عرض جدول الأرقام لكل يوم</summary><ScrollTable label="استهلاك السولار وساعات التشغيل"><table className="tbl"><thead><tr><th>اليوم</th><th>التاريخ</th><th>السولار المستهلك (لتر)</th><th>الوارد (لتر)</th><th>مجموع ساعات المولدات</th></tr></thead><tbody>{[...days].reverse().map(d=><tr key={d.date}><td>{describeDay(d.date).weekday}</td><td><bdi className="num">{usageDate(d.date)}</bdi></td><td>{d.fuel===null?'لا تقرير':formatNumber(d.fuel)}</td><td>{d.received===null?'—':formatNumber(d.received)}</td><td>{d.hours===null?'—':formatNumber(d.hours)}</td></tr>)}</tbody></table></ScrollTable></details>
  </article>
@@ -112,8 +112,8 @@ export function LoadGauge() {
     })
   }, [selectedReport, generators, settings.phaseVoltage])
   return <article className="hc-card hc-gauge">
-    <div className="hc-h"><div className="hc-titles"><h2>حمل المولدات</h2><small className="hc-gauge-date"><span>{date ? `${selectedReport?'من تقرير':'اليوم'} ${dayName(date)} ${short(date)}` : 'ما وصل تقرير بعد'}</span><button type="button" className="hc-gauge-prev" aria-label="اليوم السابق لأحمال المولدات" title="اليوم السابق" disabled={!canPrevious} onClick={()=>{if(date)setLoadDay(addDays(date,-1))}}><ChevronRight size={14} aria-hidden="true"/></button></small></div></div>
-    {loads?.length ? loads.map(gen=><GeneratorGauge key={gen.id} gen={gen} date={date ?? ''}/>) : <p className="hc-daily-note">{selectedReport?'ما وصلت قراءات مولدات بهذا التقرير.':'ما وصل تقرير توليد لهذا اليوم.'}</p>}
+    <div className="hc-h"><div className="hc-titles"><h2>حمل المولدات</h2><small className="hc-gauge-date"><span>{date ? `${selectedReport?'من تقرير':'اليوم'} ${dayName(date)} ${short(date)}` : 'لم يصل تقرير بعد'}</span><button type="button" className="hc-gauge-prev" aria-label="اليوم السابق لأحمال المولدات" title="اليوم السابق" disabled={!canPrevious} onClick={()=>{if(date)setLoadDay(addDays(date,-1))}}><ChevronRight size={14} aria-hidden="true"/></button></small></div></div>
+    {loads?.length ? loads.map(gen=><GeneratorGauge key={gen.id} gen={gen} date={date ?? ''}/>) : <p className="hc-daily-note">{selectedReport?'لم تصل قراءات مولدات في هذا التقرير.':'لم يصل تقرير توليد لهذا اليوم.'}</p>}
   </article>
 }
 
@@ -134,7 +134,7 @@ function GeneratorGauge({gen,date}:{gen:GenLoad;date:string}){
     <section className="hc-generator-load" aria-label={`حمل ${gen.name}`}>
       <div className="hc-generator-title"><h3>{gen.name}</h3>{pct!==null && <span className={`hc-pill ${tone}`}>{tone==='ok'?'ضمن الحدود':tone==='warn'?'قريب من الحد':'فوق الحد'}</span>}</div>
       <div className="hc-gauge-svg">
-        <svg viewBox="0 0 280 160" role="img" aria-label={pct === null ? 'ما في قراءات حمل' : `حمل ${gen?.name ?? ''} ${pct}% من قدرته`}>
+        <svg viewBox="0 0 280 160" role="img" aria-label={pct === null ? 'لا توجد قراءات حمل' : `حمل ${gen?.name ?? ''} ${pct}% من قدرته`}>
           <defs>
             <linearGradient id={gradient} x1="1" y1="0" x2="0" y2="0">
               <stop offset="0" stopColor="#8E1B2B" />
@@ -163,7 +163,7 @@ function GeneratorGauge({gen,date}:{gen:GenLoad;date:string}){
       </div>
       <div className="hc-g-center">
         <b className="num">{pct === null ? '—' : `${Math.round(run)}%`}</b>
-        <small>{gen ? (pct === null ? `${gen.name}: ${gen.ran ? 'ما في قراءات حمل أو قدرة للمولد' : 'لم يعمل في هذا التقرير'}` : `${gen.name} · ${fmt(gen.kva!)} من ${fmt(gen.cap!)} kVA`) : 'ما اشتغل ولا مولد'}</small>
+        <small>{gen ? (pct === null ? `${gen.name}: ${gen.ran ? 'لا توجد قراءات حمل أو قدرة للمولد' : 'لم يعمل في هذا التقرير'}` : `${gen.name} · ${fmt(gen.kva!)} من ${fmt(gen.cap!)} kVA`) : 'لم يعمل أي مولد'}</small>
       </div>
       <div className="hc-trio">
         <div><b className="num">{gen?.peak ? `${fmt(gen.peak.v)} ${gen.peak.unit === 'A' ? 'A' : 'kW'}` : '—'}</b><small>أعلى حمل</small></div>
@@ -219,7 +219,7 @@ export function MonthRing() {
       <div className="hc-legend">
         <div><i className="brand" /><span>معتمدة</span><b className="num">{data.approved}</b></div>
         <Link to="/generation"><i className="warn" /><span>بانتظار اعتمادك</span><b className="num">{data.waiting}</b></Link>
-        <div><i className="none" /><span>ما وصلت أو لسا بتتعبّى</span><b className="num">{data.missing}</b></div>
+        <div><i className="none" /><span>لم تصل أو قيد التعبئة</span><b className="num">{data.missing}</b></div>
       </div>
     </article>
   )
@@ -262,12 +262,12 @@ export function FuelCard() {
       <div className="hc-lead">
         <small>السولار · الرصيد المتبقي {f.latest.reportDate !== today && <>({dayName(f.latest.reportDate)})</>}</small>
         <b className="num">{fmt(f.outlook.remaining)}<em>لتر</em></b>
-        <span className={`hc-pill ${tone}`}>يكفي نحو {Math.floor(days)} {Math.floor(days) === 1 ? 'يوم' : 'يوم'}</span>
+        <span className={`hc-pill ${tone}`}>يكفي نحو {Math.floor(days)} {Math.floor(days) === 1 ? 'يوم' : Math.floor(days) <= 10 ? 'أيام' : 'يوماً'}</span>
       </div>
       <div className="hc-tl">
         {f.forecast ? (
           <>
-            <div className="hc-tl-h num"><span>اليوم <b>{short(today)}</b></span><span>بيخلص تقريباً <b>{dayName(f.forecast.runOutDate)} {short(f.forecast.runOutDate)}</b></span></div>
+            <div className="hc-tl-h num"><span>اليوم <b>{short(today)}</b></span><span>ينفد تقريباً <b>{dayName(f.forecast.runOutDate)} {short(f.forecast.runOutDate)}</b></span></div>
             <div className="hc-tl-track">
               <div className="hc-tl-fill" style={{ width: shown ? '100%' : 0 }} />
               {orderAt !== null && <div className={`hc-tl-mark${orderAt > 50 ? ' flip' : ''}`} style={{ right: `${orderAt}%` }}><span className="num">اطلب قبل {dayName(f.forecast.orderBy)} {short(f.forecast.orderBy)}</span></div>}
@@ -275,13 +275,13 @@ export function FuelCard() {
             {f.forecast.rough && <small className="hc-note">تقدير تقريبي: الأيام المسجّلة قليلة.</small>}
           </>
         ) : (
-          <p className="hc-note">ما في استهلاك كفاية لنحسب متى بيخلص.</p>
+          <p className="hc-note">لا يكفي الاستهلاك المسجّل لحساب موعد نفاده.</p>
         )}
       </div>
       <div className="hc-facts">
         <div><span>آخر وارد</span><b className="num">{f.lastIn ? `${fmt(reportTotals(f.lastIn).received)} لتر · ${dayName(f.lastIn.reportDate)} ${short(f.lastIn.reportDate)}` : '—'}</b></div>
         <div><span>المعدّل اليومي</span><b className="num">{f.outlook.dailyAverage ? `${fmt(f.outlook.dailyAverage)} لتر` : '—'}</b></div>
-        <div><span>الوارد هالشهر</span><b className="num">{fmt(f.monthIn)} لتر</b></div>
+        <div><span>الوارد هذا الشهر</span><b className="num">{fmt(f.monthIn)} لتر</b></div>
       </div>
     </article>
   )
@@ -322,12 +322,12 @@ export function Insights() {
     top.best && { icon: Droplet, tone: 'brand', label: 'أعلى يوم سولار', value: `${fmt(top.best.v)} لتر`, side: `${dayName(top.best.date)} ${short(top.best.date)}` },
     top.perHour && { icon: Gauge, tone: 'amber', label: 'لتر لكل ساعة تشغيل', value: top.perHour.toFixed(1), side: 'آخر 30 يوم' },
     data.topType && { icon: TrendingUp, tone: 'blue', label: 'أكثر نوع مهمة', value: data.topType, side: `${data.topShare}% من ${data.total}` },
-    data.avgMinutes !== null && { icon: Timer, tone: 'green', label: 'معدّل وقت إنجاز المهمة', value: `${data.avgMinutes} دقيقة`, side: 'من البدء للإنهاء' },
+    data.avgMinutes !== null && { icon: Timer, tone: 'green', label: 'معدّل وقت إنجاز المهمة', value: `${data.avgMinutes} دقيقة`, side: 'من البدء حتى الإنجاز' },
   ].filter(Boolean) as Array<{ icon: typeof Droplet; tone: string; label: string; value: string; side: string }>
   if (!items.length) return null
   return (
-    <section className="hc-card hc-ins" aria-label="شو لافت">
-      <div className="hc-h"><div className="hc-titles"><h2>شو لافت</h2><small>من آخر 30 يوم</small></div><span className="grow" /><Link to="/tasks?view=archive" className="hc-more">الأرشيف <ArrowLeft size={14} aria-hidden="true" /></Link></div>
+    <section className="hc-card hc-ins" aria-label="ما يلفت الانتباه">
+      <div className="hc-h"><div className="hc-titles"><h2>ما يلفت الانتباه</h2><small>من آخر 30 يوم</small></div><span className="grow" /><Link to="/tasks?view=archive" className="hc-more">الأرشيف <ArrowLeft size={14} aria-hidden="true" /></Link></div>
       <div className="hc-ins-grid">
         {items.map((it) => (
           <div key={it.label} className="hc-ins-i">
@@ -370,13 +370,13 @@ export function KpiBoxes({ here, total, open, late, canTasks }: { here: number; 
       {canTasks && <Link to="/tasks/daily" className="hc-kb daily-entry-card">
         <span className="daily-entry-icon"><Printer size={25} aria-hidden="true"/></span>
         <b>كشف إنجاز الفنيين</b>
-        <span>اختار اليوم، راجع الشغل واطبع الكشف.</span>
+        <span>اختر اليوم، وراجع العمل، واطبع الكشف.</span>
         <span className="daily-entry-foot">افتح الكشف <ArrowLeft size={18} aria-hidden="true"/></span>
       </Link>}
       <article className="hc-kb">
         <div className="hc-kb-lab">بانتظار اعتمادك <Info size={15} aria-hidden="true" /></div>
         <div className="hc-kb-v num"><CountUp value={data.approvals} /></div>
-        <div className="hc-kb-d">{data.approvals ? <span className="hc-pill warn">من {dayName(data.oldestWaiting!)}</span> : <span className="hc-pill ok">ما في اشي ينتظر</span>}</div>
+        <div className="hc-kb-d">{data.approvals ? <span className="hc-pill warn">من {dayName(data.oldestWaiting!)}</span> : <span className="hc-pill ok">لا شيء ينتظر</span>}</div>
         <svg className="hc-kb-pic" viewBox="0 0 96 64" aria-hidden="true">
           {[0, 1, 2, 3].map((i) => {
             const lit = i < Math.min(4, data.approvals)
@@ -389,20 +389,20 @@ export function KpiBoxes({ here, total, open, late, canTasks }: { here: number; 
       <article className="hc-kb">
         <div className="hc-kb-lab">مهام مفتوحة <Info size={15} aria-hidden="true" /></div>
         <div className="hc-kb-v num"><CountUp value={open} /></div>
-        <div className="hc-kb-d">{late ? <span className="hc-pill danger">{late} متأخرة</span> : <span className="hc-pill ok">ما في تأخير</span>}<span className="num">خلص {data.done[6]}</span></div>
+        <div className="hc-kb-d">{late ? <span className="hc-pill danger">{late} متأخرة</span> : <span className="hc-pill ok">لا تأخير</span>}<span className="num">أُنجز {data.done[6]}</span></div>
         <KbLine values={data.done} />
-        {more('/tasks', 'شوف المهام')}
+        {more('/tasks', 'عرض المهام')}
       </article>
       <article className="hc-kb">
         <div className="hc-kb-lab">حضور اليوم <Info size={15} aria-hidden="true" /></div>
         <div className="hc-kb-v num"><CountUp value={data.here} /><small>من {data.total}</small></div>
-        <div className="hc-kb-d">{vsYesterday === 0 ? <span className="hc-pill">زي أمس</span> : <span className={`hc-pill ${vsYesterday > 0 ? 'ok' : 'warn'}`}>{vsYesterday > 0 ? '↑' : '↓'} {Math.abs(vsYesterday)} عن أمس</span>}</div>
+        <div className="hc-kb-d">{vsYesterday === 0 ? <span className="hc-pill">مثل أمس</span> : <span className={`hc-pill ${vsYesterday > 0 ? 'ok' : 'warn'}`}>{vsYesterday > 0 ? '↑' : '↓'} {Math.abs(vsYesterday)} عن أمس</span>}</div>
         <svg className="hc-kb-pic" viewBox="0 0 96 64" aria-hidden="true">
           <circle cx="48" cy="32" r="24" className="hc-kb-ring-bg" />
           <circle cx="48" cy="32" r="24" className="hc-kb-ring" strokeDasharray={2 * Math.PI * 24} strokeDashoffset={2 * Math.PI * 24 * (1 - (shown ? pct : 0) / 100)} transform="rotate(-90 48 32)" />
           <text x="48" y="37" textAnchor="middle" className="hc-kb-ring-t num">{pct}%</text>
         </svg>
-        {more('/attendance', 'شوف الحضور')}
+        {more('/attendance', 'عرض الحضور')}
       </article>
       <article className="hc-kb">
         <div className="hc-kb-lab">نشطون مؤخرًا <Info size={15} aria-hidden="true" /></div>
@@ -443,11 +443,11 @@ export function HomeHeader({ name, doneToday, attention, canTasks }: { name: str
   return (
     <header className="hc-head">
       <div className="hc-head-t">
-        <span className="hc-live num">مباشر · {doneToday ?? '—'} مهمة خلصت اليوم · {waiting ?? '—'} بانتظار اعتمادك</span>
+        <span className="hc-live num">مباشر · {doneToday ?? '—'} مهمة أُنجزت اليوم · {waiting ?? '—'} بانتظار اعتمادك</span>
         <h1>{greeting(now)}، {name}</h1>
         <p className="num">
           {formatWeekday(now)} {formatLongDate(now)} · {formatTime(now)}
-          {attention > 0 && <> · <a href="#today-attention">{attention === 1 ? 'شغلة وحدة بدها انتباهك' : `${attention} أشياء بدها انتباهك`}</a></>}
+          {attention > 0 && <> · <a href="#today-attention">{attention === 1 ? 'أمر واحد يحتاج انتباهك' : `${attention} أمور تحتاج انتباهك`}</a></>}
         </p>
       </div>
       <span className="grow" />

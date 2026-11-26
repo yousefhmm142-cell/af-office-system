@@ -9,6 +9,7 @@ import { Chip } from '../../ui/form'
 import { Avatar, Button } from '../../ui/primitives'
 import { SignFooter } from '../sheets/SignFooter'
 import { UseDialog } from './dialogs'
+import { useUser } from '../../app/auth'
 import { fold, latinDigits, ordinalWord, skippedInBatches, type Seal, type SealData } from './model'
 import { dayLabel, SealPill, SealsLoading, SealsTabs } from './parts'
 import { useSealData } from './repo'
@@ -20,7 +21,7 @@ import { useSealData } from './repo'
 const daysBetween = (from: string, to: string) => Math.round((Date.parse(`${to}T12:00:00Z`) - Date.parse(`${from}T12:00:00Z`)) / 86_400_000)
 
 /** 0 → «اليوم»، 1 → «يوم»، 2 → «يومين»، 3–10 → «أيام»، وبعدها «يوم». */
-const ageText = (n: number) => (n === 0 ? 'اليوم' : n === 1 ? 'يوم' : n === 2 ? 'يومين' : n <= 10 ? `${n} أيام` : `${n} يوم`)
+const ageText = (n: number) => (n === 0 ? 'اليوم' : n === 1 ? 'يوم' : n === 2 ? 'يومان' : n <= 10 ? `${n} أيام` : `${n} يوماً`)
 
 interface BatchLine {
   key: string
@@ -114,7 +115,7 @@ export function SealUnrecordedPage() {
       <header className="ph">
         <div>
           <h1>الأختام غير المسجّلة</h1>
-          <p className="muted">أختام انصرفت لفنيين وما انسجّل استخدامها (ولا تالف ولا ضائع). اضغط على أي رقم وسجّل اللي صار فيه.</p>
+          <p className="muted">أختام صُرفت لفنيين ولم يُسجَّل استخدامها (ولا أنها تالفة أو ضائعة). اضغط على أي رقم وسجّل ما حدث له.</p>
         </div>
         <div className="ph-actions">
           {shown.length > 0 && <Button variant="utility" icon={<Printer size={16} />} onClick={() => print(shown)}>{tech ? 'طباعة قائمة الفني' : 'طباعة القائمة كلها'}</Button>}
@@ -132,7 +133,7 @@ export function SealUnrecordedPage() {
       {unnamed && (
         <div className="banner info" role="status">
           <UserX size={18} />
-          <p><b className="num">{unnamed.count}</b> ختم من دفعات <b>بدون اسم فني</b><span>سمّي الدفعة من «آخر ما صُرف» بزر «تعبئة الاسم» عشان يظهروا باسم الفني.</span></p>
+          <p><b className="num">{unnamed.count}</b> ختم من دفعات <b>بدون اسم فني</b><span>سمِّ الدفعة من «آخر ما صُرف» بزر «تعبئة الاسم» لتظهر باسم الفني.</span></p>
         </div>
       )}
 
@@ -151,7 +152,7 @@ export function SealUnrecordedPage() {
       </div>
 
       <div className="uq-filters">
-        <div className="chips" role="group" aria-label="كم صار من الصرف">
+        <div className="chips" role="group" aria-label="كم مضى على الصرف">
           {LATE.map((l) => <Chip key={l.value} pressed={minDays === l.value} onClick={() => setMinDays(l.value)}>{l.label}</Chip>)}
         </div>
         <ChoiceField className="select tech-select" aria-label="الفني" value={tech ?? ''} onChange={(e) => setTech(e.target.value || null)}>
@@ -163,8 +164,8 @@ export function SealUnrecordedPage() {
       {shown.length === 0 ? (
         <section className="empty card">
           <EmptyArt kind="clipboard" />
-          <h3>{query ? 'ما في نتائج للبحث' : minDays ? 'ولا ختم بهالمدة' : 'كل الأختام المصروفة مسجّلة'}</h3>
-          <p>{query ? 'جرّب رقم أقصر أو اسم الفني. وإذا اخترت مدة أو فني، جرّب «الكل».' : minDays ? 'جرّب «الكل» لتشوف كل اللي عند الفنيين.' : 'ما في ختم عند فني بدون تسجيل.'}</p>
+          <h3>{query ? 'لا توجد نتائج للبحث' : minDays ? 'لا أختام في هذه المدة' : 'كل الأختام المصروفة مسجّلة'}</h3>
+          <p>{query ? 'جرّب رقماً أقصر أو اسم الفني. وإذا اخترت مدة أو فنياً، فجرّب «الكل».' : minDays ? 'جرّب «الكل» لترى كل ما عند الفنيين.' : 'لا يوجد ختم عند فني دون تسجيل.'}</p>
         </section>
       ) : (
         <div className="uq-list">
@@ -207,12 +208,13 @@ export function SealUnrecordedPage() {
 
 /** The list on paper, one block per technician, to chase them with: drawn only when printing. */
 function UnrecordedPrint({ people, today }: { people: Person[]; today: string }) {
+  const branchName = useUser().branch?.name ?? ''
   const { weekday, date } = describeDay(today)
   return (
     <div className="print-sheet unrecorded-print" aria-hidden="true">
       <header className="ps-head">
         <img src="/logo.webp" alt="" className="ps-logo" />
-        <div className="ps-title"><b>أختام لم يُسجَّل استخدامها</b><span>مخيم 2 · أبناء فارس أبو زايد</span></div>
+        <div className="ps-title"><b>أختام لم يُسجَّل استخدامها</b><span>{branchName} · أبناء فارس أبو زايد</span></div>
         <div className="ps-date"><div>اليوم / {weekday}</div><div>التاريخ / <span className="num">{date}</span></div></div>
       </header>
       <table>

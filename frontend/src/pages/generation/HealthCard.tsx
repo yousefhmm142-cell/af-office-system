@@ -13,19 +13,19 @@ export function HealthCard({ report, history, generators }: { report: SiteReport
       <div className="card-h">
         <span className="ico-round"><Activity size={16} /></span>
         <h2>صحة المولدات</h2>
-        <span className="meta">{worse ? `${worse} بدهم متابعة` : 'آخر أسبوع مقابل اللي قبله'}</span>
+        <span className="meta">{worse ? `${worse} يحتاج متابعة` : 'آخر أسبوع مقابل الأسبوع الذي قبله'}</span>
       </div>
       <ul className="hc-list">
         {rows.map((r) => (
           <li key={r.generatorId}>
             <b className="hc-name">{r.name}</b>
-            <Metric label="الصرف" unit="لتر/ساعة" m={r.burn} upIsBad empty={`ما في أيام كفاية للحكم على الصرف (اشتغل لحاله ${r.burnDaysAlone} ${r.burnDaysAlone === 1 ? 'يوم' : 'أيام'}، بدها 4)`} sentence={r.burn ? (r.burn.trend === 'worse' ? 'صار يصرف أكثر' : r.burn.trend === 'better' ? 'صار يصرف أقل' : 'الصرف ثابت') + (r.burn.rated ? ` · المعدّل المكتوب ${formatAmount(r.burn.rated)}` : '') : ''} />
-            <Metric label="الحرارة" unit="°م" m={r.temp} upIsBad empty="ما في قراءات حرارة كفاية" sentence={r.temp ? (r.temp.trend === 'worse' ? 'حرارته طالعة' : r.temp.trend === 'better' ? 'حرارته نازلة' : 'حرارته ثابتة') : ''} />
-            <Metric label="ضغط الزيت" unit="bar" m={r.oil} empty="ما في قراءات ضغط كفاية" sentence={r.oil ? (r.oil.trend === 'worse' ? 'ضغط الزيت نازل' : r.oil.trend === 'better' ? 'ضغط الزيت طالع' : 'ضغط الزيت ثابت') : ''} />
+            <Metric label="الصرف" unit="لتر/ساعة" m={r.burn} upIsBad empty={`لا توجد أيام كافية للحكم على الصرف (عمل منفرداً ${r.burnDaysAlone} ${r.burnDaysAlone === 1 ? 'يوماً' : 'أيام'}، ويلزم 4)`} sentence={r.burn ? (r.burn.trend === 'worse' ? 'أصبح يصرف أكثر' : r.burn.trend === 'better' ? 'أصبح يصرف أقل' : 'الصرف ثابت') + (r.burn.rated ? ` · المعدّل المكتوب ${formatAmount(r.burn.rated)}` : '') : ''} />
+            <Metric label="الحرارة" unit="°م" m={r.temp} upIsBad empty="لا توجد قراءات حرارة كافية" sentence={r.temp ? (r.temp.trend === 'worse' ? 'حرارته ترتفع' : r.temp.trend === 'better' ? 'حرارته تنخفض' : 'حرارته ثابتة') : ''} />
+            <Metric label="ضغط الزيت" unit="bar" m={r.oil} empty="لا توجد قراءات ضغط كافية" sentence={r.oil ? (r.oil.trend === 'worse' ? 'ضغط الزيت ينخفض' : r.oil.trend === 'better' ? 'ضغط الزيت يرتفع' : 'ضغط الزيت ثابت') : ''} />
           </li>
         ))}
       </ul>
-      <p className="hc-note">الصرف من الأيام اللي اشتغل فيها المولد لحاله بس. المقارنة: آخر 7 أيام مقابل الـ7 اللي قبلهم.</p>
+      <p className="hc-note">يُحسب الصرف من الأيام التي عمل فيها المولد منفرداً فقط. المقارنة: آخر 7 أيام مقابل الأيام السبعة التي قبلها.</p>
     </section>
   )
 }

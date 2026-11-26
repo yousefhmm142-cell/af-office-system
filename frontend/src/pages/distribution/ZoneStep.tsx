@@ -23,7 +23,7 @@ export function ZoneStep({ entry, index, count, name, update }: { entry: ZoneEnt
         </header>
         {entry.supplied && (
           <div className="zone-top">
-            <CalcField label="عدد الساعات" unit="ساعة" value={entry.supplyHours} hint="يُحسب لحاله من أوقات التشغيلات" />
+            <CalcField label="عدد الساعات" unit="ساعة" value={entry.supplyHours} hint="يُحسب تلقائياً من أوقات التشغيلات" />
           </div>
         )}
       </section>
@@ -82,7 +82,7 @@ function ZoneLoads({ entry, name, set }: { entry: ZoneEntry; name: string; set: 
       <header className="gen-head zloads-head">
         <div>
           <h3 className="fcard-title">الأحمال حسب الساعة</h3>
-          <small className="muted">Enter = اللي بعده · الأسهم للتنقل · الفاضي = شحطة</small>
+          <small className="muted">Enter = الخانة التالية · الأسهم للتنقل · الخانة الفارغة = شَرطة</small>
         </div>
         <Segmented label="وحدة الأحمال" value={unit} options={LOAD_UNIT_OPTIONS} onChange={(v) => set((z) => z.runs.forEach((r) => (r.loadUnit = v)))} />
       </header>
@@ -96,7 +96,7 @@ function ZoneLoads({ entry, name, set }: { entry: ZoneEntry; name: string; set: 
         onChange={(b, r, v) => set((z) => void (z.bands[b]![r] = v))}
       />
       <div className="avg-line" aria-live="polite">
-        <span>متوسط اليوم <small>(من الساعات اللي اكتملت قراءاتها الثلاثة)</small></span>
+        <span>متوسط اليوم <small>(من الساعات التي اكتملت قراءاتها الثلاث)</small></span>
         <b className="num">{day === null ? '—' : `${formatAmount(day)} ${unit === 'A' ? 'أمبير' : 'كيلوواط'}`}</b>
       </div>
     </section>

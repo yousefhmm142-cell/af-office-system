@@ -46,7 +46,7 @@ export function SealRecentPage() {
       <header className="ph">
         <div>
           <h1>آخر ما صُرف</h1>
-          <p className="muted">دفعات الأختام يوماً بيوم. الدفعة اللي جهّزتها بدون اسم بتظهر هنا بزر أزرق «تعبئة الاسم».</p>
+          <p className="muted">دفعات الأختام يوماً بيوم. الدفعة التي جهّزتها دون اسم تظهر هنا بزر أزرق «تعبئة الاسم».</p>
         </div>
         <div className="ph-actions">
           {todays.length > 0 && <Button variant="utility" icon={<Printer size={16} />} onClick={() => print(todays)}>طباعة أوراق صرف اليوم</Button>}
@@ -57,12 +57,12 @@ export function SealRecentPage() {
 
       {unnamed.length > 0 && (
         <div className="banner info" role="status">
-          <p><b>{unnamed.length} {unnamed.length === 1 ? 'دفعة' : 'دفعات'}</b> بانتظار الاسم<span>اضغط «تعبئة الاسم» على الدفعة واختر الفني. ما بتقدر تسجّل استخدام ختم منها قبل ما تسمّيها.</span></p>
+          <p><b>{unnamed.length} {unnamed.length === 1 ? 'دفعة' : 'دفعات'}</b> بانتظار الاسم<span>اضغط «تعبئة الاسم» على الدفعة واختر الفني. لا يمكنك تسجيل استخدام ختم منها قبل تسميتها.</span></p>
         </div>
       )}
 
       {data.batches.length === 0 ? (
-        <section className="empty card"><h3>ما في دفعات بعد</h3><p>جهّز أول دفعة من صفحة «صرف الأختام».</p></section>
+        <section className="empty card"><h3>لا توجد دفعات بعد</h3><p>جهّز أول دفعة من صفحة «صرف الأختام».</p></section>
       ) : (
         <div className="seals-layout">
           <TechNav data={data} value={tech} onChange={setTech} />
@@ -79,7 +79,7 @@ export function SealRecentPage() {
               <div key={day} className="batch-day">
                 <h3>{day === todayISO() ? 'اليوم' : dayLabel(day)}</h3>
                 {list.map((b) => (
-                  <BatchCard key={b.id} data={data} batch={b} onPrint={() => print([b])} onEdit={() => setEditBatch(b)} onAssign={() => setAssign(b)} onDeleted={() => toast('حُذفت الدفعة، ورجعت أختامها للمخزن')} />
+                  <BatchCard key={b.id} data={data} batch={b} onPrint={() => print([b])} onEdit={() => setEditBatch(b)} onAssign={() => setAssign(b)} onDeleted={() => toast('حُذفت الدفعة، وعادت أختامها إلى المخزن')} />
                 ))}
               </div>
             ))}
@@ -127,7 +127,7 @@ function BatchCard({ data, batch, onPrint, onEdit, onAssign, onDeleted }: { data
           onClick={async () => {
             const yes = await confirm({
               title: `حذف الدفعة ${batch.label?.trim() || ordinalWord(batch.batchNo)}؟`,
-              message: used ? `ترجع أختامها للمخزن، ويُمسح تسجيل استخدام ${used} ختم فيها.` : 'ترجع أختامها للمخزن.',
+              message: used ? `تعود أختامها إلى المخزن، ويُمسح تسجيل استخدام ${used} ختم فيها.` : 'تعود أختامها إلى المخزن.',
               confirmLabel: 'حذف الدفعة',
               danger: true,
             })
@@ -146,7 +146,7 @@ function BatchCard({ data, batch, onPrint, onEdit, onAssign, onDeleted }: { data
       </div>
       <div className="batch-strip">
         {seals.map((s) => <SealPill key={s.sealNo} seal={s} />)}
-        {!seals.length && <span className="muted">كل أختام هذه الدفعة انصرفت لدفعة أخرى</span>}
+        {!seals.length && <span className="muted">كل أختام هذه الدفعة صُرفت في دفعة أخرى</span>}
       </div>
     </article>
   )

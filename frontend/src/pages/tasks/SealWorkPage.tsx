@@ -71,7 +71,7 @@ export function SealWorkPage() {
       <header className="ph">
         <div>
           <h1>كشف أعمال الأختام</h1>
-          <p className="muted">اختار الفترة والفني، أو ابحث باسم المشترك. الكشف والطباعة حسب اللي اخترته.</p>
+          <p className="muted">اختر الفترة والفني، أو ابحث باسم المشترك. يُعرض الكشف ويُطبع حسب ما اخترته.</p>
         </div>
         <Segmented<Period> label="الفترة" value={period} options={periods} onChange={setPeriod} />
       </header>
@@ -101,13 +101,13 @@ export function SealWorkPage() {
       </section>
 
       {invalidRange ? (
-        <p className="card card-empty" role="alert">تاريخ البداية لازم يكون قبل تاريخ النهاية أو بنفس اليوم.</p>
+        <p className="card card-empty" role="alert">يجب أن يكون تاريخ البداية قبل تاريخ النهاية أو في اليوم نفسه.</p>
       ) : failed ? (
         <p className="card card-empty">تعذّر تحميل الكشف. تأكد من الإنترنت وحاول مرة أخرى.</p>
       ) : !lines ? (
         <Skeleton kind="table" />
       ) : lines.length === 0 ? (
-        <p className="card card-empty">{technician || subscriber.trim() ? 'لا نتائج حسب الفرز اللي اخترته.' : 'لا أختام مستخدمة في هذه الفترة.'}</p>
+        <p className="card card-empty">{technician || subscriber.trim() ? 'لا توجد نتائج حسب الفرز الذي اخترته.' : 'لا أختام مستخدمة في هذه الفترة.'}</p>
       ) : (
         <div className="card table-wrap">
           <ScrollTable label="أعمال الأختام"><SealWorkTable lines={lines} totals={totals} period={period} /></ScrollTable>

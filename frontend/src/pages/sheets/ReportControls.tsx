@@ -113,7 +113,7 @@ export function StatusBar({ sheet, source, canAct, onApprove, onReturn, returnPl
   const canReopen = canAct && (sheet.status === 'submitted' || sheet.status === 'approved')
 
   async function approve() {
-    const yes = await confirm({ title: 'اعتماد اليوم؟', message: 'بعد الاعتماد يُقفل اليوم. تقدر ترجع تفتحه بزر «إعادة فتح اليوم».', confirmLabel: 'اعتماد' })
+    const yes = await confirm({ title: 'اعتماد اليوم؟', message: 'بعد الاعتماد يُقفل اليوم، ويمكنك إعادة فتحه بزر «إعادة فتح اليوم».', confirmLabel: 'اعتماد' })
     if (!yes) return
     setBusy(true)
     try {

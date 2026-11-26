@@ -13,7 +13,7 @@ export function DailyUsagePlot({days,metric,bars=false}:{days:UsageDay[];metric:
  const slot=(width-60)/Math.max(1,days.length),x=(i:number)=>width-30-slot*(i+.5),y=(v:number)=>base-Math.max(0,v)/max*(base-top)
  const known=days.filter(d=>d[metric]!==null),avg=known.length?known.reduce((sum,d)=>sum+d[metric]!,0)/known.length:null
  return <>
-  <div className="hc-daily-guide"><span>القيم بـ{unit==='لتر'?'اللتر':'الساعة'} · من الأقدم يمينًا للأحدث يسارًا</span><span>اسحب يمين ويسار لعرض كل الأيام</span></div>
+  <div className="hc-daily-guide"><span>القيم بـ{unit==='لتر'?'اللتر':'الساعة'} · من الأقدم يمينًا للأحدث يسارًا</span><span>اسحب يميناً ويساراً لعرض كل الأيام</span></div>
   <div className="hc-daily-scroll" ref={setEl} tabIndex={0} role="region" aria-label={`رسم ${metric==='fuel'?'استهلاك السولار':'مجموع ساعات تشغيل المولدات'} لكل يوم، قابل للتمرير`}>
    <svg width={width} height={H} role="img" aria-label={`كل نقطة أو عمود يمثل يومًا واحدًا، الوحدة ${unit}، والشرطة تعني لا يوجد تقرير`}>
     {[0,1,2,3].map(i=>{const value=max*i/3,py=y(value);return <g key={i}><line className="hc-grid" x1={30} x2={width-30} y1={py} y2={py}/><text className="hc-daily-axis" direction="ltr" x={width-4} y={py-6} textAnchor="end">{formatNumber(value)}</text></g>})}
