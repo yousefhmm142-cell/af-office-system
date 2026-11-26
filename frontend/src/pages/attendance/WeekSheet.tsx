@@ -8,7 +8,6 @@ import { ScrollTable } from '../../ui/ScrollTable'
 import { ReportDownloads } from '../../ui/ReportDownloads'
 import { Logo } from '../../ui/primitives'
 import { InOut } from './InOut'
-import '../../styles/attendance-paper.css'
 import { dayName, STATE, type Board, type BoardRow } from './lib'
 
 const weekDay = new Intl.DateTimeFormat('ar-EG-u-nu-latn-ca-gregory', { weekday: 'long', timeZone: 'UTC' })

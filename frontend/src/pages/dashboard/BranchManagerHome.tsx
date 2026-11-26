@@ -17,8 +17,6 @@ import { statusInfo, type SheetStatus } from '../sheets/workflow'
 import { OperationsContext, useOperations, type Operations } from './data'
 import { DayStrip } from './DayStrip'
 import { DailyBars, FuelCard, HomeHeader, Insights, KpiBoxes, LoadGauge, MonthRing, UsageChart } from './HomeCharts'
-import '../../styles/home2.css'
-import '../../styles/manager-effects.css'
 
 const summaries: Record<string, string> = {
   '/generation': 'المحروقات والتشغيل والصيانات',

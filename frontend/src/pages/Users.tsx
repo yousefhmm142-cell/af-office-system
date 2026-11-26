@@ -1,7 +1,7 @@
 import { AccountHandoff } from './AccountHandoff'
 import { salaryLabel } from '../api/types'
 import { ChoiceField } from '../ui/ChoiceField'
-import { KeyRound, Lock, Pencil, Plus, Search, Trash2, UserPlus } from 'lucide-react'
+import { KeyRound, Lock, Pencil, Plus, Power, Search, Trash2, UserPlus, Users as UsersIcon } from 'lucide-react'
 import { useMemo, useState, type FormEvent } from 'react'
 import { Link, useSearchParams } from 'react-router'
 import { api, ApiError } from '../api/client'
@@ -70,10 +70,60 @@ export function Users({ embedded = false }: { embedded?: boolean }) {
 
   const selectedBranch = branchFilter || (branches.data?.branches.length === 1 ? String(branches.data.branches[0]!.id) : '')
   const create = manages && <Button variant="primary" icon={<UserPlus size={18} />} disabled={!roles.data} onClick={() => setEditing('new')}>حساب جديد</Button>
+  const dialogs = (
+    <>
+      {editing && (
+        <UserDialog user={editing === 'new' ? null : editing} roles={roles.data?.roles ?? []} branches={branches.data?.branches ?? []}
+          onClose={() => setEditing(null)} onSaved={() => { setEditing(null); void reload() }} />
+      )}
+      {resetting && <ResetDialog user={resetting} onClose={() => setResetting(null)} onSaved={() => { setResetting(null); void reload() }} />}
+    </>
+  )
+
+  // Inside the branch settings: the team as one list, like the office's old settings page.
+  if (embedded) {
+    const people = [...(data?.users ?? [])].sort((a, b) => (b.role?.level ?? 0) - (a.role?.level ?? 0) || a.name.localeCompare(b.name, 'ar'))
+    return (
+      <>
+        <div className="card-h">
+          <span className="ico-round brand"><UsersIcon size={16} /></span>
+          <h2>الفريق وحسابات الدخول</h2>
+          {manages && <Button variant="primary" icon={<Plus size={17} />} disabled={!roles.data} onClick={() => setEditing('new')} className="card-h-action">إضافة موظف</Button>}
+        </div>
+        <ErrorBanner text={error} />
+        {loading && !data ? <Loading /> : people.length === 0 ? <p className="card-empty">لا يوجد موظفون بعد. أضف أول موظف في الفرع.</p> : (
+          <ul className="gen-list team-admin">
+            {people.map((u) => (
+              <li key={u.id} data-off={!u.is_active || undefined}>
+                <Link to={u.id === me.id ? '/me' : `/employees/${u.id}`} aria-label={`ملف ${u.name}`}><Avatar name={u.name} size={36} /></Link>
+                <span className="gen-main">
+                  <b>{u.name}</b>
+                  <small>{[u.job_title || u.role?.name, u.job_title ? u.role?.name : null].filter(Boolean).join(' · ')} · <span className="num ltr">@{u.username}</span></small>
+                </span>
+                {!u.is_active ? <Pill>موقوف</Pill>
+                  : u.is_locked ? <Pill tone="danger"><Lock size={12} /> مقفل</Pill>
+                  : u.must_change_password ? <Pill tone="info">كلمة مرور مؤقتة</Pill>
+                  : u.status === 'trainee' ? <Pill tone="info">متدرب</Pill>
+                  : <Pill tone="ok">يدخل بحسابه</Pill>}
+                {u.needs_profile_completion && u.is_active && <Pill tone="warn">ملف غير مكتمل</Pill>}
+                {canTouch(u) && <>
+                  <button type="button" className="icon-btn" aria-label={`تعديل ${u.name}`} title="تعديل" onClick={() => setEditing(u)}><Pencil size={16} /></button>
+                  <button type="button" className="icon-btn" aria-label={`رمز مؤقت لـ${u.name}`} title="رمز مؤقت" onClick={() => setResetting(u)}><KeyRound size={16} /></button>
+                  <button type="button" className="icon-btn" aria-label={u.is_active ? `إيقاف ${u.name}` : `تفعيل ${u.name}`} title={u.is_active ? 'إيقاف الحساب' : 'إعادة التفعيل'} onClick={() => void toggleActive(u)}><Power size={16} /></button>
+                  <button type="button" className="icon-btn danger-btn" aria-label={`حذف ${u.name}`} title="حذف" onClick={() => void remove(u)}><Trash2 size={16} /></button>
+                </>}
+              </li>
+            ))}
+          </ul>
+        )}
+        {dialogs}
+      </>
+    )
+  }
+
   return (
     <>
-      {embedded ? <header className="card-h af-settings-team"><h2>فريق الفرع</h2>{create}</header> :
-        <PageHead title="الموظفون" eyebrow="الحسابات والملفات الشخصية" actions={create} />}
+      <PageHead title="الموظفون" eyebrow="الحسابات والملفات الشخصية" actions={create} />
       <div className="af-toolbar">
         <div className="af-search">
           <Search size={17} aria-hidden="true" />
@@ -130,11 +180,7 @@ export function Users({ embedded = false }: { embedded?: boolean }) {
           {list.length === 0 && <p className="eyebrow af-pad">لا توجد نتائج.</p>}
         </div>
       )}
-      {editing && (
-        <UserDialog user={editing === 'new' ? null : editing} roles={roles.data?.roles ?? []} branches={branches.data?.branches ?? []}
-          onClose={() => setEditing(null)} onSaved={() => { setEditing(null); void reload() }} />
-      )}
-      {resetting && <ResetDialog user={resetting} onClose={() => setResetting(null)} onSaved={() => { setResetting(null); void reload() }} />}
+      {dialogs}
     </>
   )
 }

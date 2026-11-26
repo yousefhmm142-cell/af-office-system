@@ -14,6 +14,7 @@ import { computeAlerts, consumptionStats, fuelOutlook } from './alerts'
 import {
   maintenanceLabel,
   defaultAlertSettings,
+  type MaintenancePlan,
   reportTotals,
   toBar,
   type AlertSettings,
@@ -31,8 +32,9 @@ import { describeDay } from '../../lib/dates'
 const SQRT3 = Math.sqrt(3)
 
 /** Everything a report screen needs besides the report itself. */
-export function reportContext(report: SiteReport, generators: Generator[], fuelTypes: FuelType[], history: SiteReport[], names: Map<string, string>) {
-  const settings = defaultAlertSettings
+export function reportContext(report: SiteReport, generators: Generator[], fuelTypes: FuelType[], history: SiteReport[], names: Map<string, string>, maintenancePlan?: MaintenancePlan) {
+  // The branch's own maintenance schedule from the settings, when it has one.
+  const settings = maintenancePlan ? { ...defaultAlertSettings, maintenancePlan } : defaultAlertSettings
   const alerts = computeAlerts(report, {
     history,
     generators: new Map(generators.map((generator) => [generator.id, generator])),

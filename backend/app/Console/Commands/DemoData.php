@@ -110,6 +110,18 @@ class DemoData extends Command
                 AttendancePoint::firstOrCreate(['branch_id' => $branch->id, 'name' => 'ورقة المكتب']);
                 $zones = collect(self::ZONES)->map(fn ($z, $i) => Zone::firstOrCreate(['branch_id' => $branch->id, 'name' => $z], ['sort_order' => $i])->id);
 
+                // The branch's equipment, as the manager sets it in the settings.
+                foreach ([['المولد 1', 'Perkins', '2806A', 500, 60], ['المولد 2', 'Cummins', 'QSX15', 400, 48], ['المولد 3', 'Volvo Penta', 'TAD734', 250, 30]] as [$g, $brand, $model, $kva, $lph]) {
+                    DB::table('generation_generators')->insertOrIgnore(['branch_id' => $branch->id, 'name' => $g, 'brand' => $brand, 'model' => $model,
+                        'capacity_kva' => $kva, 'liters_per_hour' => $lph, 'is_active' => true, 'created_at' => now(), 'updated_at' => now()]);
+                }
+                foreach (['سولار صناعي', 'سولار إسرائيلي'] as $fuel) {
+                    DB::table('generation_fuel_types')->insertOrIgnore(['branch_id' => $branch->id, 'name' => $fuel, 'is_active' => true, 'created_at' => now(), 'updated_at' => now()]);
+                }
+                foreach (['المخيم القديم', 'المخيم الجديد', 'الرازي', 'الأبراج', 'شوافع القديم', 'شوافع الجديد'] as $dz) {
+                    DB::table('distribution_zones')->insertOrIgnore(['branch_id' => $branch->id, 'name' => $dz, 'is_active' => true, 'created_at' => now(), 'updated_at' => now()]);
+                }
+
                 $manager = $this->person($this->name(), "{$slug}.manager", $role(Role::BRANCH_MANAGER), $branch->id, 'مدير الفرع', 2000, $deps['الإدارة']);
                 $branch->update(['manager_user_id' => $manager->id]);
                 $people = [

@@ -1,7 +1,6 @@
 import { salaryLabel } from '../api/types'
 import { ChoiceField } from '../ui/ChoiceField'
 import { EmployeeOverview } from './EmployeeOverview'
-import '../styles/employee-overview.css'
 import { Briefcase, FileText, History, Image as ImageIcon, Paperclip, Pencil, Trash2, Upload, UserRound, Wallet } from 'lucide-react'
 import { useRef, useState, type FormEvent, type ReactNode } from 'react'
 import { useNavigate, useParams } from 'react-router'

@@ -39,6 +39,7 @@ class GenerationController extends Controller
             'fuel_types' => DB::table('generation_fuel_types')->where('branch_id', $branch->id)->orderBy('id')->get()
                 ->map(fn ($row) => ['id' => $row->id, 'name' => $row->name, 'isActive' => (bool) $row->is_active, 'sortOrder' => $row->id]),
             'history' => $this->reports($branch)->orderByDesc('report_date')->limit(60)->get(['report_date', 'status']),
+            'maintenance_plan' => BranchSetupController::plan($branch->id),
             'can' => [
                 'fill' => Access::allowsBranch($request->user(), 'generation.fill', $branch->id),
                 'approve' => Access::allowsBranch($request->user(), 'generation.approve', $branch->id),

@@ -15,11 +15,10 @@ import { useReportDate } from '../sheets/ReportDate'
 import { BackButton, DayJump } from '../sheets/ReportControls'
 import { Stepper } from '../sheets/Stepper'
 import { FuelStep, MaintenanceStep, MissingList, NotesField, RunsStep, type Update } from './EntrySteps'
-import { applyAutoFigures, isEditableStatus, missingItems, newReport, reconcileReport, reportTotals, statusInfo, type FuelType, type Generator, type SheetStatus, type SiteReport } from './model'
+import { applyAutoFigures, isEditableStatus, missingItems, newReport, reconcileReport, reportTotals, statusInfo, type FuelType, type Generator, type MaintenancePlan, type SheetStatus, type SiteReport } from './model'
 import { hasBandValues } from '../sheets/loads'
 import { advanceOnEnter } from '../../ui/form'
 import { formatAmount } from '../../lib/numbers'
-import '../../styles/generation.css'
 
 type SavedReport = SiteReport & { version: number }
 export interface GenerationData {
@@ -27,6 +26,7 @@ export interface GenerationData {
   report: SavedReport | null
   previous: SavedReport | null
   fuel_types: FuelType[]
+  maintenance_plan?: MaintenancePlan
   generators: Generator[]
   history: { report_date: string; status: SheetStatus }[]
   can: { fill: boolean; approve: boolean }

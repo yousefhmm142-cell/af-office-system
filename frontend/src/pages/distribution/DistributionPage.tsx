@@ -20,9 +20,6 @@ import { readBandValues, type LoadUnit } from '../sheets/loads'
 import { isEditableStatus, statusInfo, type SheetStatus } from '../sheets/workflow'
 import { applyAutoHours, missingInZone, newSheet, reconcileSheet, sheetTotals, type DistributionSheet, type Zone } from './model'
 import { ZoneStep } from './ZoneStep'
-import '../../styles/generation.css'
-import '../../styles/distribution.css'
-import '../../styles/attendance-paper.css'
 
 type SavedSheet = DistributionSheet & { version: number }
 export interface DistributionData {

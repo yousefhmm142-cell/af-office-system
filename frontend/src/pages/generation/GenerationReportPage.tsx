@@ -24,7 +24,7 @@ function GenerationReport({ date }: { date: string }) {
     sheet={report} canFill={data?.can.fill === true} canApprove={data?.can.approve === true}
     error={load.error} loading={load.loading} onReload={load.reload}>
     {report && data && <>
-      <ReportView report={report} ctx={reportContext(report, data.generators, data.fuel_types, data.previous ? [data.previous] : [], new Map([[String(user.id), user.name]]))} />
+      <ReportView report={report} ctx={reportContext(report, data.generators, data.fuel_types, data.previous ? [data.previous] : [], new Map([[String(user.id), user.name]]), data.maintenance_plan)} />
       <PrintSheet report={report} generators={data.generators} fuelTypes={data.fuel_types} branchName={data.branch_name} />
     </>}
   </ReportPage>

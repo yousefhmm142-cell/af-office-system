@@ -113,6 +113,10 @@ Route::middleware(['auth:sanctum', 'active'])->group(function () {
         Route::post('generation/{date}/{action}', [GenerationController::class, 'transition'])->whereIn('action', ['submit', 'approve', 'return']);
 
         Route::post('distribution/zones', [DistributionController::class, 'zone']);
+        Route::patch('distribution/zones/{zone}', [\App\Http\Controllers\Api\BranchSetupController::class, 'saveZone'])->whereNumber('zone');
+        Route::get('branch-setup', [\App\Http\Controllers\Api\BranchSetupController::class, 'show']);
+        Route::put('branch-setup/maintenance-plan', [\App\Http\Controllers\Api\BranchSetupController::class, 'savePlan']);
+        Route::get('branch-setup/backup', [\App\Http\Controllers\Api\BranchSetupController::class, 'backup']);
         Route::get('dashboard/branch-operations', BranchOperationsController::class);
         Route::get('distribution/{date}', [DistributionController::class, 'show']);
         Route::put('distribution/{date}', [DistributionController::class, 'save']);

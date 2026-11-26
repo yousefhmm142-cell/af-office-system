@@ -1,6 +1,5 @@
 import {ArrowDown, ArrowLeft, CheckCheck, ClipboardList, GitMerge, MessageSquareText, Stamp, UserRound, Wrench} from 'lucide-react'
 import {useState} from 'react'
-import '../../styles/guide-map.css'
 
 const examples = {
  later: {label:'الختم بعد المهمة', title:'مهند كبس «تم»، وبعدها محاسن سجّلت الختم', text:'المهمة #33 منجزة. لما يتسجّل ختمها وتكون المطابقة واضحة، بينضاف الختم لنفس المهمة. العدد بظل 1.', seal:'223516', status:'المهمة #33 · الختم 223516'},

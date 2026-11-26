@@ -1,4 +1,3 @@
-import '../styles/action-colors.css'
 import type { ButtonHTMLAttributes, ReactNode } from 'react'
 import { initial } from '../lib/format'
 

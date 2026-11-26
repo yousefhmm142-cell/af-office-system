@@ -604,3 +604,4 @@
 .af-permission-groups fieldset{break-inside:avoid;margin-block:0 1rem;background:var(--surface)}
 dialog.handoff-dialog{max-width:min(940px,96vw)}.handoff-sheet{min-width:560px;padding:18px}.handoff-sheet h2{color:var(--brand-text)}.handoff-sheet .tbl th{background:#762237;color:white;padding:12px}.handoff-sheet .tbl tr:nth-child(even){background:var(--surface-2)}
 @media screen { .handoff-sheet.print-sheet { display:block } }
+.af-backup-state { padding: 10px 18px 16px; }

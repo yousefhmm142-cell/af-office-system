@@ -8,7 +8,6 @@ import { ErrorBanner } from '../../ui/Field'
 import { Loading } from '../../ui/PageHead'
 import { Button, Pill } from '../../ui/primitives'
 import { durationText, PRIORITY, STATUS, useMinutesSince, type Options, type Task } from './lib'
-import '../../styles/branch-tasks.css'
 
 export type BranchTaskView = 'waiting' | 'assigned' | 'late' | 'done'
 

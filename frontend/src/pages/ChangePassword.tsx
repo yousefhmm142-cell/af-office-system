@@ -7,7 +7,6 @@ import { ErrorBanner, Field } from '../ui/Field'
 import { Button } from '../ui/primitives'
 import { useToast } from '../ui/Toast'
 import { Brand, PasswordInput } from './Login'
-import '../styles/login-entry.css'
 import { ThemeToggle } from '../ui/ThemeToggle'
 
 /** Used at first sign-in (forced) and from «حسابي». */

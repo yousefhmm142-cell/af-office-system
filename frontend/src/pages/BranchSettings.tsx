@@ -10,6 +10,7 @@ import { Loading } from '../ui/PageHead'
 import { Avatar } from '../ui/primitives'
 import { useToast } from '../ui/Toast'
 import { Users } from './Users'
+import { BranchSetupCards, SoonCard } from './settings/BranchSetupCards'
 
 type Tab = 'general' | 'permissions' | 'messages'
 
@@ -27,9 +28,9 @@ export function BranchSettings() {
   ]
 
   return (
-    <div className="af-branch-settings">
+    <div className="settings af-branch-settings">
       <header className="ph">
-        <div><h1>الإعدادات</h1><p className="muted">{user.branch?.name} · فريق الفرع وصفحاته</p></div>
+        <div><h1>الإعدادات</h1><p className="muted">ما تضيفه هنا يظهر عند الجميع في فرع {user.branch?.name}. الإعدادات والصلاحيات يراها مدير الفرع فقط.</p></div>
       </header>
       <div className="segmented" role="radiogroup" aria-label="أقسام الإعدادات">
         {tabs.map(({ key, label }) => <button key={key} type="button" role="radio" aria-checked={tab === key}
@@ -37,8 +38,9 @@ export function BranchSettings() {
       </div>
       {tab === 'general' && <>
         {can(user, 'users.view') && <section className="card"><Users embedded /></section>}
+        <BranchSetupCards />
         <section className="card">
-          <div className="card-h"><span className="ico-round brand"><Settings2 size={17} /></span><h2>إعدادات الفرع</h2></div>
+          <div className="card-h"><span className="ico-round brand"><Settings2 size={17} /></span><h2>الدوام والحضور والمهام</h2></div>
           <div className="rows">
             {user.branch && can(user, 'branches.view') && <Link className="row" to={`/branches/${user.branch.id}`}><UsersRound size={18} /> الدوامات وأقسام الفرع</Link>}
             {can(user, 'attendance.points') && <Link className="row" to="/attendance?tab=sheet"><QrCode size={18} /> ورقة الحضور وشبكة المكتب</Link>}
@@ -46,6 +48,7 @@ export function BranchSettings() {
             {can(user, 'tasks.view') && <Link className="row" to="/tasks/daily"><Printer size={18} /> كشف إنجاز الفنيين</Link>}
           </div>
         </section>
+        <SoonCard />
       </>}
       {tab === 'permissions' && <BranchPages />}
       {tab === 'messages' && <Link className="btn" to="/messages">فتح المراسلات</Link>}
