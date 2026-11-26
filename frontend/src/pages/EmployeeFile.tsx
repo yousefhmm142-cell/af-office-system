@@ -1,3 +1,4 @@
+import { ChoiceField } from '../ui/ChoiceField'
 import { EmployeeOverview } from './EmployeeOverview'
 import '../styles/employee-overview.css'
 import { Briefcase, FileText, History, Image as ImageIcon, Paperclip, Pencil, Trash2, Upload, UserRound, Wallet } from 'lucide-react'
@@ -223,9 +224,9 @@ function PersonalDialog({ file, part, onClose, onSaved, onboarding = false }: { 
           {input('address', 'مكان السكن')}
           <div className="af-row2">
             <Field label="آخر مؤهل" error={fields.education_level}>{(id) => (
-              <select id={id} className="input select" value={form.education_level} onChange={(e) => set('education_level', e.target.value)}>
+              <ChoiceField id={id} className="input select" value={form.education_level} onChange={(e) => set('education_level', e.target.value)}>
                 <option value="">—</option>{EDUCATION.map(([k, v]) => <option key={k} value={k}>{v}</option>)}
-              </select>)}</Field>
+              </ChoiceField>)}</Field>
             {input('specialty', 'التخصص')}
           </div>
           <div className="field">
@@ -297,9 +298,9 @@ function JobDialog({ file, onClose, onSaved }: { file: File_; onClose(): void; o
         <div className="af-row2">
           <Field label="المسمى الوظيفي" error={fields.job_title}>{(id) => <input id={id} className="input" value={form.job_title} onChange={(e) => set('job_title', e.target.value)} placeholder="مثال: محصّل، كهربائي" />}</Field>
           <Field label="القسم" error={fields.department_id}>{(id) => (
-            <select id={id} className="input select" value={form.department_id} onChange={(e) => set('department_id', e.target.value)}>
+            <ChoiceField id={id} className="input select" value={form.department_id} onChange={(e) => set('department_id', e.target.value)}>
               <option value="">—</option>{deps.data?.departments.filter((d) => d.is_active || String(d.id) === form.department_id).map((d) => <option key={d.id} value={d.id}>{d.name}</option>)}
-            </select>)}</Field>
+            </ChoiceField>)}</Field>
         </div>
         <div className="field">
           <label>نوع الراتب</label>
@@ -314,9 +315,9 @@ function JobDialog({ file, onClose, onSaved }: { file: File_; onClose(): void; o
         <div className="af-row2">
           <Field label="تاريخ التوظيف" error={fields.hire_date}>{(id) => <input id={id} className="input num" type="date" value={form.hire_date} onChange={(e) => set('hire_date', e.target.value)} />}</Field>
           <Field label="الدوام" error={fields.work_schedule_id}>{(id) => (
-            <select id={id} className="input select" value={form.work_schedule_id} onChange={(e) => set('work_schedule_id', e.target.value)} disabled={!file.user.branch}>
+            <ChoiceField id={id} className="input select" value={form.work_schedule_id} onChange={(e) => set('work_schedule_id', e.target.value)} disabled={!file.user.branch}>
               <option value="">الأساسي للفرع</option>{schedules.data?.schedules.map((s) => <option key={s.id} value={s.id}>{s.name} ({s.start_time}–{s.end_time})</option>)}
-            </select>)}</Field>
+            </ChoiceField>)}</Field>
         </div>
         <div className="af-switches">
           <Switch label="يسجّل الحضور" on={form.tracks_attendance} onChange={(v) => set('tracks_attendance', v)} />
@@ -388,9 +389,9 @@ function Attachments({ file, onChange }: { file: File_; onChange(a: File_['attac
       <h2 className="af-h2"><Paperclip size={18} /> المرفقات</h2>
       {canEdit && (
         <div className="af-upload">
-          <select className="input select" value={type} onChange={(e) => setType(e.target.value)} aria-label="نوع المرفق">
+          <ChoiceField className="input select" value={type} onChange={(e) => setType(e.target.value)} aria-label="نوع المرفق">
             {ATTACHMENT_TYPES.map(([k, v]) => <option key={k} value={k}>{v}</option>)}
-          </select>
+          </ChoiceField>
           <Button icon={<Upload size={16} />} busy={busy} onClick={() => input.current?.click()}>صورة أو PDF</Button>
           <input ref={input} type="file" accept="image/*,application/pdf" hidden onChange={(e) => { const f = e.target.files?.[0]; if (f) void upload(f) }} />
         </div>

@@ -15,6 +15,10 @@ export function MyPay() {
     <>
       <PageHead title="رواتبي" eyebrow="دفعاتك المعتمدة وتفاصيلها" />
       <ErrorBanner text={error} />
+      {!!data?.items.length && <div className="pay-stages personal">{([['approved','بانتظار تسجيل الصرف'],['paid','تم تسجيل صرفها']] as const).map(([status,label])=>{
+        const rows=data.items.filter(i=>i.batch.status===status)
+        return <div key={status} className="card glass pay-stage" data-stage={status}><small>{label}</small><strong>{fmt(rows.reduce((sum,i)=>sum+i.net,0))} ₪</strong><span>{rows.length} دفعات</span></div>
+      })}</div>}
       {data?.advances.map((a) => (
         <div key={a.id} className="banner info af-mb"><HandCoins size={18} /><p>عليك سلفة متبقٍّ منها <b className="num">{fmt(a.remaining)}</b> شيكل، قيمة القسط <b className="num">{fmt(a.installment)}</b> عند اعتماد خصمه من شؤون الموظفين.</p></div>
       ))}

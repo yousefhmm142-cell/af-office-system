@@ -1,3 +1,4 @@
+import { ChoiceField } from '../ui/ChoiceField'
 import { BranchDepartments, BranchRoster } from './BranchPlanning'
 import { CalendarClock, Pencil, Plus, Trash2 } from 'lucide-react'
 import { useState, type FormEvent } from 'react'
@@ -77,10 +78,10 @@ export function BranchDetail() {
         <section className="card glass af-pad">
           <h2 className="af-h2">مدير الفرع</h2>
           {manageBranch ? (
-            <select className="input select" value={branch.manager?.id ?? ''} onChange={(e) => void setManager(e.target.value)} aria-label="مدير الفرع">
+            <ChoiceField className="input select" value={branch.manager?.id ?? ''} onChange={(e) => void setManager(e.target.value)} aria-label="مدير الفرع">
               <option value="">— بدون مدير —</option>
               {staff.data?.users.filter((u) => u.is_active).map((u) => <option key={u.id} value={u.id}>{u.name} ({u.role?.name})</option>)}
-            </select>
+            </ChoiceField>
           ) : <p><b>{branch.manager?.name ?? 'بدون مدير'}</b></p>}
           <p className="eyebrow" style={{ marginTop: 10 }}>تظهر هنا أسماء موظفي الفرع فقط. <b className="num">{branch.users_count}</b> مستخدماً في الفرع.</p>
         </section>

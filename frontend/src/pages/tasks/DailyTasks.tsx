@@ -1,3 +1,4 @@
+import { ChoiceField } from '../../ui/ChoiceField'
 import { ArrowRight } from 'lucide-react'
 import { useMemo, useRef, useState } from 'react'
 import { Link } from 'react-router'
@@ -67,9 +68,9 @@ export function DailyTasks() {
       <PageHead title="كشف إنجاز الفنيين" eyebrow={[branchName, dayName(date)].filter(Boolean).join(' · ')}
         actions={<div className="no-print"><Link className="btn" to="/tasks"><ArrowRight size={17} /> المهام الميدانية</Link></div>} />
       <div className="af-toolbar no-print">
-        {all && <select className="input select" aria-label="الفرع" value={chosen} onChange={(event) => setBranchId(event.target.value)}>
+        {all && <ChoiceField className="input select" aria-label="الفرع" value={chosen} onChange={(event) => setBranchId(event.target.value)}>
           {branches.data?.branches.map((branch) => <option value={branch.id} key={branch.id}>{branch.name}</option>)}
-        </select>}
+        </ChoiceField>}
         <input className="input af-date" type="date" value={date} max={businessDate.format(new Date())} aria-label="تاريخ الإنجاز"
           onChange={(event) => { if (event.target.value) setDate(event.target.value) }} />
         <ReportDownloads sheet={sheet} name={`كشف إنجاز الفنيين ${branchName ?? ''} ${date}`}

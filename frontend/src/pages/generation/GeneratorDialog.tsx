@@ -1,3 +1,4 @@
+import { ChoiceField } from '../../ui/ChoiceField'
 import { useState } from 'react'
 import { Dialog } from '../../ui/Dialog'
 import { Chip, NumberField, Segmented, TextField } from '../../ui/form'
@@ -78,11 +79,11 @@ export function GeneratorDialog({ generator, others, onClose, onSaved }: {
         <TextField label="الاسم" value={name} onChange={setName} placeholder="المولد 4" />
         <label className="field">
           <span className="label">الماركة</span>
-          <select className="select" value={brandChoice} onChange={(e) => setBrandChoice(e.target.value)}>
+          <ChoiceField className="select" value={brandChoice} onChange={(e) => setBrandChoice(e.target.value)}>
             <option value="" disabled>اختر الماركة</option>
             {brandList.map((b) => <option key={b} value={b}>{b}</option>)}
             <option value={OTHER}>أخرى…</option>
-          </select>
+          </ChoiceField>
         </label>
         {usedBrands.length > 0 && (
           <div className="chips">

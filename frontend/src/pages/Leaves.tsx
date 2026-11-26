@@ -1,3 +1,4 @@
+import { ChoiceField } from '../ui/ChoiceField'
 import { useState, type FormEvent } from 'react'
 import { api, ApiError } from '../api/client'
 import { useUser } from '../app/auth'
@@ -40,13 +41,13 @@ export function Leaves() {
   }
   return <><PageHead title="الإجازات والأذونات" /><ErrorBanner text={error || list.error} />
     {me.branch && <form onSubmit={submit} className="card glass af-pad form-grid"><h2 className="af-h2">طلب جديد</h2>
-      <label>نوع الطلب<select className="input" value={kind} onChange={e=>setKind(e.target.value as keyof typeof kinds)}>{Object.entries(kinds).map(([key,name])=><option key={key} value={key}>{name}</option>)}</select></label>
+      <label>نوع الطلب<ChoiceField className="input" value={kind} onChange={e=>setKind(e.target.value as keyof typeof kinds)}>{Object.entries(kinds).map(([key,name])=><option key={key} value={key}>{name}</option>)}</ChoiceField></label>
       <label>تاريخ بداية المناوبة<input className="input" type="date" required value={start} onChange={e=>{setStart(e.target.value);if(end<e.target.value)setEnd(e.target.value)}} /></label>
       {kind === 'permission' ? <div className="af-row2"><label>من الساعة<input className="input" type="time" required value={from} onChange={e=>setFrom(e.target.value)} /></label>
         <label>حتى الساعة<input className="input" type="time" required value={to} onChange={e=>setTo(e.target.value)} /></label></div> :
         <label>حتى تاريخ<input className="input" type="date" min={start} required value={end} onChange={e=>setEnd(e.target.value)} /></label>}
       <label>السبب<textarea className="input" required maxLength={300} value={reason} onChange={e=>setReason(e.target.value)} /></label>
-      <Button type="submit" variant="primary" busy={busy}>إرسال الطلب</Button></form>}
+      <Button type="submit" variant="send" busy={busy}>إرسال الطلب</Button></form>}
     <section className="card glass af-pad"><h2 className="af-h2">الطلبات</h2>{!list.loading && !list.data?.requests.length && <p>لا توجد طلبات.</p>}
       {list.data?.requests.map(r=>{
         const mine = r.user_id === me.id

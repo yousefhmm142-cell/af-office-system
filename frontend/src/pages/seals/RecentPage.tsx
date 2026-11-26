@@ -1,3 +1,4 @@
+import { ChoiceField } from '../../ui/ChoiceField'
 import { SealHistoryButton } from './SealHistory'
 import { Printer } from 'lucide-react'
 import { useMemo, useState } from 'react'
@@ -48,7 +49,7 @@ export function SealRecentPage() {
           <p className="muted">دفعات الأختام يوماً بيوم. الدفعة اللي جهّزتها بدون اسم بتظهر هنا بزر أزرق «تعبئة الاسم».</p>
         </div>
         <div className="ph-actions">
-          {todays.length > 0 && <Button variant="secondary" icon={<Printer size={16} />} onClick={() => print(todays)}>طباعة أوراق صرف اليوم</Button>}
+          {todays.length > 0 && <Button variant="utility" icon={<Printer size={16} />} onClick={() => print(todays)}>طباعة أوراق صرف اليوم</Button>}
         </div>
       </header>
 
@@ -68,10 +69,10 @@ export function SealRecentPage() {
           <section className="seals-main" aria-label="آخر الصرف">
             <div className="ph-actions" style={{ marginInlineStart: 0, justifyContent: 'space-between', width: '100%' }}>
               <h2 style={{ margin: 0, fontSize: 18 }}>{tech ? `دفعات ${data.names.get(tech) ?? ''}` : 'كل الدفعات'}</h2>
-              <select className="select tech-select" aria-label="الفني" value={tech ?? ''} onChange={(e) => setTech(e.target.value || null)}>
+              <ChoiceField className="select tech-select" aria-label="الفني" value={tech ?? ''} onChange={(e) => setTech(e.target.value || null)}>
                 <option value="">كل الفنيين</option>
                 {[...new Set(data.batches.flatMap((b) => (b.technicianId ? [b.technicianId] : [])))].map((id) => <option key={id} value={id}>{data.names.get(id) ?? '—'}</option>)}
-              </select>
+              </ChoiceField>
             </div>
             {days.length === 0 && <p className="card-empty">لا دفعات لهذا الفني.</p>}
             {days.map(([day, list]) => (
@@ -116,7 +117,7 @@ function BatchCard({ data, batch, onPrint, onEdit, onAssign, onDeleted }: { data
         <span className="muted num">{roll ? `${roll.fromNo}–${roll.toNo}` : ''} · {used}/{seals.length} مستخدم</span>
         </div>
         <div className="batch-actions">
-        <Button variant="ghost" icon={<Printer size={15} />} onClick={onPrint}>ورقة الصرف</Button>
+        <Button variant="utility" icon={<Printer size={15} />} onClick={onPrint}>ورقة الصرف</Button>
         <Button variant="ghost" icon={<Pencil size={15} />} onClick={onEdit}>تعديل</Button>
         <SealHistoryButton table="seal_batches" record={batch.id} label="السجل" />
         <Button

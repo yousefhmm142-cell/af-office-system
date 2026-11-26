@@ -1,3 +1,4 @@
+import '../styles/action-colors.css'
 import type { ButtonHTMLAttributes, ReactNode } from 'react'
 import { initial } from '../lib/format'
 
@@ -6,7 +7,7 @@ export function Logo({ height = 36, className = '' }: { height?: number; classNa
 }
 
 type ButtonProps = ButtonHTMLAttributes<HTMLButtonElement> & {
-  variant?: 'primary' | 'secondary' | 'ghost' | 'danger'
+  variant?: 'primary' | 'secondary' | 'ghost' | 'danger' | 'send' | 'approve' | 'utility'
   size?: 'md' | 'lg'
   block?: boolean
   busy?: boolean

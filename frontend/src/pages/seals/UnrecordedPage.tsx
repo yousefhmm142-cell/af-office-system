@@ -1,3 +1,4 @@
+import { ChoiceField } from '../../ui/ChoiceField'
 import {CountUp} from '../../ui/fx/CountUp'
 import { AlarmClock, Printer, Search, UserX, X } from 'lucide-react'
 import { useMemo, useState } from 'react'
@@ -116,7 +117,7 @@ export function SealUnrecordedPage() {
           <p className="muted">أختام انصرفت لفنيين وما انسجّل استخدامها (ولا تالف ولا ضائع). اضغط على أي رقم وسجّل اللي صار فيه.</p>
         </div>
         <div className="ph-actions">
-          {shown.length > 0 && <Button variant="secondary" icon={<Printer size={16} />} onClick={() => print(shown)}>{tech ? 'طباعة قائمة الفني' : 'طباعة القائمة كلها'}</Button>}
+          {shown.length > 0 && <Button variant="utility" icon={<Printer size={16} />} onClick={() => print(shown)}>{tech ? 'طباعة قائمة الفني' : 'طباعة القائمة كلها'}</Button>}
         </div>
       </header>
 
@@ -153,10 +154,10 @@ export function SealUnrecordedPage() {
         <div className="chips" role="group" aria-label="كم صار من الصرف">
           {LATE.map((l) => <Chip key={l.value} pressed={minDays === l.value} onClick={() => setMinDays(l.value)}>{l.label}</Chip>)}
         </div>
-        <select className="select tech-select" aria-label="الفني" value={tech ?? ''} onChange={(e) => setTech(e.target.value || null)}>
+        <ChoiceField className="select tech-select" aria-label="الفني" value={tech ?? ''} onChange={(e) => setTech(e.target.value || null)}>
           <option value="">كل الفنيين</option>
           {people.filter((p) => p.id).map((p) => <option key={p.id} value={p.id!}>{p.name} ({p.count})</option>)}
-        </select>
+        </ChoiceField>
       </div>
 
       {shown.length === 0 ? (
@@ -176,7 +177,7 @@ export function SealUnrecordedPage() {
                   <small className="num">{p.count} ختم · أقدمها من {p.oldest === 0 ? 'اليوم' : ageText(p.oldest)}</small>
                 </div>
                 <span className="grow" />
-                <Button variant="ghost" icon={<Printer size={15} />} onClick={() => print([p])}>طباعة</Button>
+                <Button variant="utility" icon={<Printer size={15} />} onClick={() => print([p])}>طباعة</Button>
               </header>
               {p.lines.map((l) => (
                 <section key={l.key} className="uq-line" data-age={l.days >= 15 ? 'danger' : l.days >= 8 ? 'warn' : undefined}>

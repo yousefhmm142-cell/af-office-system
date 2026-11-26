@@ -1,3 +1,4 @@
+import { ChoiceField } from '../../ui/ChoiceField'
 import { useLoad } from '../../lib/useLoad'
 import type { Seal } from '../seals/model'
 import { ScrollTable } from '../../ui/ScrollTable'
@@ -83,7 +84,7 @@ export function SealWorkPage() {
         </div>
         {(period === 'week' || period === 'month') && <button type="button" className="icon-btn" aria-label="الفترة التالية" disabled={isCurrent} onClick={() => move(1)}><ChevronLeft size={18} /></button>}
         <div className="ph-actions">
-          <Button variant="primary" icon={<Printer size={17} />} disabled={!lines || lines.length === 0} onClick={() => window.print()}>طباعة الكشف</Button>
+          <Button variant="utility" icon={<Printer size={17} />} disabled={!lines || lines.length === 0} onClick={() => window.print()}>طباعة الكشف</Button>
         </div>
       </div>
 
@@ -92,10 +93,10 @@ export function SealWorkPage() {
           <label className="field"><span className="label">من تاريخ</span><input className="input" type="date" value={rangeFrom} max={rangeTo || undefined} onChange={(e) => setRangeFrom(e.target.value)} /></label>
           <label className="field"><span className="label">إلى تاريخ</span><input className="input" type="date" value={rangeTo} min={rangeFrom || undefined} onChange={(e) => setRangeTo(e.target.value)} /></label>
         </>}
-        <label className="field"><span className="label">الفني</span><select className="select" aria-label="الفني" value={technician} onChange={(e) => setTechnician(e.target.value)}>
+        <label className="field"><span className="label">الفني</span><ChoiceField className="select" aria-label="الفني" value={technician} onChange={(e) => setTechnician(e.target.value)}>
           <option value="">كل الفنيين</option>
           {technicians.map(([id, name]) => <option key={id} value={id}>{name}</option>)}
-        </select></label>
+        </ChoiceField></label>
         <label className="field"><span className="label">اسم المشترك</span><input className="input" type="search" placeholder="اكتب الاسم أو جزء منه" value={subscriber} onChange={(e) => setSubscriber(e.target.value)} /></label>
       </section>
 

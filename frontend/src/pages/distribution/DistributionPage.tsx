@@ -194,7 +194,7 @@ function SheetEditor({ path, date, data }: { path: string; date: string; data: D
       <Button disabled={busy || !sheet.zones.length} onClick={() => void save(false)}>{editingClosed ? "حفظ التعديلات والعودة" : "حفظ المسودة"}</Button>
       {step < sendIndex ? <Button variant="primary" size="lg" block onClick={() => setStep(step + 1)}>
         التالي: {names.get(sheet.zones[step + 1]?.zoneId ?? 0) ?? 'الإرسال'}</Button>
-        : editingClosed ? null : <Button variant="primary" size="lg" block disabled={busy || !sheet.zones.length} onClick={() => void save(true)}>إغلاق اليوم وإرسال</Button>}
+        : editingClosed ? null : <Button variant="send" size="lg" block disabled={busy || !sheet.zones.length} onClick={() => void save(true)}>إغلاق اليوم وإرسال</Button>}
     </footer>
   </>
 }

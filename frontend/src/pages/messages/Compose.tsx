@@ -1,3 +1,4 @@
+import { ChoiceField } from '../../ui/ChoiceField'
 import { CalendarDays, Clock, Paperclip, Send, Users, X } from 'lucide-react'
 import { useMemo, useRef, useState } from 'react'
 import { api, ApiError } from '../../api/client'
@@ -73,7 +74,7 @@ export function Compose({ draft, onClose, onSent }: { draft: Draft; onClose(): v
 
   return (
     <Dialog open onClose={onClose} title={title} icon={<Send size={20} />} className="af-compose"
-      footer={<><Button onClick={onClose}>إلغاء</Button><Button variant="primary" size="lg" icon={<Send size={18} />} busy={busy} disabled={!ready} onClick={() => void send()}>إرسال</Button></>}>
+      footer={<><Button onClick={onClose}>إلغاء</Button><Button variant="send" size="lg" icon={<Send size={18} />} busy={busy} disabled={!ready} onClick={() => void send()}>إرسال</Button></>}>
       <div className="form-grid">
         <div className="field">
           <label>إلى</label>
@@ -118,8 +119,8 @@ export function Compose({ draft, onClose, onSent }: { draft: Draft; onClose(): v
           </div>
         )}
 
-        {!draft.replyTo && !draft.forwardOf && <label>التصنيف<select className="input select" value={kind} onChange={e=>setKind(e.target.value as Kind)}>
-          {(['message','fault','collection','circular'] as const).map(k=><option key={k} value={k}>{KIND[k].label}</option>)}</select></label>}
+        {!draft.replyTo && !draft.forwardOf && <label>التصنيف<ChoiceField className="input select" value={kind} onChange={e=>setKind(e.target.value as Kind)}>
+          {(['message','fault','collection','circular'] as const).map(k=><option key={k} value={k}>{KIND[k].label}</option>)}</ChoiceField></label>}
         <Field label="الموضوع">{(id) => <input id={id} className="input" value={subject} onChange={(e) => setSubject(e.target.value)} />}</Field>
         <Field label={draft.kind === 'message' ? 'نص الرسالة' : 'السبب أو التفاصيل'}>
           {(id) => <textarea id={id} className="input textarea af-body" rows={6} value={body} onChange={(e) => setBody(e.target.value)} placeholder={draft.kind === 'leave_request' ? 'مثال: ظرف عائلي' : draft.kind === 'permission_request' ? 'مثال: موعد طبيب' : 'اكتب رسالتك…'} />}

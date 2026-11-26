@@ -1,3 +1,4 @@
+import { ChoiceField } from '../../ui/ChoiceField'
 import { ChevronLeft, ChevronRight, ClipboardPlus, Clock, MapPin, Search, Settings2, Users } from 'lucide-react'
 import { useEffect, useMemo, useState } from 'react'
 import { Link, useSearchParams } from 'react-router'
@@ -117,9 +118,9 @@ export function TasksBoard() {
 
       <div className="af-toolbar">
         {all && (
-          <select className="input select" value={chosen} onChange={(e) => setBranchId(e.target.value)} aria-label="الفرع">
+          <ChoiceField className="input select" value={chosen} onChange={(e) => setBranchId(e.target.value)} aria-label="الفرع">
             {branches.data?.branches.map((b) => <option key={b.id} value={b.id}>{b.name}</option>)}
-          </select>
+          </ChoiceField>
         )}
         <div className="af-daynav">
           <button type="button" className="icon-btn" aria-label="اليوم السابق" onClick={() => setDay(shiftDay(day, -1))}><ChevronRight size={18} /></button>

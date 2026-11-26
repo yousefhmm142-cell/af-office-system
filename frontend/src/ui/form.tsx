@@ -78,7 +78,7 @@ interface TextFieldProps {
 
 export function TextField({ label, value, onChange, placeholder, numeric, suggestions }: TextFieldProps) {
   const id = useId()
-  const listId = `${id}-list`
+  const [showSuggestions,setShowSuggestions] = useState(false)
   return (
     <div className="nf">
       <label htmlFor={id}>{label}</label>
@@ -92,11 +92,14 @@ export function TextField({ label, value, onChange, placeholder, numeric, sugges
           autoComplete="off"
           placeholder={placeholder}
           value={value}
-          list={suggestions?.length ? listId : undefined}
+          onFocus={()=>setShowSuggestions(true)}
+          onBlur={e=>{if(!e.currentTarget.parentElement?.parentElement?.contains(e.relatedTarget))setShowSuggestions(false)}}
+          onKeyDown={e=>{if(e.key==="Escape" && showSuggestions){e.preventDefault();setShowSuggestions(false)}}}
           onChange={(e) => onChange(e.target.value)}
         />
-        {!!suggestions?.length && <datalist id={listId}>{suggestions.map((s) => <option key={s} value={s} />)}</datalist>}
       </div>
+      {showSuggestions && !!suggestions?.length && <div className="chips" aria-label="اقتراحات">{suggestions.filter(s=>s.includes(value)).map(s=>
+        <button key={s} type="button" className="chip" onClick={()=>{onChange(s);setShowSuggestions(false)}}>{s}</button>)}</div>}
     </div>
   )
 }

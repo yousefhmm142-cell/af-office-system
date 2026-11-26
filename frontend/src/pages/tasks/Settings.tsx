@@ -1,3 +1,4 @@
+import { ChoiceField } from '../../ui/ChoiceField'
 import { MapPin, Plus, Tags } from 'lucide-react'
 import { useState, type FormEvent } from 'react'
 import { useSearchParams } from 'react-router'
@@ -55,10 +56,10 @@ export function TaskSettings() {
     <>
       <PageHead title="أنواع المهام والمناطق" eyebrow="ما يظهر عند إنشاء مهمة جديدة" />
       {all && <div className="af-toolbar">
-        <select className="input select" aria-label="الفرع" value={branchId} onChange={(e) => setParams({ branch_id: e.target.value })}>
+        <ChoiceField className="input select" aria-label="الفرع" value={branchId} onChange={(e) => setParams({ branch_id: e.target.value })}>
           <option value="" disabled>اختر الفرع</option>
           {branches.data?.branches.map((branch) => <option key={branch.id} value={branch.id}>{branch.name}</option>)}
-        </select>
+        </ChoiceField>
       </div>}
       <ErrorBanner text={error ?? branches.error} />
       {branchId && loading && <Loading />}

@@ -120,7 +120,7 @@ export function TaskSheet({ id, options, onClose, onChanged }: { id: number; opt
             </div>
           ) : manage && t.status !== 'done' && t.status !== 'cancelled' && (
             <div className="af-sheet-actions">
-              {t.status === 'new' && t.assignees.length > 0 && <Button variant="primary" icon={<Send size={18} />} busy={busy === 'send'} onClick={() => void act('send', { channel: 'app' }, 'أُرسلت داخل النظام')}>إرسال داخل النظام</Button>}
+              {t.status === 'new' && t.assignees.length > 0 && <Button variant="send" icon={<Send size={18} />} busy={busy === 'send'} onClick={() => void act('send', { channel: 'app' }, 'أُرسلت داخل النظام')}>إرسال داخل النظام</Button>}
               {['new', 'sent', 'seen'].includes(t.status) && t.assignees.length > 0 && <Button icon={<Play size={18} />} busy={busy === 'start'} onClick={() => void act('start', {}, 'بدأ العمل')}>بدأ العمل</Button>}
               {t.assignees.length > 0 && (
                 <Button variant="primary" icon={<CheckCircle2 size={18} />} busy={busy === 'complete'} onClick={async () => {

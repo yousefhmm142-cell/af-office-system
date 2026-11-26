@@ -1,3 +1,4 @@
+import { ChoiceField } from '../../ui/ChoiceField'
 import { Archive, RefreshCw } from 'lucide-react'
 import { useRef, useState } from 'react'
 import { Link } from 'react-router'
@@ -50,10 +51,10 @@ export function TaskArchive({ branch, branchName, options, today, onOpen }: {
     <div className="card form-card archive-toolbar no-print">
       <Field label="من تاريخ">{(id) => <input id={id} className="input" type="date" max={today} value={from} onChange={(e) => setFrom(e.target.value)} />}</Field>
       <Field label="إلى تاريخ">{(id) => <input id={id} className="input" type="date" max={today} value={to} onChange={(e) => setTo(e.target.value)} />}</Field>
-      <Field label="الفني">{(id) => <select id={id} className="input select" value={tech} onChange={(e) => setTech(e.target.value)}>
+      <Field label="الفني">{(id) => <ChoiceField id={id} className="input select" value={tech} onChange={(e) => setTech(e.target.value)}>
         <option value="">كل الفنيين</option>
         {[...names].map(([id, name]) => <option key={id} value={id}>{name}</option>)}
-      </select>}</Field>
+      </ChoiceField>}</Field>
       <Field label="بحث بالاسم أو العمل أو المرجع">{(id) => <input id={id} className="input" type="search" maxLength={120} value={search} onChange={(e) => setSearch(e.target.value)} />}</Field>
       <Button icon={<RefreshCw size={16} />} busy={valid && loading} disabled={!valid} onClick={() => void reload()}>تحديث</Button>
       <ReportDownloads sheet={sheet} name={`أرشيف الفنيين ${from} – ${to}`} headers={headers} rows={rows} />

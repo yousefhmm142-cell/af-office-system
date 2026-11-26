@@ -73,19 +73,19 @@ export function BatchPage() {
         </ol>
         <div className="af-hero-actions no-print">
           {batch.status === 'draft' && can.approve && (
-            <Button variant="primary" size="lg" icon={<BadgeCheck size={20} />} busy={busy === 'approve'}
+            <Button variant="approve" size="lg" icon={<BadgeCheck size={20} />} busy={busy === 'approve'}
               onClick={async () => { if (await confirm({ title: 'اعتماد الدفعة؟', message: 'بعد الاعتماد لا يمكن تعديل الدفعة أو إعادة حسابها.', confirmLabel: 'اعتماد' })) void act('approve', `/payroll/batches/${batch.id}/approve`, 'POST', 'اعتُمدت الدفعة') }}>
               اعتماد الدفعة
             </Button>
           )}
           {batch.status === 'approved' && can.manage && (
-            <Button variant="primary" size="lg" icon={<Banknote size={20} />} busy={busy === 'paid'}
+            <Button variant="approve" size="lg" icon={<Banknote size={20} />} busy={busy === 'paid'}
               onClick={async () => { if (await confirm({ title: 'تسجيل الصرف؟', message: 'سجّل الصرف بعد تحويل المبالغ إلى الموظفين.', confirmLabel: 'تم الصرف' })) void act('paid', `/payroll/batches/${batch.id}/paid`, 'POST', 'سُجّل الصرف') }}>
-              تم الصرف
+              تسجيل صرف الدفعة
             </Button>
           )}
-          <Button icon={<Download size={18} />} onClick={() => void exportCsv()}>تصدير Excel</Button>
-          <Button icon={<Printer size={18} />} onClick={() => window.print()}>طباعة كشف الصرف</Button>
+          <Button icon={<Download size={18} />} onClick={() => void exportCsv()}>تنزيل كشف التحويل (CSV)</Button>
+          <Button variant="utility" icon={<Printer size={18} />} onClick={() => window.print()}>طباعة كشف الصرف</Button>
           {batch.status === 'draft' && can.manage && (
             <>
               <Button icon={<RefreshCw size={18} />} busy={busy === 'recalc'} onClick={() => void act('recalc', `/payroll/batches/${batch.id}/recalculate`, 'POST', 'أُعيد الحساب')}>إعادة الحساب</Button>

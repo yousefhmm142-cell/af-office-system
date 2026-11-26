@@ -1,3 +1,4 @@
+import { ChoiceField } from '../../ui/ChoiceField'
 import {ScrollTable} from '../../ui/ScrollTable'
 import { ArrowDownUp, FileSpreadsheet, Search, Stamp, X } from 'lucide-react'
 import { useDeferredValue, useEffect, useMemo, useRef, useState } from 'react'
@@ -155,24 +156,24 @@ export function SealLogPage() {
         <TechNav data={data} value={filters.technicianId} onChange={(id) => set({ technicianId: id })} />
         <div className="seals-main">
           <div className="filters">
-            <select className="select tech-select" aria-label="الفني" value={filters.technicianId ?? ''} onChange={(e) => set({ technicianId: e.target.value || null })}>
+            <ChoiceField className="select tech-select" aria-label="الفني" value={filters.technicianId ?? ''} onChange={(e) => set({ technicianId: e.target.value || null })}>
               <option value="">كل الفنيين</option>
               {techs.map((t) => <option key={t.id} value={t.id}>{t.name}</option>)}
-            </select>
+            </ChoiceField>
             <span className="grow" />
             <Button variant="ghost" onClick={() => setMore((m) => !m)} aria-expanded={more}>{more ? 'إخفاء الخيارات' : 'خيارات أكثر'}</Button>
           </div>
           {more && (
             <div className="filters">
-              <select className="select" aria-label="الرول" value={filters.rollId ?? ''} onChange={(e) => set({ rollId: e.target.value || null })}>
+              <ChoiceField className="select" aria-label="الرول" value={filters.rollId ?? ''} onChange={(e) => set({ rollId: e.target.value || null })}>
                 <option value="">كل الرولات</option>
                 {data.rolls.map((r) => <option key={r.id} value={r.id}>{r.fromNo} - {r.toNo}</option>)}
-              </select>
+              </ChoiceField>
               <Segmented<SearchFilters['period']> label="الفترة" value={filters.period} options={periods} onChange={(p) => set({ period: p })} />
               <span className="grow" />
-              <select className="select" aria-label="الفرز" value={sort} onChange={(e) => setSort(e.target.value as GroupSort)}>
+              <ChoiceField className="select" aria-label="الفرز" value={sort} onChange={(e) => setSort(e.target.value as GroupSort)}>
                 {sorts.map((s) => <option key={s.value} value={s.value}>{s.label}</option>)}
-              </select>
+              </ChoiceField>
               <Segmented<View> label="طريقة العرض" value={view} options={views} onChange={setView} />
             </div>
           )}

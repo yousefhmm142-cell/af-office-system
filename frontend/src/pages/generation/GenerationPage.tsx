@@ -174,7 +174,7 @@ function ReportEditor({ path, date, data }: { path: string; date: string; data: 
         <Button disabled={busy} onClick={() => void save(false)}>{editingClosed ? "حفظ التعديلات والعودة" : "حفظ المسودة"}</Button>
         {step < steps.length - 1
           ? <Button variant="primary" size="lg" block onClick={() => setStep(step + 1)}>التالي: {steps[step + 1]?.label}<ArrowLeft size={18} /></Button>
-          : editingClosed ? null : <Button variant="primary" size="lg" block busy={busy} icon={<Send size={18} />} onClick={() => void save(true)}>إغلاق اليوم وإرسال</Button>}
+          : editingClosed ? null : <Button variant="send" size="lg" block busy={busy} icon={<Send size={18} />} onClick={() => void save(true)}>إغلاق اليوم وإرسال</Button>}
       </footer>
   </>
 }

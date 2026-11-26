@@ -97,7 +97,7 @@ function PointCard({ point, myIp, onChange }: { point: Point; myIp: string; onCh
       </div>
       <div className="af-qr" dangerouslySetInnerHTML={{ __html: svg }} />
       <div className="af-switches">
-        <Button icon={<Printer size={16} />} onClick={print}>طباعة</Button>
+        <Button variant="utility" icon={<Printer size={16} />} onClick={print}>طباعة</Button>
         <Button icon={<RefreshCw size={16} />} busy={busy === 'rotate'} onClick={async () => {
           if (await confirm({ title: 'إنشاء ورقة برمز جديد؟', message: 'ستتوقف الورقة القديمة عن العمل، ويجب طباعة الجديدة وتعليقها.', confirmLabel: 'رمز جديد', danger: true }))
             void call('rotate', `/attendance/points/${point.id}/rotate`, 'POST', undefined, 'أُنشئ رمز جديد. اطبع الورقة.')

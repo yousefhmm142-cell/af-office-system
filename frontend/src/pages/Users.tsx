@@ -1,3 +1,4 @@
+import { ChoiceField } from '../ui/ChoiceField'
 import { KeyRound, Lock, Pencil, Plus, Search, Trash2, UserPlus } from 'lucide-react'
 import { useMemo, useState, type FormEvent } from 'react'
 import { Link, useSearchParams } from 'react-router'
@@ -76,17 +77,17 @@ export function Users({ embedded = false }: { embedded?: boolean }) {
           <input className="input" placeholder="ابحث بالاسم أو اسم المستخدم" value={search} onChange={(e) => setSearch(e.target.value)} aria-label="بحث" />
         </div>
         {(branches.data?.branches.length ?? 0) > 1 && (
-          <select className="input select" value={branchFilter} onChange={(e) => setBranchFilter(e.target.value)} aria-label="الفرع">
+          <ChoiceField className="input select" value={branchFilter} onChange={(e) => setBranchFilter(e.target.value)} aria-label="الفرع">
             <option value="">كل الفروع</option>
             <option value="none">الإدارة العامة</option>
             {branches.data?.branches.map((b) => <option key={b.id} value={b.id}>{b.name}</option>)}
-          </select>
+          </ChoiceField>
         )}
-        <select className="input select" value={incompleteOnly ? 'incomplete' : ''} aria-label="حالة الملف الشخصي"
+        <ChoiceField className="input select" value={incompleteOnly ? 'incomplete' : ''} aria-label="حالة الملف الشخصي"
           onChange={(event) => setFilters(event.target.value ? { profile: event.target.value } : {}, { replace: true })}>
           <option value="">جميع الملفات</option>
           <option value="incomplete">ملفات تحتاج إلى استكمال</option>
-        </select>
+        </ChoiceField>
       </div>
       <ErrorBanner text={error} />
       {loading && !data ? <Loading /> : (
@@ -126,7 +127,7 @@ export function Users({ embedded = false }: { embedded?: boolean }) {
         </div>
       )}
       {editing && (
-        <UserDialog branchStyle={embedded} user={editing === 'new' ? null : editing} roles={roles.data?.roles ?? []} branches={branches.data?.branches ?? []}
+        <UserDialog user={editing === 'new' ? null : editing} roles={roles.data?.roles ?? []} branches={branches.data?.branches ?? []}
           onClose={() => setEditing(null)} onSaved={() => { setEditing(null); void reload() }} />
       )}
       {resetting && <ResetDialog user={resetting} onClose={() => setResetting(null)} onSaved={() => { setResetting(null); void reload() }} />}
@@ -134,7 +135,7 @@ export function Users({ embedded = false }: { embedded?: boolean }) {
   )
 }
 
-function UserDialog({ user, roles, branches, onClose, onSaved, branchStyle }: { branchStyle: boolean; user: User | null; roles: Role[]; branches: Branch[]; onClose(): void; onSaved(): void }) {
+function UserDialog({ user, roles, branches, onClose, onSaved }: { user: User | null; roles: Role[]; branches: Branch[]; onClose(): void; onSaved(): void }) {
   const me = useUser()
   const toast = useToast()
   const assignable = roles.filter((r) => r.assignable || r.id === user?.role?.id)
@@ -190,16 +191,17 @@ function UserDialog({ user, roles, branches, onClose, onSaved, branchStyle }: { 
 
   return (
     <Dialog open onClose={onClose} title={user ? `تعديل ${user.name}` : 'حساب جديد'} icon={<UserPlus size={20} />}
-      aside={branchStyle ? <>
+      aside={<>
         <h3>ملخص الحساب</h3>
         <div className="aside-big">{form.name.trim() || 'حساب جديد'}</div>
         <div className="aside-box">
           <div className="aside-row"><span>اسم المستخدم</span><b dir="auto">{form.username || '—'}</b></div>
           <div className="aside-row"><span>الدور</span><b>{role?.name ?? '—'}</b></div>
-          <div className="aside-row"><span>الفرع</span><b>{me.branch?.name ?? '—'}</b></div>
+          <div className="aside-row"><span>الفرع</span><b>{branches.find(b => String(b.id) === form.branch_id)?.name ?? (form.branch_id ? me.branch?.name : role?.needs_branch ? 'اختر الفرع' : 'كل الفروع')}</b></div>
+          {hiring && <div className="aside-row"><span>القسم</span><b>{departments.data?.departments.find(d => String(d.id) === form.department_id)?.name ?? 'اختر القسم'}</b></div>}
         </div>
         {!user && <p className="aside-note">يستكمل الموظف ملفه الشخصي بعد دخوله الأول.</p>}
-      </> : undefined}
+      </>}
       footer={<><Button onClick={onClose}>إلغاء</Button><Button variant="primary" busy={busy} onClick={() => void save()}>حفظ</Button></>}>
       <form className="form-grid" onSubmit={save}>
         <Field label="الاسم الكامل" error={fields.name}>{(id) => <input id={id} className="input" value={form.name} onChange={(e) => set('name', e.target.value)} />}</Field>
@@ -214,28 +216,28 @@ function UserDialog({ user, roles, branches, onClose, onSaved, branchStyle }: { 
         <div className="af-row2">
           <Field label="الدور" error={fields.role_id}>
             {(id) => (
-              <select id={id} className="input select" value={form.role_id} onChange={(e) => set('role_id', e.target.value)}>
+              <ChoiceField id={id} className="input select" value={form.role_id} onChange={(e) => set('role_id', e.target.value)}>
                 {assignable.map((r) => <option key={r.id} value={r.id}>{r.name}</option>)}
-              </select>
+              </ChoiceField>
             )}
           </Field>
           <Field label="الفرع" error={fields.branch_id} hint={role && !role.needs_branch ? 'اتركه فارغاً إذا كان يعمل على جميع الفروع' : undefined}>
             {(id) => (
-              <select id={id} className="input select" value={form.branch_id} onChange={(e) => setForm({ ...form, branch_id: e.target.value, department_id: '', work_schedule_id: '' })} disabled={scopeOf(me, 'users.manage') === 'branch'}>
+              <ChoiceField id={id} className="input select" value={form.branch_id} onChange={(e) => setForm({ ...form, branch_id: e.target.value, department_id: '', work_schedule_id: '' })} disabled={scopeOf(me, 'users.manage') === 'branch'}>
                 {!role?.needs_branch && <option value="">— كل الفروع —</option>}
                 {role?.needs_branch && !form.branch_id && <option value="">اختر الفرع</option>}
                 {branches.map((b) => <option key={b.id} value={b.id}>{b.name}</option>)}
-              </select>
+              </ChoiceField>
             )}
           </Field>
         </div>
         {hiring && <>
-          <Field label="قسم الموظف" error={fields.department_id} hint="تُحدّد الأقسام الوظيفية من صفحة الفرع">{id => <select id={id} className="input select" value={form.department_id} onChange={e => set('department_id', e.target.value)}>
-            <option value="">اختر القسم</option>{!departments.loading && departments.data?.departments.filter(d => d.is_active).map(d => <option key={d.id} value={d.id}>{d.name}</option>)}</select>}</Field>
-          <Field label="نوع الراتب" error={fields.salary_type}>{id => <select id={id} className="input select" value={form.salary_type} onChange={e => set('salary_type', e.target.value)}>
-            <option value="">اختر نوع الراتب</option>{SALARY_TYPES.map(([key, name]) => <option key={key} value={key}>{name}</option>)}</select>}</Field>
-          <Field label="الدوام الأساسي" error={fields.work_schedule_id}>{id => <select id={id} className="input select" value={form.work_schedule_id} onChange={e => set('work_schedule_id', e.target.value)}>
-            <option value="">الأساسي للفرع</option>{!schedules.loading && schedules.data?.schedules.map(s => <option key={s.id} value={s.id}>{s.name}</option>)}</select>}</Field>
+          <Field label="قسم الموظف" error={fields.department_id} hint="تُحدّد الأقسام الوظيفية من صفحة الفرع">{id => <ChoiceField id={id} className="input select" value={form.department_id} onChange={e => set('department_id', e.target.value)}>
+            <option value="">اختر القسم</option>{!departments.loading && departments.data?.departments.filter(d => d.is_active).map(d => <option key={d.id} value={d.id}>{d.name}</option>)}</ChoiceField>}</Field>
+          <Field label="نوع الراتب" error={fields.salary_type}>{id => <ChoiceField id={id} className="input select" value={form.salary_type} onChange={e => set('salary_type', e.target.value)}>
+            <option value="">اختر نوع الراتب</option>{SALARY_TYPES.map(([key, name]) => <option key={key} value={key}>{name}</option>)}</ChoiceField>}</Field>
+          <Field label="الدوام الأساسي" error={fields.work_schedule_id}>{id => <ChoiceField id={id} className="input select" value={form.work_schedule_id} onChange={e => set('work_schedule_id', e.target.value)}>
+            <option value="">الأساسي للفرع</option>{!schedules.loading && schedules.data?.schedules.map(s => <option key={s.id} value={s.id}>{s.name}</option>)}</ChoiceField>}</Field>
           <ErrorBanner text={departments.error || schedules.error} />
         </>}
         <ErrorBanner text={error} />

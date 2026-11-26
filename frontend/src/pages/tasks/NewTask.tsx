@@ -139,8 +139,8 @@ export function NewTask({ options, onClose, onSaved, branchStyle = false, prepar
               <Button variant="primary" icon={<CheckCheck size={17} />} busy={busy === 'save'} disabled={!typeId} onClick={() => void save(null)}>تجهيز المهمة</Button>
             </>
           ) : <>
-          <Button variant="primary" size="lg" icon={<MessageCircle size={18} />} busy={busy === 'whatsapp'} disabled={!typeId || techs.length === 0} onClick={() => void save('whatsapp')}>حفظ وإرسال واتساب</Button>
-          <Button icon={<Send size={18} />} busy={busy === 'app'} disabled={!typeId || techs.length === 0} onClick={() => void save('app')}>إرسال داخل النظام</Button>
+          <Button variant="send" size="lg" icon={<MessageCircle size={18} />} busy={busy === 'whatsapp'} disabled={!typeId || techs.length === 0} onClick={() => void save('whatsapp')}>حفظ وإرسال واتساب</Button>
+          <Button variant="send" icon={<Send size={18} />} busy={busy === 'app'} disabled={!typeId || techs.length === 0} onClick={() => void save('app')}>إرسال داخل النظام</Button>
           <Button variant="ghost" icon={<Save size={18} />} busy={busy === 'save'} disabled={!typeId} onClick={() => void save(null)}>حفظ دون إرسال</Button>
           </>}
         </div>

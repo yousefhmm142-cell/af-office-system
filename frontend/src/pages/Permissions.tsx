@@ -1,3 +1,4 @@
+import { ChoiceField } from '../ui/ChoiceField'
 import { KeyRound, Save, UserCog } from 'lucide-react'
 import { useEffect, useMemo, useState } from 'react'
 import { api, ApiError } from '../api/client'
@@ -47,9 +48,9 @@ function RolesMatrix() {
     <section className="card glass af-pad af-permissions">
       <label className="af-permission-picker">
         الدور الوظيفي
-        <select className="input select" value={role.id} disabled={blocked} onChange={(event) => setRoleId(event.target.value)}>
+        <ChoiceField className="input select" value={role.id} disabled={blocked} onChange={(event) => setRoleId(event.target.value)}>
           {data.roles.map((entry) => <option key={entry.id} value={entry.id}>{entry.name}</option>)}
-        </select>
+        </ChoiceField>
       </label>
       <RoleEditor key={role.id} role={role} permissions={data.permissions} onSaved={setData} onBlocked={setBlocked} />
     </section>
@@ -99,7 +100,7 @@ function RoleEditor({ role, permissions, onSaved, onBlocked }: { role: RoleGrant
                   return (
                     <label className="af-permission-row" key={key}>
                       <span>{name}</span>
-                      <select className="input select" value={draft[key] ?? ''} disabled={saving || !editable || !permitted(key)}
+                      <ChoiceField className="input select" value={draft[key] ?? ''} disabled={saving || !editable || !permitted(key)}
                         onChange={(event) => {
                           const value = event.target.value as Scope | ''
                           setDraft((current) => {
@@ -113,7 +114,7 @@ function RoleEditor({ role, permissions, onSaved, onBlocked }: { role: RoleGrant
                         {scopeRank.map((scope) => (
                           <option key={scope} value={scope} disabled={!admin && (!cap || scopeRank.indexOf(scope) > scopeRank.indexOf(cap))}>{SCOPE_LABEL[scope]}</option>
                         ))}
-                      </select>
+                      </ChoiceField>
                     </label>
                   )
                 })}
@@ -179,10 +180,10 @@ function PersonOverrides() {
   return (
     <div className="card glass af-pad">
       <p className="eyebrow">الاستثناء الشخصي: تمنح الموظف صلاحية إضافية على دوره، أو تمنعه من صلاحية في دوره. والاستثناء مقدَّم على الدور.</p>
-      <select className="input select" value={userId} disabled={busy} onChange={(e) => { setPayload(null); setDraft({}); setError(null); setUserId(e.target.value) }} aria-label="اختر الموظف" style={{ maxWidth: 420 }}>
+      <ChoiceField className="input select" value={userId} disabled={busy} onChange={(e) => { setPayload(null); setDraft({}); setError(null); setUserId(e.target.value) }} aria-label="اختر الموظف" style={{ maxWidth: 420 }}>
         <option value="">اختر الموظف…</option>
         {people.map((u) => <option key={u.id} value={u.id}>{u.name} · {u.role?.name}{u.branch ? ` · ${u.branch.name}` : ''}</option>)}
-      </select>
+      </ChoiceField>
       <ErrorBanner text={error} />
       {payload && matrix.data && (
         <>
@@ -200,14 +201,14 @@ function PersonOverrides() {
                     <th scope="row">{p.name}</th>
                     <td>{fromRole ? SCOPE_LABEL[fromRole] : '—'}</td>
                     <td>
-                      <select className="input select af-scope" value={draft[p.key] ?? ''} aria-label={`استثناء ${p.name}`} disabled={busy || (!admin && !cap)} data-on={draft[p.key] || undefined}
+                      <ChoiceField className="input select af-scope" value={draft[p.key] ?? ''} aria-label={`استثناء ${p.name}`} disabled={busy || (!admin && !cap)} data-on={draft[p.key] || undefined}
                         onChange={(e) => setDraft((d) => ({ ...d, [p.key]: e.target.value as '' | 'deny' | Scope }))}>
                         <option value="">بدون استثناء</option>
                         <option value="deny">ممنوع</option>
                         <option value="own" disabled={!admin && (!cap || rank.indexOf('own') > rank.indexOf(cap))}>{SCOPE_LABEL.own}</option>
                         <option value="branch" disabled={!admin && (!cap || rank.indexOf('branch') > rank.indexOf(cap))}>{SCOPE_LABEL.branch}</option>
                         <option value="all" disabled={!admin && (!cap || rank.indexOf('all') > rank.indexOf(cap))}>{SCOPE_LABEL.all}</option>
-                      </select>
+                      </ChoiceField>
                     </td>
                     <td><b>{result ? SCOPE_LABEL[result] : '—'}</b></td>
                   </tr>

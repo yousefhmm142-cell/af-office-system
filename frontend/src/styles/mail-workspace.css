@@ -9,3 +9,11 @@
 .af-mail-workspace .af-conv {display:flex;flex-direction:column;flex:1}
 @media(max-width:1060px) {.af-mail-workspace .af-mail-body {grid-template-columns:minmax(125px,.65fr) minmax(185px,1fr) minmax(235px,1.4fr)}}
 @media(max-width:900px) {.af-mail-workspace .af-mail-body {grid-template-columns:minmax(0,1fr)}.af-mail-categories {flex-direction:row;flex-wrap:wrap}.af-mail-workspace.reading .af-mail-categories,.af-mail-workspace.reading .af-mail-list {display:none}.af-mail-workspace:not(.reading) .af-mail-read {display:none}.af-mail-workspace.reading .af-mail-read {display:flex}.af-mail-workspace .af-back {display:inline-flex}}
+.af-mail-workspace .af-mail-categories,.af-mail-workspace .af-mail-list,.af-mail-workspace .af-mail-read {border-radius:18px;border:1px solid var(--line);background:var(--surface);box-shadow:none}
+.af-mail-workspace .af-mail-filter {min-height:44px;font-weight:700}
+.af-mail-categories>.af-sub {border-top:1px solid var(--line);padding-block-start:20px;margin-block:10px 4px}
+.af-mail-filter:nth-last-child(-n+4):before {content:"";width:10px;height:10px;border-radius:3px;background:#59998a}
+.af-mail-filter:nth-last-child(3):before {background:#c29367}.af-mail-filter:nth-last-child(2):before {background:#6889b4}.af-mail-filter:last-child:before {background:#9a729a}
+.af-mail-workspace .af-conv-head {background:var(--surface-2);border-radius:18px 18px 0 0}
+.af-mail-workspace .af-mail-item {padding:14px 10px;min-height:76px;border-bottom:1px solid var(--line-2)}
+.af-mail-workspace .af-inline-reply {margin:12px;border:1px solid var(--line);border-radius:14px;background:var(--surface-2)}

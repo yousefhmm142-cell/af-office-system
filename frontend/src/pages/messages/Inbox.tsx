@@ -1,3 +1,4 @@
+import { ChoiceField } from '../../ui/ChoiceField'
 import '../../styles/mail-workspace.css'
 import { Archive, ArchiveRestore, ArrowRight, Forward, Inbox as InboxIcon, Mail, MailOpen, Paperclip, PenLine, ReplyAll, Search, Send } from 'lucide-react'
 import { useEffect, useState } from 'react'
@@ -53,9 +54,9 @@ export function Inbox() {
         </aside>
         <aside className="card glass af-mail-list">
           <div className="af-search"><Search size={17} aria-hidden="true" /><input className="input" placeholder="ابحث في الرسائل" value={search} maxLength={80} onChange={(e) => {setSearch(e.target.value);setPage(1)}} aria-label="بحث" /></div>
-          <select className="input select" aria-label="فلتر الفرع" value={branch} onChange={e=>{setBranch(e.target.value);setPage(1);setLeaveId(null);navigate('/messages')}}>
+          <ChoiceField className="input select" aria-label="فلتر الفرع" value={branch} onChange={e=>{setBranch(e.target.value);setPage(1);setLeaveId(null);navigate('/messages')}}>
             <option value="">كل الفروع المتاحة</option>{(branches.data?.branches ?? (me.branch ? [me.branch] : [])).map(b=><option key={b.id} value={b.id}>{b.name}</option>)}
-          </select>
+          </ChoiceField>
           <ErrorBanner text={category==='leaves' ? leaves.error : error} />
           {category==='leaves' ? <div className="af-mail-items">
             {leaves.data?.requests.filter(r=>(!branch || r.branch_id===Number(branch)) && (!q || [r.name,r.reason,leaveKind[r.kind]].some(value=>value.includes(q)))).map(r=>
@@ -168,9 +169,9 @@ function Conversation({ id, onReply, onChanged }: { id: string; onReply(d: Draft
       </footer>
       {target && <form className="af-inline-reply" onSubmit={e=>{e.preventDefault();void sendQuickReply()}}>
         <label>رد سريع إلى {target.name}<textarea className="input textarea" rows={3} value={reply} maxLength={channel==='sms'?480:20000} onChange={e=>setReply(e.target.value)} /></label>
-        <div className="af-toolbar"><select className="input select" aria-label="قناة الإرسال" value={channel} onChange={e=>setChannel(e.target.value as 'system'|'sms')}>
+        <div className="af-toolbar"><ChoiceField className="input select" aria-label="قناة الإرسال" value={channel} onChange={e=>setChannel(e.target.value as 'system'|'sms')}>
           <option value="system">إرسال داخل النظام</option><option value="sms" disabled={!data.sms_enabled}>{data.sms_enabled ? 'رسالة قصيرة SMS' : 'خدمة SMS بحاجة إلى إعداد'}</option>
-        </select><Button type="submit" variant="primary" icon={<Send size={16}/>} busy={sending} disabled={!reply.trim() || (channel==='sms' && reply.length>480)}>إرسال الرد</Button></div>
+        </ChoiceField><Button type="submit" variant="send" icon={<Send size={16}/>} busy={sending} disabled={!reply.trim() || (channel==='sms' && reply.length>480)}>إرسال الرد</Button></div>
       </form>}
     </div>
   )

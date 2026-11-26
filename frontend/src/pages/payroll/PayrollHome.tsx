@@ -1,5 +1,5 @@
-import { ArrowLeft, CalendarRange, CircleDollarSign, HandCoins, Plus, Settings2, Sparkles, Users, Wallet } from 'lucide-react'
-import { useEffect, useMemo, useState } from 'react'
+import { ArrowLeft, CalendarRange, CircleDollarSign, HandCoins, Plus, Settings2, Sparkles, Wallet } from 'lucide-react'
+import { useEffect, useState } from 'react'
 import { Link, useNavigate } from 'react-router'
 import { api, ApiError } from '../../api/client'
 import type { Branch } from '../../api/types'
@@ -8,9 +8,9 @@ import { useLoad } from '../../lib/useLoad'
 import { Dialog } from '../../ui/Dialog'
 import { ErrorBanner } from '../../ui/Field'
 import { Loading, PageHead } from '../../ui/PageHead'
-import { Button, Pill } from '../../ui/primitives'
+import { Button } from '../../ui/primitives'
 import { useToast } from '../../ui/Toast'
-import { fmt, monthLabel, prevMonth, STATUS, thisMonth, type Batch } from './lib'
+import { fmt, monthLabel, prevMonth, thisMonth, type Batch } from './lib'
 
 /** Payroll at a glance: the months, their batches, and one big button to start the next one. */
 export function PayrollHome() {
@@ -19,79 +19,40 @@ export function PayrollHome() {
   const [wizard, setWizard] = useState(false)
   const manage = can(me, 'payroll.manage')
 
-  const months = useMemo(() => {
-    // One card per month and branch (a company-wide batch has its own card).
-    const map = new Map<string, Batch[]>()
-    for (const b of data?.batches ?? []) {
-      const key = `${b.month}|${b.branch?.id ?? 'all'}`
-      map.set(key, [...(map.get(key) ?? []), b])
-    }
-    return [...map.entries()].map(([key, list]) => [key.split('|')[0]!, list, key] as const)
-  }, [data])
-  const pending = (data?.batches ?? []).filter((b) => b.status === 'draft')
-  const toPay = (data?.batches ?? []).filter((b) => b.status === 'approved')
-
+  const [stage,setStage] = useState<Batch['status']>('approved')
+  const batches = data?.batches ?? []
+  const stages = [
+    {key:'draft',label:'للمراجعة والاعتماد',icon:Sparkles,action:'مراجعة الكشف'},
+    {key:'approved',label:'جاهزة للصرف',icon:CircleDollarSign,action:'فتح كشف الصرف'},
+    {key:'paid',label:'تم صرفها',icon:Wallet,action:'عرض تفاصيل الصرف'},
+  ] as const
+  const selected = stages.find(item=>item.key===stage)!
+  const visible = batches.filter(b=>b.status===stage)
   return (
     <>
-      <PageHead title="الرواتب" eyebrow="دفعات الرواتب، والخصومات، والسلف"
-        actions={manage && <Button variant="primary" size="lg" icon={<Plus size={20} />} onClick={() => setWizard(true)}>دفعة رواتب جديدة</Button>} />
-
-      {manage && (
-        <nav className="af-tiles" aria-label="أقسام الرواتب">
-          <Link to="/payroll/extras" className="af-tile glass"><span className="af-tile-ico"><HandCoins size={22} /></span><b>الخصومات والمكافآت والسلف</b><small>أضف بنداً لموظف في ثوانٍ</small></Link>
-          <Link to="/payroll/settings" className="af-tile glass"><span className="af-tile-ico"><Settings2 size={22} /></span><b>قواعد الحساب</b><small>قواعد الوقت الإضافي</small></Link>
-          <Link to="/my-pay" className="af-tile glass"><span className="af-tile-ico"><Wallet size={22} /></span><b>رواتبي</b><small>دفعاتك أنت وتفاصيلها</small></Link>
-        </nav>
-      )}
-
-      {(pending.length > 0 || toPay.length > 0) && (
-        <div className="af-attention">
-          {pending.map((b) => (
-            <Link key={b.id} to={`/payroll/${b.id}`} className="af-attn warn"><Sparkles size={18} /><span><b>{b.title}</b> · {b.branch?.name ?? 'جميع الفروع'} بانتظار المراجعة والاعتماد</span><ArrowLeft size={16} /></Link>
-          ))}
-          {toPay.map((b) => (
-            <Link key={b.id} to={`/payroll/${b.id}`} className="af-attn info"><CircleDollarSign size={18} /><span><b>{b.title}</b> · {b.branch?.name ?? 'جميع الفروع'} معتمدة وجاهزة للصرف</span><ArrowLeft size={16} /></Link>
-          ))}
-        </div>
-      )}
-
-      <ErrorBanner text={error} />
-      {loading && !data ? <Loading /> : months.length === 0 ? (
-        <section className="card glass af-empty-hero">
-          <span className="af-empty-ico"><Wallet size={34} /></span>
-          <h2>لا توجد دفعات بعد</h2>
-          <p className="eyebrow">ابدأ بإنشاء أول دفعة رواتب، وسيحسب النظام كل شيء تلقائياً.</p>
-          {manage && <Button variant="primary" size="lg" icon={<Plus size={20} />} onClick={() => setWizard(true)}>دفعة رواتب جديدة</Button>}
-        </section>
-      ) : (
-        <div className="af-months">
-          {months.map(([month, batches, key]) => {
-            const done = batches.reduce((s, b) => s + b.percent, 0)
-            const total = batches.reduce((s, b) => s + b.total_net, 0)
-            return (
-              <section key={key} className="card glass af-month-card">
-                <header className="af-month-head">
-                  <div><p className="eyebrow">{batches[0]?.branch?.name ?? 'جميع الفروع'}</p><h2>{monthLabel(month)}</h2></div>
-                  <div className="af-month-total"><small>المجموع</small><b className="num">{fmt(total)}</b><small>شيكل</small></div>
-                </header>
-                <div className="af-progress" role="img" aria-label={`تم تخطيط ${done}% من الشهر`}>
-                  {batches.map((b) => <span key={b.id} data-status={b.status} style={{ width: `${b.percent}%` }} />)}
-                </div>
-                <div className="rows">
-                  {batches.map((b) => (
-                    <Link key={b.id} to={`/payroll/${b.id}`} className="row af-batch-row">
-                      <span className="af-batch-pct num">{b.percent}%</span>
-                      <span className="row-label">{b.title}<small className="af-sub"><Users size={13} /> {b.employees_count} موظفاً{b.is_final ? ' · تشمل حساب الحضور' : ''}</small></span>
-                      <b className="num">{fmt(b.total_net)}</b>
-                      <Pill tone={STATUS[b.status].tone}>{STATUS[b.status].label}</Pill>
-                    </Link>
-                  ))}
-                </div>
-              </section>
-            )
-          })}
-        </div>
-      )}
+      <PageHead title="صرف الرواتب" eyebrow="الدفعات الشهرية" actions={manage && <Button variant="primary" icon={<Plus size={18}/>} onClick={()=>setWizard(true)}>تجهيز دفعة رواتب</Button>} />
+      <div className="pay-stages" role="group" aria-label="حالة الدفعات">{stages.map(({key,label,icon:Icon})=>{
+        const group=batches.filter(b=>b.status===key)
+        return <button type="button" key={key} className="card glass pay-stage" data-stage={key} aria-pressed={stage===key} onClick={()=>setStage(key)}>
+          <Icon size={23}/><strong>{label}</strong><span>{group.length} دفعات</span><b>{fmt(group.reduce((sum,b)=>sum+b.total_net,0))} ₪</b>
+        </button>
+      })}</div>
+      <section className="card glass af-pad pay-queue"><h2 className="af-h2">{selected.label}</h2>
+        <p className="af-sub">{stage==='draft' ? 'راجع أسماء الموظفين والصافي ثم اعتمد الدفعة لتظهر في قائمة الصرف.' :
+          stage==='approved' ? 'افتح كشف الصرف. بعد تحويل المبالغ للموظفين، اضغط «تسجيل صرف الدفعة» لتوثيق العملية.' :
+          'الدفعات التي تم تسجيل صرفها، مع تاريخ الصرف وتفاصيل كل موظف.'}</p>
+        <ErrorBanner text={error}/>
+        {loading ? <Loading/> : visible.length ? visible.map(b=><div className="pay-queue-row" key={b.id}>
+          <div><b>{b.title}</b><small className="af-sub">{monthLabel(b.month)} · {b.branch?.name ?? 'جميع الفروع'} · {b.percent}٪ من الشهر{b.paid_at && ' · صُرفت في '+new Date(b.paid_at).toLocaleDateString('ar-PS')}</small></div>
+          <span><b>{fmt(b.total_net)} ₪</b><small className="af-sub">{b.employees_count} موظفاً</small></span>
+          <Link className={'btn '+(stage==='approved'?'approve':'utility')} to={`/payroll/${b.id}`}>{selected.action}<ArrowLeft size={16}/></Link>
+        </div>) : !error && <p className="pay-empty">{stage==='approved' ? 'لا توجد دفعات جاهزة للصرف. تظهر هنا الدفعة فور اعتمادها.' : stage==='draft' ? 'لا توجد مسودات بانتظار الاعتماد.' : 'لا توجد دفعات مسجّلة كمصروفة.'}</p>}
+      </section>
+      <nav className="af-toolbar pay-tools" aria-label="أدوات الرواتب">
+        {manage && <><Link className="btn" to="/payroll/extras"><HandCoins size={17}/>خصومات ومكافآت وسلف</Link>
+        <Link className="btn" to="/payroll/settings"><Settings2 size={17}/>إعدادات الإضافي</Link></>}
+        <Link className="btn" to="/my-pay"><Wallet size={17}/>رواتبي الشخصية</Link>
+      </nav>
       {wizard && <NewBatchWizard onClose={() => setWizard(false)} />}
     </>
   )
@@ -115,12 +76,15 @@ function NewBatchWizard({ onClose }: { onClose(): void }) {
   const [error, setError] = useState<string | null>(null)
 
   useEffect(() => {
+    let active = true
+    setError(null)
     setAdvanceIds([])
     setPlan(null)
     setPercent(null)
     api<{ used: number; left: number; employees: number }>(`/payroll/plan?month=${month}${branchId ? `&branch_id=${branchId}` : ''}`)
-      .then((p) => { setPlan(p); setPercent(p.left >= 50 && p.used === 0 ? 50 : p.left) })
-      .catch(() => setPlan(null))
+      .then((p) => { if (!active) return; setPlan(p); setPercent(p.left >= 50 && p.used === 0 ? 50 : p.left) })
+      .catch((e) => { if (active) setError(e instanceof ApiError ? e.message : 'تعذّر تحميل خطة الدفعة.') })
+    return () => { active = false }
   }, [month, branchId])
 
   const chosen = percent ?? (Number(custom) || 0)
@@ -162,7 +126,7 @@ function NewBatchWizard({ onClose }: { onClose(): void }) {
         )}
         <section className="af-step">
           <h3><span className="af-step-n">{all ? 3 : 2}</span> كم من راتب الشهر؟</h3>
-          {!plan ? <Loading /> : plan.left <= 0 ? (
+          {!plan ? (error ? null : <Loading />) : plan.left <= 0 ? (
             <p className="banner warn"><span>صُرف هذا الشهر كاملاً (100%). اختر شهراً آخر.</span></p>
           ) : (
             <>

@@ -1,3 +1,4 @@
+import { ChoiceField } from '../../ui/ChoiceField'
 import { CheckCheck, Clock3, History, Pencil, QrCode, UserCheck, UserX, Users, WifiOff } from 'lucide-react'
 import { useState, type FormEvent } from 'react'
 import { Link, useSearchParams } from 'react-router'
@@ -104,13 +105,13 @@ export function Board() {
       {view === 'overview' && <AttendanceOverview date={overviewDate} onDateChange={setOverviewDate} onSelect={(id, selectedDate) => { setBranchId(String(id)); setDate(selectedDate); setView('day') }} />}
       {((view === 'day' && (!manager || date !== todayGaza() || (data?.can_manage && data.summary.pending > 0))) || (view === 'week' && all)) && <div className="af-toolbar af-attendance-views">
         {all && (
-          <select className="input select" value={chosen} onChange={(e) => setBranchId(e.target.value)} aria-label="الفرع">
+          <ChoiceField className="input select" value={chosen} onChange={(e) => setBranchId(e.target.value)} aria-label="الفرع">
             {branches.data?.branches.map((b) => <option key={b.id} value={b.id}>{b.name}</option>)}
-          </select>
+          </ChoiceField>
         )}
         {view === 'day' && (!manager || date !== todayGaza()) && <input className="input num af-date" type="date" value={date} max={todayGaza()} onChange={(e) => e.target.value && setDate(e.target.value)} aria-label="اليوم" />}
         {view === 'day' && data?.can_manage && data.summary.pending > 0 && (
-          <Button variant="primary" icon={<CheckCheck size={18} />} busy={approving} onClick={() => void approveAll()}>اعتماد الكل ({data.summary.pending})</Button>
+          <Button variant="approve" icon={<CheckCheck size={18} />} busy={approving} onClick={() => void approveAll()}>اعتماد الكل ({data.summary.pending})</Button>
         )}
       </div>}
       {view === 'week' && chosen && <WeekSheet key={`${chosen}-${week}`} revision={weekRevision} branchStyle={manager} branch={chosen} branchName={all ? branches.data?.branches.find((branch) => String(branch.id) === chosen)?.name : me.branch?.name} start={week} today={todayGaza()} onWeek={setWeek} onDay={(day, row, canManage) => {
@@ -283,7 +284,7 @@ function EditDay({ row, date, onClose, onSaved }: { row: BoardRow; date: string;
 
   return (
     <Dialog open onClose={onClose} title={row.user.name} subtitle={`${dayName(date)} · يُحفظ في السجل من عدّل ومتى`} icon={<Pencil size={20} />}
-      footer={<><Button onClick={onClose}>إلغاء</Button><Button variant="primary" busy={busy} onClick={() => void save()}>حفظ واعتماد</Button></>}>
+      footer={<><Button onClick={onClose}>إلغاء</Button><Button variant="approve" busy={busy} onClick={() => void save()}>حفظ واعتماد</Button></>}>
       <form className="att-day af-att-edit" onSubmit={save}>
         <div className="att-manual">
           <b>سجّل حضور أو انصراف</b>
