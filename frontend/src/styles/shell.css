@@ -125,6 +125,7 @@
 @media (max-width: 900px) {
   .topbar-row { top: 8px; margin: 8px 10px 0; gap: 8px; }
   .topbar-row > .icon-btn { width: 40px; height: 40px; }
+  .settings-btn { display: none; }
   .topbar { padding: 6px 8px 6px 14px; gap: 10px; }
   .topnav, .app-brand-text small, .topbar .sync-detail { display: none; }
   .topbar > * { min-width: 0; }
@@ -149,6 +150,10 @@
 }
 
 /* The big settings gear: a round button like the others, the system colour on hover and while open. */
+.settings-btn { height: 46px; padding: 0 16px 0 18px; border-radius: 999px; display: inline-flex; align-items: center; gap: 8px; font-weight: 800; font-size: 0.875rem; text-decoration: none; white-space: nowrap; flex: none; color: var(--ink-2); border: 1px solid var(--line); background: var(--surface); transition: background .15s, color .15s, transform .15s; }
+:root[data-theme='dark'] .settings-btn { background: var(--glass); border-color: var(--glass-edge); }
+.settings-btn:hover { color: var(--brand-text); background: color-mix(in srgb, var(--brand) 34%, transparent); transform: rotate(40deg); }
+.settings-btn.active { color: var(--brand-text); background: color-mix(in srgb, var(--brand) 34%, transparent); border-color: color-mix(in srgb, var(--brand) 38%, transparent); }
 .danger-btn:hover { color: var(--danger); }
 .trash { padding: 6px 18px 16px; display: grid; gap: 10px; }
 
@@ -159,6 +164,7 @@
 .status-badge.brand { background: var(--brand); }
 
 /* On phones the gear sits behind «المزيد» in the bottom bar. */
+@media (max-width: 900px) { .settings-btn { display: none; } }
 
 /* What the connection is doing with the worker's work */
 .sync-notice { position: sticky; top: 84px; z-index: 35; max-width: 1280px; margin: 10px auto 0; padding: 11px 16px; border-radius: 999px; display: flex; align-items: center; gap: 10px; font-size: 0.875rem; line-height: 1.5; box-shadow: 0 8px 22px -12px #0006; width: fit-content; max-width: calc(100% - 24px); }

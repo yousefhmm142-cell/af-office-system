@@ -1,97 +1,64 @@
-import { HeaderTools } from './HeaderTools'
-import { BookOpen, ChevronRight, Ellipsis, LogOut, Settings } from 'lucide-react'
-import { useState } from 'react'
+import { Ellipsis, Search, Settings, UserRound } from 'lucide-react'
+import { useLayoutEffect, useRef, useState } from 'react'
 import { Link, NavLink, Outlet, useLocation } from 'react-router'
-import { Avatar, Logo } from '../ui/primitives'
-import { ThemeToggle } from '../ui/ThemeToggle'
-import { OfflineBar, UpdateBar } from '../ui/NetBars'
-import { useConfirm } from '../ui/Confirm'
-import { useAuth, useUser } from './auth'
-import { navFor } from './nav'
 import { useUnread } from '../pages/messages/lib'
 import { useNewTasks } from '../pages/tasks/useNewTasks'
+import { OfflineBar, UpdateBar } from '../ui/NetBars'
+import { Avatar, Logo } from '../ui/primitives'
+import { ThemeToggle } from '../ui/ThemeToggle'
+import { can, useUser } from './auth'
+import { GlobalSearch, openSearch, SearchButton } from './GlobalSearch'
+import { navFor, type NavItem } from './nav'
+import { ActivityButton, NotificationsBell } from './Notifications'
+import { Sidebar, useSidebarMini } from './Sidebar'
 
-const MINI_KEY = 'af-sidebar-mini'
+const MAX_TABS = 5
+const accountTab: NavItem = { to: '/account', label: 'حسابي', icon: UserRound }
+const moreTab: NavItem = { to: '/more', label: 'المزيد', icon: Ellipsis }
 
-function readMini() {
-  try {
-    return localStorage.getItem(MINI_KEY) === '1'
-  } catch {
-    return false
-  }
-}
-
+/** The frame of every page, as in the office's old system: floating sidebar, top bar, bottom tabs on phones. */
 export function AppShell() {
   const user = useUser()
-  const { signOut } = useAuth()
-  const confirm = useConfirm()
+  const manager = user.role?.key === 'branch_manager'
   const items = navFor(user)
-  const branchManager = user.role?.key === 'branch_manager'
-  const settings = items.find((item) => item.to === '/settings')
-  const guide = { to: '/guide', label: 'دليل الاستخدام', icon: BookOpen }
+  const pages = items.filter((i) => i.to !== '/account')
+  // Phones: the most used pages first, up to five tabs; the rest sit behind «المزيد».
+  const first = manager ? ['/', '/tasks', '/attendance', '/messages'] : []
+  const ordered = [...first.flatMap((to) => pages.filter((i) => i.to === to)), ...pages.filter((i) => !first.includes(i.to))]
+  const tabs = ordered.length < MAX_TABS ? [...ordered, accountTab] : [...ordered.slice(0, MAX_TABS - 1), moreTab]
+  const hasSettings = items.some((i) => i.to === '/settings')
+  const [mini, toggleMini] = useSidebarMini()
+  const { pathname } = useLocation()
   const unread = useUnread()
   const newTasks = useNewTasks(!!user.branch && !!user.modules?.includes('tasks'))
   const badge = (to: string) => {
     const n = to === '/messages' ? unread : to === '/my-tasks' ? newTasks : 0
-    return n > 0 ? <span className="af-nav-badge num" aria-label={`${n} جديدة`}>{n > 99 ? '99+' : n}</span> : null
+    return n > 0 ? <span className="sb-cnt red num" aria-label={`${n} جديدة`}>{n > 99 ? '99+' : n}</span> : null
   }
-  const { pathname } = useLocation()
-  const [mini, setMini] = useState(readMini)
-  const toggleMini = () => setMini((m) => {
-    try { localStorage.setItem(MINI_KEY, m ? '0' : '1') } catch { /* this visit only */ }
-    return !m
-  })
-  const primary = ['/', '/tasks', '/attendance', '/messages']
-  const tabs = branchManager
-    ? [...primary.flatMap((to) => items.filter((item) => item.to === to)), { to: '/more', label: 'المزيد', icon: Ellipsis }]
-    : items.slice(0, 5)
-  const operatingRoutes = ['/', '/generation', '/distribution', '/tasks', '/attendance']
-  const followRoutes = ['/seals', '/tasks/seal-work', '/attendance/me', '/my-tasks', '/messages', '/my-pay', '/me', '/branches', '/payroll', '/permissions', '/audit']
-  const operations = operatingRoutes.flatMap((to) => items.filter((item) => item.to === to))
-  const follow = followRoutes.flatMap((to) => items.filter((item) => item.to === to))
 
-  const link = ({ to, label, icon: Icon }: (typeof items)[number]) => (
-    <NavLink key={to} to={to} end={to === "/"} className="sb-item" data-tip={label} aria-label={mini ? label : undefined}>
-      <Icon size={21} aria-hidden="true" />
-      <span className="sb-t">{label}</span>
-      {badge(to)}
-    </NavLink>
-  )
+  const tabRef = useRef<HTMLElement>(null)
+  const [indicator, setIndicator] = useState<{ x: number; w: number } | null>(null)
+  useLayoutEffect(() => {
+    const nav = tabRef.current
+    if (!nav) return
+    const place = () => { const el = nav.querySelector<HTMLElement>('.tab.active .tab-icon'); if (el) { const a = el.getBoundingClientRect(); const b = nav.getBoundingClientRect(); setIndicator({ x: a.left - b.left, w: a.width }) } }
+    place()
+    const ro = new ResizeObserver(place); ro.observe(nav)
+    void document.fonts?.ready.then(place)
+    return () => ro.disconnect()
+  }, [pathname, tabs.length])
 
   return (
     <div className={`shell${mini ? ' mini' : ''}`}>
       <a href="#main" className="skip">تخطَّ إلى المحتوى</a>
       <div className="scene" aria-hidden="true"><i className="b1" /><i className="b2" /><i className="b3" /><i className="grain" /></div>
 
-      <aside className="sb glass" aria-label="القائمة">
-        <button type="button" className="sb-collapse" onClick={toggleMini} aria-label={mini ? 'توسيع القائمة' : 'تصغير القائمة'}>
-          <ChevronRight size={14} aria-hidden="true" />
-        </button>
-        <NavLink to="/" className="sb-top" aria-label="الرئيسية">
-          <Logo height={mini ? 32 : 64} className="sb-logo" />
-          <span className="sb-name">
-            <span className="sb-kicker">نظام إدارة</span>
-            <span className="sb-title">{branchManager ? user.branch?.name ?? 'المكاتب' : 'المكاتب'}</span>
-            <span className="sb-company">شركة أبناء فارس أبو زايد</span>
-          </span>
-        </NavLink>
-        <div className="sb-scroll">
-          <div className="sb-label">{branchManager ? 'التشغيل' : 'الإدارة'}</div>
-          <nav className="sb-nav" aria-label={branchManager ? 'التشغيل' : 'الإدارة'}>{(branchManager ? operations : items.filter((i) => i.to !== '/account')).map(link)}</nav>
-          {branchManager && follow.length > 0 && <>
-            <div className="sb-label">المتابعة</div>
-            <nav className="sb-nav" aria-label="المتابعة">{follow.map(link)}</nav>
-          </>}
-        </div>
-        <div className="sb-foot">
-          {branchManager && settings && <div className="sb-label">النظام</div>}
-          <nav className="sb-nav" aria-label="الحساب">{branchManager && settings && link(settings)}{branchManager && link(guide)}{link({ to: '/account', label: 'حسابي', icon: items[items.length - 1]!.icon })}</nav>
-        </div>
-      </aside>
+      <Sidebar items={items} mini={mini} onToggle={toggleMini} badge={badge} />
 
       <div className="shell-main">
         <div className="topbar-row">
           <header className="topbar glass">
+            {/* Phones keep the name on the left of the bar; computers have it in the sidebar. */}
             <Link to="/" className="app-brand" aria-label="الرئيسية">
               <Logo height={34} />
               <span className="app-brand-text">
@@ -99,41 +66,47 @@ export function AppShell() {
                 <small>أبناء فارس أبو زايد</small>
               </span>
             </Link>
+            <button type="button" className="top-search" onClick={openSearch} aria-label="بحث (Ctrl+K)">
+              <Search size={18} aria-hidden="true" />
+              <span>{can(user, 'tasks.view') || can(user, 'tasks.manage') ? 'ابحث: مهمة، مشترك، ختم، صفحة…' : 'ابحث: صفحة، موظف…'}</span>
+              <kbd>Ctrl K</kbd>
+            </button>
             <span className="grow" />
-            <HeaderTools items={items} unread={unread} tasks={newTasks}/>
             <div className="topbar-end">
-              {branchManager && settings && <NavLink to="/settings" className="rbtn" aria-label="الإعدادات" title="الإعدادات"><Settings size={19} aria-hidden="true" /></NavLink>}
+              <SearchButton className="phone-only" />
+              {hasSettings && (
+                <NavLink to="/settings" className="rbtn top-settings" aria-label="الإعدادات" title="الإعدادات">
+                  <Settings size={19} aria-hidden="true" />
+                </NavLink>
+              )}
               <ThemeToggle />
-              <button
-                type="button"
-                className="icon-btn"
-                aria-label="تسجيل الخروج"
-                title="تسجيل الخروج"
-                onClick={async () => { if (await confirm({ title: 'تسجيل الخروج؟', confirmLabel: 'خروج' })) await signOut() }}
-              >
-                <LogOut size={18} />
-              </button>
+              {manager && <ActivityButton />}
+              <NotificationsBell withFeed={manager} />
               <NavLink to="/account" className="me" aria-label={`حسابي: ${user.name}`}>
                 <span className="me-avatar"><Avatar name={user.name} /></span>
                 <span className="me-text">
                   <b>{user.name}</b>
-                  <small>{user.role?.name}{user.branch ? ` · ${user.branch.name}` : ''}</small>
+                  <small>{user.job_title || user.role?.name}</small>
                 </span>
               </NavLink>
             </div>
           </header>
         </div>
+
+        <GlobalSearch />
         <OfflineBar />
         <UpdateBar />
-        <main className="page stage glass" id="main" data-section={pathname.split("/")[1] || "home"}>
+
+        <main className="page stage glass" id="main" data-section={pathname.startsWith('/seals') ? 'seals' : undefined}>
           <div key={pathname} className="page-enter"><Outlet /></div>
         </main>
       </div>
 
       {tabs.length > 1 && (
-        <nav className="tabbar glass" aria-label="الأقسام">
+        <nav className="tabbar glass" aria-label="الأقسام" ref={tabRef}>
+          {indicator && <span className="fx-tab-indicator" aria-hidden="true" style={{ width: indicator.w, transform: `translateX(${indicator.x}px)` }} />}
           {tabs.map(({ to, label, icon: Icon }) => (
-            <NavLink key={to} to={to} end={to === '/'} className="tab">
+            <NavLink key={to} to={to} end={to === '/' || to === '/tasks'} className="tab">
               <span className="tab-icon"><Icon size={21} aria-hidden="true" />{badge(to)}</span>
               <span className="tab-label">{label}</span>
             </NavLink>
@@ -143,3 +116,4 @@ export function AppShell() {
     </div>
   )
 }
+

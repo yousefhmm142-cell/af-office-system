@@ -114,6 +114,9 @@ Route::middleware(['auth:sanctum', 'active'])->group(function () {
 
         Route::post('distribution/zones', [DistributionController::class, 'zone']);
         Route::patch('distribution/zones/{zone}', [\App\Http\Controllers\Api\BranchSetupController::class, 'saveZone'])->whereNumber('zone');
+        Route::get('shell/feed', [\App\Http\Controllers\Api\ShellController::class, 'feed']);
+        Route::get('shell/counts', [\App\Http\Controllers\Api\ShellController::class, 'counts']);
+        Route::get('shell/search', [\App\Http\Controllers\Api\ShellController::class, 'search'])->middleware('throttle:60,1');
         Route::get('branch-setup', [\App\Http\Controllers\Api\BranchSetupController::class, 'show']);
         Route::put('branch-setup/maintenance-plan', [\App\Http\Controllers\Api\BranchSetupController::class, 'savePlan']);
         Route::get('branch-setup/backup', [\App\Http\Controllers\Api\BranchSetupController::class, 'backup']);

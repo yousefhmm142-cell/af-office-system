@@ -12,8 +12,8 @@
   --safe-b: env(safe-area-inset-bottom, 0px);
   /* One type scale. In rem, so the «large text» setting (html font-size) grows every size together. */
   --fs-xs: .75rem;     /* 12px */
-  --fs-sm: .9375rem;   /* 15px */
-  --fs-md: 1rem;       /* 16px */
+  --fs-sm: .84375rem;  /* 13.5px */
+  --fs-md: .9375rem;   /* 15px */
   --fs-lg: 1.125rem;   /* 18px */
   --fs-xl: 1.5rem;     /* 24px */
   --fs-2xl: 2rem;      /* 32px */
@@ -39,7 +39,7 @@
   --line-2: #F0ECE7;
   --ink: #1B1517;
   --ink-2: #3B3236;
-  --muted: #584f53;
+  --muted: #6E6468;
   --faint: #776E72; /* 4.6:1 on surface-2 (was #8F868A, 3.5:1) */
   --brand: #8E1B2B;
   --brand-hi: #B12638;
@@ -82,7 +82,7 @@
   --line-2: #181B21;
   --ink: #F1F3F5;
   --ink-2: #C8CDD4;
-  --muted: #abb2bd;
+  --muted: #8B929D;
   --faint: #838A96; /* 5.3:1 on surface-2 (was #6D747F, 3.9:1) */
   --brand: #D0364A;
   --brand-text: #E8657A; /* 5.8:1 on surface-2; --brand stays for fills and buttons */

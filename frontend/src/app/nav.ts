@@ -11,9 +11,10 @@ export function navFor(user: User): NavItem[] {
   items.push({ to: '/messages', label: 'المراسلات', icon: Mail })
   // Personal pay and file only for people who have an employee record.
   if (user.status) items.push({ to: '/my-pay', label: 'رواتبي', icon: Wallet }, { to: '/me', label: 'ملفي', icon: IdCard })
-  if (can(user, 'tasks.view') || can(user, 'tasks.manage')) items.push({ to: '/tasks', label: 'المهام الميدانية', icon: ClipboardList })
+  const manager = user.role?.key === 'branch_manager'
+  if (can(user, 'tasks.view') || can(user, 'tasks.manage')) items.push({ to: '/tasks', label: manager ? 'المهام' : 'المهام الميدانية', icon: ClipboardList })
   if (can(user, 'payroll.view') || can(user, 'payroll.manage')) items.push({ to: '/payroll', label: 'الرواتب', icon: WalletCards })
-  if (can(user, 'attendance.view')) items.push({ to: '/attendance', label: scopeOf(user, 'attendance.view') === 'all' ? 'حضور الفروع' : 'الحضور والانصراف', icon: ClipboardCheck })
+  if (can(user, 'attendance.view')) items.push({ to: '/attendance', label: scopeOf(user, 'attendance.view') === 'all' ? 'حضور الفروع' : manager ? 'الحضور' : 'الحضور والانصراف', icon: ClipboardCheck })
   if (can(user, 'generation.view') && user.modules?.includes('generation')) items.push({ to: '/generation', label: 'التوليد', icon: Zap })
   if (can(user, 'distribution.view') && user.modules?.includes('distribution')) items.push({ to: '/distribution', label: 'التوزيع', icon: LayoutGrid })
   if (can(user, 'seals.manage') && user.modules?.includes('seals')) items.push({ to: '/seals', label: 'الأختام', icon: Stamp })

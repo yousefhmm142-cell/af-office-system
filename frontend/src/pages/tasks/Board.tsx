@@ -57,7 +57,8 @@ export function TasksBoard() {
       return next
     }, { replace: true })
   }
-  const [open, setOpen] = useState<number | null>(null)
+  // A task opened from the global search (?open=ID), on whatever day it was made.
+  const [open, setOpen] = useState<number | null>(() => Number(params.get('open')) || null)
 
   useEffect(() => { const t = window.setTimeout(() => setQ(search.trim()), 300); return () => window.clearTimeout(t) }, [search])
   useEffect(() => { const id = window.setInterval(() => { if (document.visibilityState === 'visible') void reload() }, 30_000); return () => window.clearInterval(id) }, [reload])

@@ -38,6 +38,11 @@ class Task extends Model
         });
     }
 
+    public function branch(): BelongsTo
+    {
+        return $this->belongsTo(Branch::class);
+    }
+
     public function type(): BelongsTo
     {
         return $this->belongsTo(TaskType::class, 'task_type_id');
