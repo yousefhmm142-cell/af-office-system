@@ -125,7 +125,7 @@ class GenerationController extends Controller
                 ]);
             }
 
-            return $query->first();
+            return $this->reports($branch)->where('report_date', $date)->first();
         });
 
         return response()->json(['report' => $this->present($report)]);
@@ -161,7 +161,7 @@ class GenerationController extends Controller
             $query->update($changes + ['version' => $current->version + 1, 'updated_at' => $now]);
             Audit::log('generation.'.$action, null, ['status' => $current->status], ['date' => $date, 'status' => $changes['status']], $data['reason'] ?? null, $branch->id);
 
-            return $query->first();
+            return $this->reports($branch)->where('report_date', $date)->first();
         });
 
         return response()->json(['report' => $this->present($report)]);
