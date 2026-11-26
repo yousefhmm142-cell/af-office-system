@@ -1,4 +1,5 @@
 import { ArrowLeft, CalendarRange, CircleDollarSign, HandCoins, Plus, Settings2, Sparkles, Wallet } from 'lucide-react'
+import { MonthField } from '../../ui/MonthField'
 import { useEffect, useState } from 'react'
 import { Link, useNavigate } from 'react-router'
 import { api, ApiError } from '../../api/client'
@@ -117,7 +118,7 @@ function NewBatchWizard({ onClose }: { onClose(): void }) {
           <h3><span className="af-step-n">1</span> أي شهر؟</h3>
           <div className="chips">
             {months.map((m) => <button key={m} type="button" className="chip" aria-pressed={month === m} onClick={() => setMonth(m)}>{monthLabel(m)}</button>)}
-            <input className="input num af-month-input" type="month" value={month} onChange={(e) => e.target.value && setMonth(e.target.value)} aria-label="شهر آخر" />
+            <MonthField className="af-month-input" value={month} onChange={setMonth} aria-label="شهر آخر" />
           </div>
         </section>
         {all && (

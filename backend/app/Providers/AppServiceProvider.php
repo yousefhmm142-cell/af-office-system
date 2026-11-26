@@ -24,5 +24,11 @@ class AppServiceProvider extends ServiceProvider
                 (new AccessSeeder)->run();
             }
         });
+        // Also when there was nothing new to migrate: a permission added to the config still arrives.
+        Event::listen(\Illuminate\Database\Events\NoPendingMigrations::class, function ($event) {
+            if ($event->method === 'up' && Schema::hasTable('role_permissions')) {
+                (new AccessSeeder)->run();
+            }
+        });
     }
 }

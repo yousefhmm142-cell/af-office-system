@@ -1,4 +1,5 @@
 import { HandCoins, Minus, Plus, Trash2 } from 'lucide-react'
+import { MonthField } from '../../ui/MonthField'
 import { useMemo, useState, type FormEvent } from 'react'
 import { api, ApiError } from '../../api/client'
 import { can, useUser } from '../../app/auth'
@@ -66,7 +67,7 @@ function Adjustments({ people }: { people: Person[] }) {
         <Field label="الموظف" error={fields.user_id}>{() => <PersonPicker people={people} value={person} onChange={setPerson} label="الموظف" />}</Field>
         <div className="af-row2">
           <Field label="المبلغ (شيكل)" error={fields.amount}>{(id) => <input id={id} className="input num af-big-input" inputMode="decimal" dir="ltr" value={amount} onChange={(e) => setAmount(e.target.value.replace(/[^0-9.]/g, ''))} placeholder="0" />}</Field>
-          <Field label="عن شهر" error={fields.month}>{(id) => <input id={id} className="input num" type="month" value={month} onChange={(e) => e.target.value && setMonth(e.target.value)} />}</Field>
+          <Field label="عن شهر" error={fields.month}>{(id) => <MonthField id={id} value={month} onChange={setMonth} />}</Field>
         </div>
         <Field label="السبب" error={fields.reason}>{(id) => <input id={id} className="input" value={reason} onChange={(e) => setReason(e.target.value)} placeholder={type === 'bonus' ? 'مثال: مكافأة إنجاز' : 'مثال: تلف معدّات'} />}</Field>
         <Button type="submit" variant="primary" size="lg" busy={busy} disabled={!amount || !reason.trim()}>{type === 'bonus' ? 'إضافة المكافأة' : 'إضافة الخصم'}</Button>
@@ -133,7 +134,7 @@ function Advances({ people }: { people: Person[] }) {
           <Field label="مبلغ السلفة">{(id) => <input id={id} className="input num af-big-input" inputMode="decimal" dir="ltr" value={amount} onChange={(e) => setAmount(e.target.value.replace(/[^0-9.]/g, ''))} placeholder="0" />}</Field>
           <Field label="قيمة القسط المقترح">{(id) => <input id={id} className="input num af-big-input" inputMode="decimal" dir="ltr" value={installment} onChange={(e) => setInstallment(e.target.value.replace(/[^0-9.]/g, ''))} placeholder="0" />}</Field>
         </div>
-        <Field label="أول شهر متاح للتسديد">{(id) => <input id={id} className="input num" type="month" value={month} onChange={(e) => e.target.value && setMonth(e.target.value)} />}</Field>
+        <Field label="أول شهر متاح للتسديد">{(id) => <MonthField id={id} value={month} onChange={setMonth} />}</Field>
         <Field label="ملاحظة (اختياري)">{(id) => <input id={id} className="input" value={reason} onChange={(e) => setReason(e.target.value)} />}</Field>
         {n > 0 && <p className="af-explain">تُسدَّد على <b className="num">{n}</b> {n === 1 ? 'دفعة' : 'دفعات'} تقريباً، بقسط <b className="num">{fmt(Number(installment))}</b> شيكل عند اعتماد شؤون الموظفين للقسط.</p>}
         <ErrorBanner text={error} />

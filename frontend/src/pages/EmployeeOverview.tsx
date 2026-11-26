@@ -1,4 +1,5 @@
 import { CalendarCheck, Clock3, FileHeart, Timer, CalendarDays } from 'lucide-react'
+import { MonthField } from '../ui/MonthField'
 import { ChoiceField } from '../ui/ChoiceField'
 import { useState, type FormEvent } from 'react'
 import { api, ApiError } from '../api/client'
@@ -30,7 +31,7 @@ export function EmployeeOverview({ file, performance, mine, documents }: { file:
   const balance = annual.days === null ? 'غير محدد' : String(annual.days - annual.used)
   return <div className="af-employee-overview">
     {mine && file.job.tracks_attendance && <PunchCard reminder onRecorded={()=>void reload()} />}
-    <div className="af-toolbar"><label>شهر العرض <input className="input" type="month" value={month} onChange={e=>{if(e.target.value){setMonth(e.target.value);setDate('')}}} /></label></div>
+    <div className="af-toolbar"><label>شهر العرض <MonthField value={month} onChange={(m)=>{setMonth(m);setDate('')}} aria-label="شهر العرض" /></label></div>
     <ErrorBanner text={error} />
     {loading && !data && <Loading />}
     {data && (performance ? <>
