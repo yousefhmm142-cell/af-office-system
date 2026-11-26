@@ -173,6 +173,7 @@ class EmployeeController extends Controller
     public function uploadAttachment(Request $request, User $user): JsonResponse
     {
         $actor = $request->user();
+        $this->authorizeProfileStep($request->user(), $user);
         $this->authorizeEdit($actor, $user);
         $data = $request->validate([
             'type' => ['required', Rule::in(EmployeeAttachment::TYPES)],
@@ -195,6 +196,7 @@ class EmployeeController extends Controller
 
     public function downloadAttachment(Request $request, User $user, EmployeeAttachment $attachment): StreamedResponse
     {
+        $this->authorizeProfileStep($request->user(), $user);
         $this->authorizeView($request->user(), $user);
         abort_unless($attachment->employee_id === $user->employee?->id, 404);
 
@@ -206,6 +208,7 @@ class EmployeeController extends Controller
 
     public function deleteAttachment(Request $request, User $user, EmployeeAttachment $attachment): JsonResponse
     {
+        $this->authorizeProfileStep($request->user(), $user);
         $this->authorizeEdit($request->user(), $user);
         abort_unless($attachment->employee_id === $user->employee?->id, 404);
         Storage::disk(self::DISK)->delete($attachment->path);

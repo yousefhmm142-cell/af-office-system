@@ -43,6 +43,9 @@ Route::middleware(['auth:sanctum', 'active'])->group(function () {
     Route::middleware('password.changed:profile')->group(function () {
         Route::get('employees/{user}', [EmployeeController::class, 'show']);
         Route::patch('employees/{user}/personal', [EmployeeController::class, 'updatePersonal']);
+        Route::post('employees/{user}/attachments', [EmployeeController::class, 'uploadAttachment'])->middleware('throttle:30,1');
+        Route::get('employees/{user}/attachments/{attachment}', [EmployeeController::class, 'downloadAttachment']);
+        Route::delete('employees/{user}/attachments/{attachment}', [EmployeeController::class, 'deleteAttachment']);
     });
 
     Route::middleware('password.changed')->group(function () {
@@ -101,9 +104,6 @@ Route::middleware(['auth:sanctum', 'active'])->group(function () {
         // The employee file: the person themselves, or within the viewer's permissions (checked inside).
         Route::patch('employees/{user}/job', [EmployeeController::class, 'updateJob'])->middleware('perm:employees.manage');
         Route::post('employees/{user}/status', [EmployeeController::class, 'setStatus'])->middleware('perm:employees.manage');
-        Route::post('employees/{user}/attachments', [EmployeeController::class, 'uploadAttachment'])->middleware('throttle:30,1');
-        Route::get('employees/{user}/attachments/{attachment}', [EmployeeController::class, 'downloadAttachment']);
-        Route::delete('employees/{user}/attachments/{attachment}', [EmployeeController::class, 'deleteAttachment']);
 
         // Attendance: everyone punches and sees their own; managers see and fix their branch.
         Route::post('attendance/punch', [AttendanceController::class, 'punch'])->middleware('throttle:30,1');

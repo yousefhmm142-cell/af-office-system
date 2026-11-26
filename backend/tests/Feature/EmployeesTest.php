@@ -136,6 +136,23 @@ class EmployeesTest extends TestCase
         $this->assertCount(0, Storage::disk('local')->allFiles());
     }
 
+    public function test_new_employee_attaches_certificates_before_completing_personal_data(): void
+    {
+        Storage::fake('local');
+        $branch = $this->makeBranch();
+        $employee = $this->actAs(Role::EMPLOYEE, $branch, ['needs_profile_completion' => true]);
+        $path = "/api/employees/{$employee->id}/attachments";
+        foreach (['id_photo', 'specialty_cert', 'experience_cert', 'experience_cert'] as $type) {
+            $id = $this->postJson($path, ['type' => $type, 'file' => UploadedFile::fake()->image('document.jpg')])
+                ->assertCreated()->json('attachment.id');
+        }
+        $this->getJson("/api/employees/{$employee->id}")->assertOk()->assertJsonCount(4, 'attachments');
+        $this->get("$path/$id")->assertOk();
+        $this->deleteJson("$path/$id")->assertOk();
+        $this->actAs(Role::HR, null, ['needs_profile_completion' => true]);
+        $this->postJson($path)->assertForbidden();
+    }
+
     public function test_national_id_is_unique(): void
     {
         $branch = $this->makeBranch();

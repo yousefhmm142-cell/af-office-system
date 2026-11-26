@@ -33,6 +33,7 @@ export function EmployeeFile() {
   const toast = useToast()
   const [allowance,setAllowance] = useState('')
   const [year,setYear] = useState(String(new Date().getFullYear()))
+  const [uploading,setUploading] = useState(false)
   const [performance, setPerformance] = useState(false)
   const [edit, setEdit] = useState<'personal' | 'wallet' | 'job' | 'status' | null>(null)
 
@@ -46,7 +47,9 @@ export function EmployeeFile() {
     return (
       <>
         <PageHead title="استكمال الملف الشخصي" eyebrow="أدخل بياناتك الشخصية للبدء في استخدام النظام." />
-        <PersonalDialog file={f} part="personal" onClose={() => {}} onSaved={(updated) => { setData(updated); navigate('/', { replace: true }) }} onboarding />
+        <div className="af-onboard-layout">
+          <PersonalDialog file={f} part="personal" onClose={() => {}} onSaved={(updated) => { setData(updated); navigate('/', { replace: true }) }} onboarding uploading={uploading} documents={<Attachments file={f} onboarding onBusy={setUploading} onChange={attachments=>setData({...f,attachments})}/>}/>
+        </div>
       </>
     )
   }
@@ -187,7 +190,7 @@ function useSave(onSaved: (f: File_) => void) {
   return { busy, fields, error, run }
 }
 
-function PersonalDialog({ file, part, onClose, onSaved, onboarding = false }: { file: File_; onboarding?: boolean; part: 'personal' | 'wallet'; onClose(): void; onSaved(f: File_): void }) {
+function PersonalDialog({ file, part, onClose, onSaved, onboarding = false, uploading = false, documents }: { documents?: ReactNode; file: File_; uploading?: boolean; onboarding?: boolean; part: 'personal' | 'wallet'; onClose(): void; onSaved(f: File_): void }) {
   const { setUser, state } = useAuth()
   const p = file.personal
   const [form, setForm] = useState({
@@ -206,6 +209,7 @@ function PersonalDialog({ file, part, onClose, onSaved, onboarding = false }: { 
 
   function save(e?: FormEvent) {
     e?.preventDefault()
+    if (uploading) return
     const body = part === 'personal'
       ? { name: form.name, national_id: nul(form.national_id), phone: nul(form.phone), address: nul(form.address), education_level: nul(form.education_level), specialty: nul(form.specialty), gender: nul(form.gender) }
       : { payment_method: form.payment_method, provider: nul(form.provider), account_number: nul(form.account_number), account_holder_name: nul(form.account_holder_name), account_holder_national_id: nul(form.account_holder_national_id), account_holder_phone: nul(form.account_holder_phone) }
@@ -218,7 +222,7 @@ function PersonalDialog({ file, part, onClose, onSaved, onboarding = false }: { 
   const digits = { inputMode: 'numeric' as const, dir: 'ltr', className: 'input num' }
 
   const formContent = (
-    <form className="form-grid" onSubmit={save}>
+    <form id={onboarding ? "employee-personal-onboarding" : undefined} className="form-grid" onSubmit={save}>
       {part === 'personal' ? (
         <>
           {input('name', 'الاسم الرباعي')}
@@ -256,11 +260,15 @@ function PersonalDialog({ file, part, onClose, onSaved, onboarding = false }: { 
         </>
       )}
       <ErrorBanner text={error} />
-      {onboarding && <Button type="submit" variant="primary" busy={busy}>حفظ البيانات الشخصية</Button>}
+
     </form>
   )
 
-  if (onboarding) return <section className="card glass af-pad af-onboarding">{formContent}</section>
+  if (onboarding) return <>
+    <section className="card glass af-pad af-onboarding">{formContent}</section>
+    {documents}
+    <Button type="submit" form="employee-personal-onboarding" variant="primary" busy={busy} disabled={uploading}>حفظ البيانات الشخصية</Button>
+  </>
 
   return (
     <Dialog open onClose={onClose} title={part === 'personal' ? 'البيانات الشخصية' : 'المحفظة / الحساب البنكي'}
@@ -353,7 +361,7 @@ function StatusDialog({ file, onClose, onSaved }: { file: File_; onClose(): void
   )
 }
 
-function Attachments({ file, onChange }: { file: File_; onChange(a: File_['attachments']): void }) {
+function Attachments({ file, onChange, onboarding=false, onBusy }: { onboarding?:boolean; onBusy?(busy:boolean):void; file: File_; onChange(a: File_['attachments']): void }) {
   const toast = useToast()
   const confirm = useConfirm()
   const input = useRef<HTMLInputElement>(null)
@@ -361,11 +369,12 @@ function Attachments({ file, onChange }: { file: File_; onChange(a: File_['attac
   const [busy, setBusy] = useState(false)
   const canEdit = file.can.edit_personal
 
-  async function upload(f: globalThis.File) {
+  async function upload(f: globalThis.File, category=type) {
+    onBusy?.(true)
     setBusy(true)
     try {
       const body = new FormData()
-      body.append('type', type)
+      body.append('type', category)
       body.append('file', f)
       const res = await api<{ attachment: File_['attachments'][number] }>(`/employees/${file.user.id}/attachments`, { method: 'POST', body })
       onChange([res.attachment, ...file.attachments])
@@ -374,6 +383,7 @@ function Attachments({ file, onChange }: { file: File_; onChange(a: File_['attac
       toast(e instanceof ApiError ? (Object.values(e.fields)[0] ?? e.message) : 'لم يُرفع', 'danger')
     } finally {
       setBusy(false)
+      onBusy?.(false)
       if (input.current) input.current.value = ''
     }
   }
@@ -388,8 +398,17 @@ function Attachments({ file, onChange }: { file: File_; onChange(a: File_['attac
 
   return (
     <section className="card glass af-pad">
-      <h2 className="af-h2"><Paperclip size={18} /> المرفقات</h2>
-      {canEdit && (
+      <h2 className="af-h2"><Paperclip size={18} /> {onboarding ? 'الهوية والشهادات' : 'المرفقات'}</h2>
+      {onboarding && canEdit && <div className="af-onboard-uploads">
+        <p>أرفق صورة الهوية وشهادة التخصص وشهادات الخبرة المتوفرة لديك. يمكنك إضافة أكثر من شهادة خبرة. الحد الأقصى ٦ ميغابايت لكل ملف.</p>
+        {ATTACHMENT_TYPES.filter(([key])=>['id_photo','specialty_cert','experience_cert'].includes(key)).map(([key,name])=>
+          <label key={key}>{name}<input type="file" aria-label={name} disabled={busy} accept=".jpg,.jpeg,.png,.webp,.heic,.pdf" onChange={e=>{
+            const picked=e.target.files?.[0];e.target.value=''
+            if(picked) void upload(picked,key)
+          }}/></label>)}
+        {busy && <p role="status">جارٍ رفع المرفق…</p>}
+      </div>}
+      {canEdit && !onboarding && (
         <div className="af-upload">
           <ChoiceField className="input select" value={type} onChange={(e) => setType(e.target.value)} aria-label="نوع المرفق">
             {ATTACHMENT_TYPES.map(([k, v]) => <option key={k} value={k}>{v}</option>)}

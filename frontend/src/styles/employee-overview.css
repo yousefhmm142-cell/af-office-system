@@ -58,3 +58,10 @@
 .leave-tiles section strong {grid-column:1;grid-row:1;height:auto;min-width:0;border:0;font-size:1.7rem}
 .leave-tiles section small {grid-column:1}
 .af-employee-layout .profile-board {align-items:stretch}
+
+.af-onboard-layout{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:18px;align-items:start}
+.af-onboard-layout .af-onboarding{max-width:none;width:100%}
+.af-onboard-uploads,.af-onboard-uploads label{display:grid;gap:10px}
+.af-onboard-uploads label{font-weight:700;border:1px solid var(--line);padding:12px;border-radius:12px}
+.af-onboard-uploads input{max-width:100%}
+@media(max-width:800px){.af-onboard-layout{grid-template-columns:minmax(0,1fr)}}
