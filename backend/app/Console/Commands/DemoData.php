@@ -257,6 +257,8 @@ class DemoData extends Command
             $this->line('✓ سجل الحركات');
         });
 
+        // Generation reports, distribution sheets and seals, through the same functions as the pages.
+        $this->call('app:demo-operations');
         $this->newLine();
         $this->info('تمت إضافة البيانات التجريبية. كلمة السر لجميع الحسابات التجريبية: '.self::PASSWORD);
         $this->table(['الدور', 'اسم المستخدم'], [
