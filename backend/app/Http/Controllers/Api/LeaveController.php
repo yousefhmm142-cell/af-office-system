@@ -28,7 +28,7 @@ class LeaveController extends Controller
     public function allowance(Request $request, User $user): JsonResponse
     {
         $actor = $request->user();
-        abort_unless($actor->role?->key === Role::HR && $user->id !== $actor->id && Access::allowsBranch($actor, 'employees.manage', $user->branch_id), 403);
+        abort_unless($user->id !== $actor->id && Access::allowsBranch($actor, 'leaves.decide', $user->branch_id), 403);
         $data = $request->validate(['year' => ['required', 'integer', 'between:2000,2100'], 'days' => ['required', 'integer', 'between:0,366']]);
         DB::transaction(function () use ($user, $data) {
             User::whereKey($user->id)->lockForUpdate()->firstOrFail();
@@ -62,16 +62,18 @@ class LeaveController extends Controller
     {
         $query = DB::table('leave_requests as l')->join('users as u', 'l.user_id', '=', 'u.id')->select('l.*', 'u.name')
             ->selectSub(DB::table('leave_days')->selectRaw('count(*)')->whereColumn('request_id', 'l.id'), 'days');
-        $management = $actor->role?->key === Role::MANAGEMENT;
-        $hr = $actor->role?->key === Role::HR;
-        $query->where(function ($q) use ($actor, $management, $hr) {
+        $final = Access::scope($actor, 'leaves.final');
+        $decide = Access::scope($actor, 'leaves.decide');
+        $query->where(function ($q) use ($actor, $final, $decide) {
             $q->where('l.user_id', $actor->id);
-            if ($management) {
+            if ($final === 'all') {
                 $q->orWhere('l.status', 'escalated');
+            } elseif ($final === 'branch') {
+                $q->orWhere(fn ($w) => $w->where('l.status', 'escalated')->where('l.branch_id', $actor->branch_id));
             }
-            if ($hr && Access::scope($actor, 'employees.manage') === 'all') {
+            if ($decide === 'all') {
                 $q->orWhereNotNull('l.branch_id');
-            } elseif ($hr && Access::scope($actor, 'employees.manage') === 'branch') {
+            } elseif ($decide === 'branch') {
                 $q->orWhere('l.branch_id', $actor->branch_id);
             }
         });
@@ -112,7 +114,7 @@ class LeaveController extends Controller
         $end = CarbonImmutable::parse($data['ends'], $this->attendance->tz());
         abort_if($start->diffInDays($end) > 365, 422, 'أقصى فترة للطلب سنة.');
         $permission = $data['kind'] === 'permission';
-        abort_if($permission && ! $start->equalTo($end), 422, 'اختر تاريخ بداية المناوبة للإذن.');
+        abort_if($permission && ! $start->equalTo($end), 422, 'الإذن يكون في يوم واحد.');
         $days = [];
         for ($day = $start; $day->lte($end); $day = $day->addDay()) {
             $schedule = $this->attendance->scheduleFor($user, $day);
@@ -134,7 +136,7 @@ class LeaveController extends Controller
                         $to = $to->addDay();
                     }
                 }
-                abort_if($from->lt($shiftStart) || $to->gt($shiftEnd) || $to->lte($from), 422, 'يجب أن تكون ساعات الإذن ضمن المناوبة.');
+                abort_if($from->lt($shiftStart) || $to->gt($shiftEnd) || $to->lte($from), 422, 'يجب أن تكون ساعات الإذن ضمن الدوام.');
             }
             $days[] = $day->toDateString();
         }
@@ -157,8 +159,8 @@ class LeaveController extends Controller
             $row = DB::table('leave_requests')->where('id', $id)->lockForUpdate()->first();
             abort_unless($row, 404);
             $own = $row->user_id == $actor->id;
-            $hr = $actor->role?->key === Role::HR && Access::allowsBranch($actor, 'employees.manage', $row->branch_id);
-            $management = $actor->role?->key === Role::MANAGEMENT && $row->status === 'escalated';
+            $hr = $row->user_id !== $actor->id && Access::allowsBranch($actor, 'leaves.decide', $row->branch_id);
+            $management = $row->status === 'escalated' && Access::allowsBranch($actor, 'leaves.final', $row->branch_id);
             $allowed = $own ? $action === 'cancelled' && in_array($row->status, ['pending', 'escalated']) :
                 (($hr && (($row->status === 'pending') || ($row->status === 'approved' && $action === 'cancelled'))) ||
                 ($management && in_array($action, ['approved', 'rejected'])));

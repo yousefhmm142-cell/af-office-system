@@ -136,7 +136,7 @@ export function Users({ embedded = false }: { embedded?: boolean }) {
             {branches.data?.branches.map((b) => <option key={b.id} value={b.id}>{b.name}</option>)}
           </ChoiceField>
         )}
-        {selectedBranch && selectedBranch!=='none' && manages && ['hr','super_admin'].includes(me.role?.key??'') && <AccountHandoff key={selectedBranch} branchId={selectedBranch}/>}
+        {selectedBranch && selectedBranch!=='none' && manages && scopeOf(me, 'users.manage') === 'all' && <AccountHandoff key={selectedBranch} branchId={selectedBranch}/>}
         <ChoiceField className="input select" value={incompleteOnly ? 'incomplete' : ''} aria-label="حالة الملف الشخصي"
           onChange={(event) => setFilters(event.target.value ? { profile: event.target.value } : {}, { replace: true })}>
           <option value="">جميع الملفات</option>
@@ -205,7 +205,7 @@ function UserDialog({ user, roles, branches, onClose, onSaved }: { user: User | 
   const role = roles.find((r) => String(r.id) === form.role_id)
 
   const hiring = !user && role?.key === 'employee' && !!form.branch_id && can(me, 'employees.manage')
-  const typeDepartment = ['hr','super_admin'].includes(me.role?.key??'')
+  const typeDepartment = can(me, 'departments.manage')
   const departments = useLoad<{ departments: { id: number; name: string; is_active: boolean }[] }>(hiring ? `/departments?branch_id=${form.branch_id}` : null)
   const schedules = useLoad<{ schedules: Schedule[] }>(hiring && can(me, 'schedules.view') ? `/schedules?branch_id=${form.branch_id}` : null)
 

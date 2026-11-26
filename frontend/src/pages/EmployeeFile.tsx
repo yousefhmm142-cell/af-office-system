@@ -9,7 +9,7 @@ import {
   ATTACHMENT_TYPES, EDUCATION, SALARY_TYPES, STATUS_LABEL,
   type EmployeeFile as File_, type EmployeeStatus, type Schedule,
 } from '../api/types'
-import { useAuth, useUser } from '../app/auth'
+import { can, useAuth, useUser } from '../app/auth'
 import { formatLongDate } from '../lib/format'
 import { useLoad } from '../lib/useLoad'
 import { useConfirm } from '../ui/Confirm'
@@ -117,7 +117,7 @@ export function EmployeeFile() {
         </Section>}
         <Section icon={<History size={18} />} title={`رصيد الإجازة السنوية · ${f.annual_leave.year}`}>
           <Row k="الأيام المستخدمة" v={String(f.annual_leave.used)} /><Row k="الأيام المتبقية" v={f.annual_leave.days === null ? 'لم يُحدّد الرصيد' : String(f.annual_leave.days-f.annual_leave.used)} />
-          {me.role?.key==='hr' && !mine && <form className="form-grid" onSubmit={async e=>{
+          {can(me, 'leaves.decide') && !mine && <form className="form-grid" onSubmit={async e=>{
             e.preventDefault()
             try { await api(`/employees/${id}/leave-allowance`,{method:'PUT',body:{year:Number(year),days:Number(allowance)}})
               setData(await api<File_>(`/employees/${id}`)); setAllowance(''); toast('حُفظ الرصيد')

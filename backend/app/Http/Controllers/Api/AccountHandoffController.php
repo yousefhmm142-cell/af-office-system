@@ -22,7 +22,8 @@ class AccountHandoffController extends Controller
 
     private function authorizeHr(User $actor, Branch $branch): void
     {
-        abort_unless(($actor->role->key === Role::HR || $actor->isSuperAdmin()) && Access::allowsBranch($actor, 'users.manage', $branch->id), 403);
+        // Company-wide account managers (HR, the super admin) hand the accounts to the branch manager.
+        abort_unless(Access::scope($actor, 'users.manage') === 'all', 403);
     }
 
     private function report(Branch $branch, ?array $ids = null): JsonResponse

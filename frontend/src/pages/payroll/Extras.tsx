@@ -1,7 +1,7 @@
 import { HandCoins, Minus, Plus, Trash2 } from 'lucide-react'
 import { useMemo, useState, type FormEvent } from 'react'
 import { api, ApiError } from '../../api/client'
-import { useUser } from '../../app/auth'
+import { can, useUser } from '../../app/auth'
 import type { User } from '../../api/types'
 import { useLoad } from '../../lib/useLoad'
 import { useConfirm } from '../../ui/Confirm'
@@ -35,7 +35,7 @@ function Adjustments({ people }: { people: Person[] }) {
   const [month, setMonth] = useState(thisMonth)
   const { data, loading, reload } = useLoad<{ adjustments: Adjustment[] }>(`/payroll/adjustments?month=${month}`)
   const [person, setPerson] = useState<Person | null>(null)
-  const hr = useUser().role?.key === 'hr'
+  const hr = can(useUser(), 'payroll.deductions')
   const [type, setType] = useState<'deduction' | 'bonus'>(hr ? 'deduction' : 'bonus')
   const [amount, setAmount] = useState('')
   const [reason, setReason] = useState('')

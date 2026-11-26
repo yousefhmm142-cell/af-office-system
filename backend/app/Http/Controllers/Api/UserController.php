@@ -80,7 +80,7 @@ class UserController extends Controller
         }
 
         if (isset($job['department_name'])) {
-            abort_unless($data['branch_id'] && $role->key === Role::EMPLOYEE && ($actor->role->key === Role::HR || $actor->isSuperAdmin()), 403);
+            abort_unless($data['branch_id'] && $role->key === Role::EMPLOYEE && Access::allows($actor, 'departments.manage'), 403, 'إضافة قسم جديد لمن يملك صلاحية الأقسام.');
         }
 
         // The person sets their own password the first time they sign in.

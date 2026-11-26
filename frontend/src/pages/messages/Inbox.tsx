@@ -230,8 +230,8 @@ function LeaveDetails({leave,back,reload}:{leave:Leave;back():void;reload():Prom
   const user=useUser()
   const toast=useToast()
   const [busy,setBusy]=useState(false)
-  const hr=user.role?.key==='hr'
-  const review=leave.user_id!==user.id && ((hr && leave.status==='pending') || (user.role?.key==='management' && leave.status==='escalated'))
+  const hr=can(user,'leaves.decide')
+  const review=leave.user_id!==user.id && ((hr && leave.status==='pending') || (can(user,'leaves.final') && leave.status==='escalated'))
   async function decide(action:string) {
     setBusy(true)
     try { await api(`/leaves/${leave.id}`,{method:'PATCH',body:{action}}); await reload(); toast('حُفظ القرار') }

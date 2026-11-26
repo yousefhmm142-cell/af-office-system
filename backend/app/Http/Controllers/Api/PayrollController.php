@@ -98,7 +98,7 @@ class PayrollController extends Controller
         $target = User::findOrFail($data['user_id']);
         $this->authorizeBranch($request, 'payroll.manage', $target->branch_id);
         if ($data['type'] === 'deduction') {
-            abort_unless($request->user()->role?->key === Role::HR, 403, 'قرار الخصم لشؤون الموظفين.');
+            abort_unless(Access::allowsBranch($request->user(), 'payroll.deductions', $target->branch_id), 403, 'قرار الخصم لمن يملك صلاحية خصومات الرواتب.');
         }
         $adj = PayrollAdjustment::create($data + ['branch_id' => $target->branch_id, 'created_by' => $request->user()->id]);
         Audit::log('payroll.adjustment_added', $target, null, ['type' => $adj->type, 'amount' => $adj->amount, 'month' => $adj->month], $adj->reason, $target->branch_id);
@@ -196,7 +196,7 @@ class PayrollController extends Controller
         }
         $ids = $data['advance_ids'] ?? [];
         if ($ids) {
-            abort_unless($request->user()->role?->key === Role::HR, 403);
+            abort_unless(Access::allowsBranch($request->user(), 'payroll.deductions', $data['branch_id'] ?? null), 403, 'اختيار أقساط السلف لمن يملك صلاحية خصومات الرواتب.');
             $valid = Advance::whereIn('id', $ids)->where('start_month', '<=', $data['month'])
                 ->when($data['branch_id'] ?? null, fn ($q, $id) => $q->where('branch_id', $id))->count();
             abort_unless($valid === count($ids), 422, 'تأكد من شهر السلفة وفرع الموظف.');
