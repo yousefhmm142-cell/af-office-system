@@ -1,3 +1,4 @@
+import { AccountHandoff } from './AccountHandoff'
 import { ChoiceField } from '../ui/ChoiceField'
 import { BranchDepartments, BranchRoster } from './BranchPlanning'
 import { CalendarClock, Pencil, Plus, Trash2 } from 'lucide-react'
@@ -64,7 +65,7 @@ export function BranchDetail() {
 
   return (
     <>
-      <PageHead title={branch.name} eyebrow="الفرع" actions={!branch.is_active && <Pill tone="warn">موقوف</Pill>} />
+      <PageHead title={branch.name} eyebrow="الفرع" actions={<>{!branch.is_active && <Pill tone="warn">موقوف</Pill>}{can(me,"users.manage") && ["hr","super_admin"].includes(me.role?.key??"") && <AccountHandoff branchId={String(branch.id)}/>}</>} />
       <div className="af-grid2">
         <section className="card glass af-pad">
           <h2 className="af-h2">أقسام الفرع</h2>

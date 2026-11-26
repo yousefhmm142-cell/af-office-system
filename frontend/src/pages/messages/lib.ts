@@ -7,6 +7,7 @@ export interface Summary {
   to: string; recipients_count: number; has_attachments: boolean; read: boolean; created_at: string
 }
 export interface Full {
+  has_account_handoff?: boolean
   id: number; thread_id: number; kind: Kind; subject: string; body: string
   meta: { from?: string; to?: string; date?: string; from_time?: string; to_time?: string } | null
   sender: { id: number; name: string } | null; groups_label: string | null

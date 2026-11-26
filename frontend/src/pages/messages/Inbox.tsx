@@ -1,3 +1,4 @@
+import { AccountHandoff } from '../AccountHandoff'
 import { LeaveRequestForm } from './LeaveRequestForm'
 import { Dialog } from '../../ui/Dialog'
 import { ChoiceField } from '../../ui/ChoiceField'
@@ -200,6 +201,7 @@ function MessageCard({ m, mine }: { m: Full; mine: boolean }) {
         </div>
       )}
       <p className="af-msg-body">{m.body}</p>
+      {m.has_account_handoff && <AccountHandoff messageId={m.id}/>}
       {m.attachments.length > 0 && (
         <div className="af-files">
           {m.attachments.map((a) => (

@@ -1,5 +1,6 @@
 <?php
 
+use App\Http\Controllers\Api\AccountHandoffController;
 use App\Http\Controllers\Api\AttendanceController;
 use App\Http\Controllers\Api\AttendancePointController;
 use App\Http\Controllers\Api\AuditController;
@@ -55,6 +56,9 @@ Route::middleware(['auth:sanctum', 'active'])->group(function () {
         Route::get('dashboard', [DashboardController::class, 'show']);
         Route::get('branches', [BranchController::class, 'index'])->middleware('perm:branches.view');
         Route::post('branches', [BranchController::class, 'store'])->middleware('perm:branches.manage');
+        Route::get('branches/{branch}/account-handoff', [AccountHandoffController::class, 'index']);
+        Route::post('branches/{branch}/account-handoff', [AccountHandoffController::class, 'send'])->middleware('throttle:15,1');
+        Route::get('messages/{message}/account-handoff', [AccountHandoffController::class, 'received']);
         Route::get('branches/{branch}', [BranchController::class, 'show'])->middleware('perm:branches.view');
         Route::patch('branches/{branch}', [BranchController::class, 'update'])->middleware('perm:branches.manage');
         Route::put('branches/{branch}/modules', [BranchController::class, 'updateModules'])->middleware('perm:branches.manage');

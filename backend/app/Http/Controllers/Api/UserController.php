@@ -5,6 +5,7 @@ namespace App\Http\Controllers\Api;
 use App\Http\Controllers\Controller;
 use App\Http\Present;
 use App\Models\Branch;
+use App\Models\Department;
 use App\Models\Role;
 use App\Models\User;
 use App\Support\Access;
@@ -68,6 +69,7 @@ class UserController extends Controller
         $this->assertCanManage($actor, $role, $data['branch_id']);
 
         $job = $request->validate([
+            'department_name' => ['sometimes', 'required', 'string', 'min:2', 'max:60', 'prohibits:department_id'],
             'department_id' => ['sometimes', 'required', Rule::exists('branch_department', 'department_id')->where('branch_id', $data['branch_id']), Rule::exists('departments', 'id')->whereNull('deleted_at')->where('is_active', true)],
             'salary_amount' => ['sometimes', 'nullable', 'numeric', 'min:0', 'max:99999999'],
             'salary_type' => ['sometimes', 'required', Rule::in(['monthly', 'weekly', 'daily', 'contract'])],
@@ -77,12 +79,33 @@ class UserController extends Controller
             self::assertCanManage($actor, $role, $data['branch_id'], 'employees.manage');
         }
 
+        if (isset($job['department_name'])) {
+            abort_unless($data['branch_id'] && $role->key === Role::EMPLOYEE && ($actor->role->key === Role::HR || $actor->isSuperAdmin()), 403);
+        }
+
         // The person sets their own password the first time they sign in.
         $user = DB::transaction(function () use ($data, $role, $job) {
             $user = User::create($data + [
                 'must_change_password' => true,
                 'needs_profile_completion' => $role->key !== Role::SUPER_ADMIN,
             ]);
+            if ($role->key === Role::EMPLOYEE) {
+                $user->forceFill(['handoff_code' => $data['password']])->save();
+            }
+            if (isset($job['department_name'])) {
+                $dep = Department::withTrashed()->firstOrCreate(['name' => trim($job['department_name'])], ['is_active' => true]);
+                if ($dep->trashed() || ! $dep->is_active) {
+                    throw ValidationException::withMessages(['department_name' => 'هذا القسم موقوف. اختر اسماً آخر أو راجع مسؤول الأقسام.']);
+                }
+                if ($dep->wasRecentlyCreated) {
+                    Audit::log('department.created', $dep, null, ['name' => $dep->name]);
+                }
+                if (DB::table('branch_department')->insertOrIgnore(['branch_id' => $data['branch_id'], 'department_id' => $dep->id])) {
+                    Audit::log('branch.department_assigned', $user->branch, null, ['department_id' => $dep->id]);
+                }
+                $job['department_id'] = $dep->id;
+                unset($job['department_name']);
+            }
             if ($job) {
                 $user->employee()->update($job);
                 Audit::log('employee.job', $user, null, $job);
@@ -147,6 +170,7 @@ class UserController extends Controller
         ]);
         $user->forceFill([
             'password' => $data['password'],
+            'handoff_code' => $user->role->key === Role::EMPLOYEE ? $data['password'] : null,
             'must_change_password' => true,
             'failed_logins' => 0,
             'locked_until' => null,

@@ -19,7 +19,7 @@ class User extends Authenticatable
         'uuid', 'name', 'username', 'password', 'role_id', 'branch_id', 'is_active', 'must_change_password', 'needs_profile_completion',
     ];
 
-    protected $hidden = ['password', 'failed_logins', 'locked_until'];
+    protected $hidden = ['password', 'handoff_code', 'failed_logins', 'locked_until'];
 
     /** Effective permissions for this request: key => scope (filled by App\Support\Access). */
     public ?array $accessCache = null;
@@ -28,6 +28,7 @@ class User extends Authenticatable
     {
         return [
             'password' => 'hashed',
+            'handoff_code' => 'encrypted',
             'is_active' => 'boolean',
             'must_change_password' => 'boolean',
             'needs_profile_completion' => 'boolean',

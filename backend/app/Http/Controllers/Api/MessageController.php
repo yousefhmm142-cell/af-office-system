@@ -325,7 +325,7 @@ class MessageController extends Controller
 
         return [
             'id' => $m->id, 'thread_id' => $m->thread_id ?? $m->id, 'kind' => $m->kind, 'subject' => $m->subject, 'body' => $m->body,
-            'meta' => $m->meta, 'sender' => $m->sender?->only('id', 'name'),
+            'has_account_handoff' => $m->account_handoff !== null, 'meta' => $m->meta, 'sender' => $m->sender?->only('id', 'name'),
             'groups_label' => $m->groups_label,
             'recipients' => $m->recipients->take(50)->map(fn ($r) => ['id' => $r->user_id, 'name' => $r->user?->name, 'read' => $r->read_at !== null])->values(),
             'recipients_count' => $m->recipients->count(),

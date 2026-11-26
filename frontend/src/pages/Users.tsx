@@ -1,3 +1,4 @@
+import { AccountHandoff } from './AccountHandoff'
 import { salaryLabel } from '../api/types'
 import { ChoiceField } from '../ui/ChoiceField'
 import { KeyRound, Lock, Pencil, Plus, Search, Trash2, UserPlus } from 'lucide-react'
@@ -67,6 +68,7 @@ export function Users({ embedded = false }: { embedded?: boolean }) {
     } catch (e) { toast(e instanceof ApiError ? e.message : 'لم يُحذف', 'danger') }
   }
 
+  const selectedBranch = branchFilter || (branches.data?.branches.length === 1 ? String(branches.data.branches[0]!.id) : '')
   const create = manages && <Button variant="primary" icon={<UserPlus size={18} />} disabled={!roles.data} onClick={() => setEditing('new')}>حساب جديد</Button>
   return (
     <>
@@ -84,6 +86,7 @@ export function Users({ embedded = false }: { embedded?: boolean }) {
             {branches.data?.branches.map((b) => <option key={b.id} value={b.id}>{b.name}</option>)}
           </ChoiceField>
         )}
+        {selectedBranch && selectedBranch!=='none' && manages && ['hr','super_admin'].includes(me.role?.key??'') && <AccountHandoff key={selectedBranch} branchId={selectedBranch}/>}
         <ChoiceField className="input select" value={incompleteOnly ? 'incomplete' : ''} aria-label="حالة الملف الشخصي"
           onChange={(event) => setFilters(event.target.value ? { profile: event.target.value } : {}, { replace: true })}>
           <option value="">جميع الملفات</option>
@@ -142,7 +145,7 @@ function UserDialog({ user, roles, branches, onClose, onSaved }: { user: User | 
   const assignable = roles.filter((r) => r.assignable || r.id === user?.role?.id)
   const [form, setForm] = useState({
     name: user?.name ?? '',
-    department_id: '', salary_type: '', salary_amount: '', work_schedule_id: '',
+    department_name:'', department_id: '', salary_type: '', salary_amount: '', work_schedule_id: '',
     username: user?.username ?? '',
     password: user ? '' : tempPassword(),
     role_id: String(user?.role?.id ?? assignable.find((r) => r.key === 'employee')?.id ?? ''),
@@ -156,6 +159,7 @@ function UserDialog({ user, roles, branches, onClose, onSaved }: { user: User | 
   const role = roles.find((r) => String(r.id) === form.role_id)
 
   const hiring = !user && role?.key === 'employee' && !!form.branch_id && can(me, 'employees.manage')
+  const typeDepartment = ['hr','super_admin'].includes(me.role?.key??'')
   const departments = useLoad<{ departments: { id: number; name: string; is_active: boolean }[] }>(hiring ? `/departments?branch_id=${form.branch_id}` : null)
   const schedules = useLoad<{ schedules: Schedule[] }>(hiring && can(me, 'schedules.view') ? `/schedules?branch_id=${form.branch_id}` : null)
 
@@ -163,7 +167,7 @@ function UserDialog({ user, roles, branches, onClose, onSaved }: { user: User | 
     e?.preventDefault()
     setBusy(true); setFields({}); setError(null)
     const body: Record<string, unknown> = { name: form.name, username: form.username, role_id: Number(form.role_id), branch_id: form.branch_id ? Number(form.branch_id) : null }
-    if (hiring) Object.assign(body, { department_id: form.department_id, salary_type: form.salary_type, salary_amount: form.salary_amount || null, work_schedule_id: form.work_schedule_id || null })
+    if (hiring) Object.assign(body, { ...(typeDepartment ? {department_name:form.department_name.trim()} : {department_id:form.department_id}), salary_type: form.salary_type, salary_amount: form.salary_amount || null, work_schedule_id: form.work_schedule_id || null })
     try {
       if (user) {
         await api(`/users/${user.id}`, { method: 'PATCH', body })
@@ -199,7 +203,7 @@ function UserDialog({ user, roles, branches, onClose, onSaved }: { user: User | 
           <div className="aside-row"><span>اسم المستخدم</span><b dir="auto">{form.username || '—'}</b></div>
           <div className="aside-row"><span>الدور</span><b>{role?.name ?? '—'}</b></div>
           <div className="aside-row"><span>الفرع</span><b>{branches.find(b => String(b.id) === form.branch_id)?.name ?? (form.branch_id ? me.branch?.name : role?.needs_branch ? 'اختر الفرع' : 'كل الفروع')}</b></div>
-          {hiring && <div className="aside-row"><span>القسم</span><b>{departments.data?.departments.find(d => String(d.id) === form.department_id)?.name ?? 'اختر القسم'}</b></div>}
+          {hiring && <div className="aside-row"><span>القسم</span><b>{form.department_name || departments.data?.departments.find(d => String(d.id) === form.department_id)?.name || 'اختر القسم'}</b></div>}
         </div>
         {!user && <p className="aside-note">يستكمل الموظف ملفه الشخصي بعد دخوله الأول.</p>}
       </>}
@@ -224,7 +228,7 @@ function UserDialog({ user, roles, branches, onClose, onSaved }: { user: User | 
           </Field>
           <Field label="الفرع" error={fields.branch_id} hint={role && !role.needs_branch ? 'اتركه فارغاً إذا كان يعمل على جميع الفروع' : undefined}>
             {(id) => (
-              <ChoiceField id={id} className="input select" value={form.branch_id} onChange={(e) => setForm({ ...form, branch_id: e.target.value, department_id: '', work_schedule_id: '' })} disabled={scopeOf(me, 'users.manage') === 'branch'}>
+              <ChoiceField id={id} className="input select" value={form.branch_id} onChange={(e) => setForm({ ...form, branch_id: e.target.value, department_id: '', department_name:'', work_schedule_id: '' })} disabled={scopeOf(me, 'users.manage') === 'branch'}>
                 {!role?.needs_branch && <option value="">— كل الفروع —</option>}
                 {role?.needs_branch && !form.branch_id && <option value="">اختر الفرع</option>}
                 {branches.map((b) => <option key={b.id} value={b.id}>{b.name}</option>)}
@@ -233,8 +237,11 @@ function UserDialog({ user, roles, branches, onClose, onSaved }: { user: User | 
           </Field>
         </div>
         {hiring && <>
-          <Field label="قسم الموظف" error={fields.department_id} hint="تُحدّد الأقسام الوظيفية من صفحة الفرع">{id => <ChoiceField id={id} className="input select" value={form.department_id} onChange={e => set('department_id', e.target.value)}>
-            <option value="">اختر القسم</option>{!departments.loading && departments.data?.departments.filter(d => d.is_active).map(d => <option key={d.id} value={d.id}>{d.name}</option>)}</ChoiceField>}</Field>
+          {typeDepartment ? <Field label="قسم الموظف" error={fields.department_name} hint="اكتب اسم القسم. يُضاف إلى الفرع عند حفظ الحساب.">{id=><>
+            <input className="input" id={id} maxLength={60} value={form.department_name} onChange={e=>set('department_name',e.target.value)} placeholder="مثلاً: التحصيل الميداني"/>
+            <div className="chips">{departments.data?.departments.filter(d=>d.is_active && d.name.includes(form.department_name.trim()) && d.name!==form.department_name.trim()).map(d=><button key={d.id} type="button" className="chip" onClick={()=>set('department_name',d.name)}>{d.name}</button>)}</div>
+          </>}</Field> : <Field label="قسم الموظف" error={fields.department_id} hint="تُحدّد الأقسام الوظيفية من صفحة الفرع">{id => <ChoiceField id={id} className="input select" value={form.department_id} onChange={e => set('department_id', e.target.value)}>
+            <option value="">اختر القسم</option>{!departments.loading && departments.data?.departments.filter(d => d.is_active).map(d => <option key={d.id} value={d.id}>{d.name}</option>)}</ChoiceField>}</Field>}
           <Field label="نوع الراتب" error={fields.salary_type}>{id => <ChoiceField id={id} className="input select" value={form.salary_type} onChange={e => set('salary_type', e.target.value)}>
             <option value="">اختر نوع الراتب</option>{SALARY_TYPES.map(([key, name]) => <option key={key} value={key}>{name}</option>)}</ChoiceField>}</Field>
           <Field label={salaryLabel(form.salary_type)} error={fields.salary_amount} hint="تسجّل شؤون الموظفين المبلغ المتفق عليه. يلزم تحديده قبل تجهيز أول دفعة.">{id => <input className="input" id={id} type="number" min="0" step="0.01" value={form.salary_amount} onChange={e=>set('salary_amount',e.target.value)} />}</Field>

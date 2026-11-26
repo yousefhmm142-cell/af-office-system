@@ -82,6 +82,7 @@ class AuthController extends Controller
         $user->forceFill([
             'password' => $data['password'],
             'must_change_password' => false,
+            'handoff_code' => null,
             'password_changed_at' => now(),
         ])->save();
 

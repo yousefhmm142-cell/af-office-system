@@ -17,7 +17,7 @@ class Message extends Model
 
     protected function casts(): array
     {
-        return ['meta' => 'array'];
+        return ['meta' => 'array', 'account_handoff' => 'array'];
     }
 
     public function sender(): BelongsTo

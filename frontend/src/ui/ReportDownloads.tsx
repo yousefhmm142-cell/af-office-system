@@ -6,8 +6,9 @@ import { useToast } from './Toast'
 
 const excelMime = 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet'
 
-export function ReportDownloads({ sheet, name, headers, rows, excelOnly = false }: {
+export function ReportDownloads({ sheet, name, headers, rows, excelOnly = false, styled = false }: {
   sheet?: RefObject<HTMLElement | null>
+  styled?: boolean
   excelOnly?: boolean
   name: string
   headers: string[]
@@ -31,6 +32,17 @@ export function ReportDownloads({ sheet, name, headers, rows, excelOnly = false 
         })
         report.addRow(headers).font = { bold: true }
         report.addRows(rows)
+        if (styled) {
+          report.autoFilter = { from: { row:1, column:1 }, to:{ row:1,column:headers.length } }
+          report.eachRow((row,index)=>{
+            row.height=index===1?32:25
+            row.eachCell(cell=>{
+              cell.font={name:'Arial',size:12,bold:index===1,color:{argb:index===1?'FFFFFFFF':'FF262126'}}
+              cell.alignment={horizontal:'right',vertical:'middle'}
+              cell.fill={type:'pattern',pattern:'solid',fgColor:{argb:index===1?'FF762237':index%2?'FFF5EBEE':'FFFFFFFF'}}
+            })
+          })
+        }
         await saveFile(await workbook.xlsx.writeBuffer(), `${name}.xlsx`, excelMime)
       }
     } catch {
