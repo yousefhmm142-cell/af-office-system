@@ -53,6 +53,19 @@ class TasksTest extends TestCase
         $this->getJson('/api/tasks/subscribers')->assertForbidden();
     }
 
+    public function test_company_board_includes_both_branches_only_for_company_viewers(): void
+    {
+        $this->actAs(Role::BRANCH_MANAGER, $this->branch);
+        $first = $this->newTask();
+        $other = $this->makeBranch('الفرع الثاني');
+        $this->actAs(Role::BRANCH_MANAGER, $other);
+        $second = $this->newTask(['assignees' => []]);
+        $this->getJson('/api/tasks?all_branches=1')->assertForbidden();
+        $this->actAs(Role::MANAGEMENT);
+        $board = $this->getJson('/api/tasks?all_branches=1')->assertOk()->assertJsonPath('can_manage', false);
+        $this->assertEqualsCanonicalizing([$first['id'], $second['id']], array_column($board->json('tasks'), 'id'));
+    }
+
     public function test_full_life_of_a_task_numbered_per_branch(): void
     {
         $this->actAs(Role::BRANCH_MANAGER, $this->branch);

@@ -588,3 +588,17 @@
 .af-report-downloads { display: flex; flex-wrap: wrap; gap: 8px; }
 .af-week-actions > .af-report-downloads { margin-inline-start: auto; }
 .af-sheet-pdf-head { display: none; }
+
+.af-permissions .af-permission-save{position:sticky;top:90px;z-index:8;border:1px solid var(--line);border-inline-start:4px solid var(--brand-text);border-radius:14px;background:var(--surface);padding:10px 14px;margin-block:14px;box-shadow:var(--shadow);color:var(--ink)}
+.af-permission-save strong{margin-inline-end:auto}
+.af-permissions .af-permission-row{display:grid;grid-template-columns:minmax(0,1fr) auto;align-items:center;gap:6px 12px;border-block-end:1px solid var(--line);padding-block:10px;font-size:1rem;font-weight:700}
+.af-permission-row>.af-choice{grid-column:1/-1;justify-self:end}
+.af-permissions .af-permission-groups legend{font-size:1.1rem;color:var(--ink)}
+.af-permissions .perm-switch{font-size:.9rem;color:var(--ink);min-height:40px}
+.af-permissions .perm-switch i{background:#66636b}.af-permissions .perm-switch[data-on] i{background:var(--ok)}
+.af-permissions .af-matrix .perm-switch{margin:4px}
+@media(max-width:700px){.af-permissions .af-permission-save{top:72px;padding:8px;gap:5px;font-size:.9rem}}
+
+.stage :is(.field>label,.row-label,.tbl th,.field-hint,.af-sub){font-weight:700}
+.af-permissions .af-permission-groups{display:block;columns:24rem;column-gap:1rem}
+.af-permission-groups fieldset{break-inside:avoid;margin-block:0 1rem;background:var(--surface)}

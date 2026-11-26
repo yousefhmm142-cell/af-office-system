@@ -49,9 +49,9 @@ class RosterTest extends TestCase
         $this->actAs(Role::HR);
         $dep = Department::create(['name' => 'التدقيق']);
         $this->putJson("/api/branches/$branch->id/departments/$dep->id")->assertOk();
-        $account = ['name' => 'موظف الفرع', 'username' => 'branch.auditor', 'password' => 'abc12345', 'role_id' => Role::where('key', Role::EMPLOYEE)->value('id'), 'department_id' => $dep->id, 'salary_type' => 'weekly'];
+        $account = ['name' => 'موظف الفرع', 'username' => 'branch.auditor', 'password' => 'abc12345', 'role_id' => Role::where('key', Role::EMPLOYEE)->value('id'), 'department_id' => $dep->id, 'salary_type' => 'weekly', 'salary_amount' => 425];
         $this->postJson('/api/users', $account + ['branch_id' => $other->id])->assertUnprocessable();
         $response = $this->postJson('/api/users', $account + ['branch_id' => $branch->id])->assertCreated()->assertJsonPath('user.needs_profile_completion', true);
-        $this->assertDatabaseHas('employees', ['user_id' => $response->json('user.id'), 'department_id' => $dep->id, 'salary_type' => 'weekly']);
+        $this->assertDatabaseHas('employees', ['user_id' => $response->json('user.id'), 'department_id' => $dep->id, 'salary_type' => 'weekly', 'salary_amount' => 425]);
     }
 }

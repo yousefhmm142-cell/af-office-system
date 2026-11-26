@@ -69,6 +69,7 @@ class UserController extends Controller
 
         $job = $request->validate([
             'department_id' => ['sometimes', 'required', Rule::exists('branch_department', 'department_id')->where('branch_id', $data['branch_id']), Rule::exists('departments', 'id')->whereNull('deleted_at')->where('is_active', true)],
+            'salary_amount' => ['sometimes', 'nullable', 'numeric', 'min:0', 'max:99999999'],
             'salary_type' => ['sometimes', 'required', Rule::in(['monthly', 'weekly', 'daily', 'contract'])],
             'work_schedule_id' => ['sometimes', 'nullable', Rule::exists('work_schedules', 'id')->where('branch_id', $data['branch_id'])->whereNull('deleted_at')],
         ]);

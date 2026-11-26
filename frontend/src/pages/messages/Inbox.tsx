@@ -1,8 +1,10 @@
+import { LeaveRequestForm } from './LeaveRequestForm'
+import { Dialog } from '../../ui/Dialog'
 import { ChoiceField } from '../../ui/ChoiceField'
 import '../../styles/mail-workspace.css'
 import { Archive, ArchiveRestore, ArrowRight, Forward, Inbox as InboxIcon, Mail, MailOpen, Paperclip, PenLine, ReplyAll, Search, Send } from 'lucide-react'
 import { useEffect, useState } from 'react'
-import { Link, useNavigate, useParams } from 'react-router'
+import { Link, useNavigate, useParams, useSearchParams } from 'react-router'
 import { api, ApiError, openFile } from '../../api/client'
 import { can, useUser } from '../../app/auth'
 import { useLoad } from '../../lib/useLoad'
@@ -22,7 +24,9 @@ export function Inbox() {
   const navigate = useNavigate()
   const me = useUser()
   const [folder, setFolder] = useState<Folder>('inbox')
-  const [category,setCategory] = useState<Kind | 'leaves' | ''>('')
+  const [url] = useSearchParams()
+  const category = (url.get('folder') ?? '') as Kind | 'leaves' | ''
+  const [requesting,setRequesting] = useState(false)
   const [branch,setBranch] = useState('')
   const [page,setPage] = useState(1)
   const [leaveId,setLeaveId] = useState<number | null>(null)
@@ -34,7 +38,7 @@ export function Inbox() {
   const [draft, setDraft] = useState<Draft | null>(null)
   const selectedLeave = leaves.data?.requests.find(r=>r.id===leaveId)
   const filters = [['leaves','طلبات إجازة وإذن'],['fault','بلاغات أعطال'],['collection','تقارير تحصيل'],['circular','تعميمات']] as const
-  const selectCategory = (value: typeof category) => { setCategory(value); setLeaveId(null); setPage(1); navigate('/messages') }
+  const selectCategory = (value: typeof category) => { setLeaveId(null); setPage(1); navigate(value ? '/messages?folder='+value : '/messages') }
 
   useEffect(() => { if (data) setUnread(data.unread) }, [data])
   useEffect(() => {
@@ -48,13 +52,14 @@ export function Inbox() {
       <div className="af-mail-body">
         <aside className="card glass af-mail-categories" aria-label="تصنيفات المراسلات">
           <Button variant="primary" block icon={<PenLine size={18} />} onClick={() => setDraft({ kind: 'message' })}>رسالة جديدة</Button>
+          {me.branch && <Button onClick={()=>setRequesting(true)}>طلب إجازة أو إذن</Button>}
           {FOLDERS.map(([f,label,Icon])=><button className="af-mail-filter" type="button" key={f} aria-pressed={folder===f && !category} onClick={()=>{setFolder(f);selectCategory('')}}><Icon size={16}/>{label}{f==='inbox' && <span className="af-count">{data?.unread ?? 0}</span>}</button>)}
           <span className="af-sub">تصنيفات العمل</span>
           {filters.map(([value,label])=><button className="af-mail-filter" type="button" key={value} aria-pressed={category===value} onClick={()=>{setFolder('inbox');selectCategory(value)}}>{label}</button>)}
         </aside>
         <aside className="card glass af-mail-list">
           <div className="af-search"><Search size={17} aria-hidden="true" /><input className="input" placeholder="ابحث في الرسائل" value={search} maxLength={80} onChange={(e) => {setSearch(e.target.value);setPage(1)}} aria-label="بحث" /></div>
-          <ChoiceField className="input select" aria-label="فلتر الفرع" value={branch} onChange={e=>{setBranch(e.target.value);setPage(1);setLeaveId(null);navigate('/messages')}}>
+          <ChoiceField className="input select" aria-label="فلتر الفرع" value={branch} onChange={e=>{setBranch(e.target.value);setPage(1);selectCategory(category)}}>
             <option value="">كل الفروع المتاحة</option>{(branches.data?.branches ?? (me.branch ? [me.branch] : [])).map(b=><option key={b.id} value={b.id}>{b.name}</option>)}
           </ChoiceField>
           <ErrorBanner text={category==='leaves' ? leaves.error : error} />
@@ -97,6 +102,7 @@ export function Inbox() {
         </section>
       </div>
 
+      {requesting && <Dialog open title="طلب إجازة أو إذن" onClose={()=>setRequesting(false)}><LeaveRequestForm onSent={()=>{setRequesting(false);selectCategory('leaves');void leaves.reload()}}/></Dialog>}
       {draft && <Compose draft={draft} onClose={() => setDraft(null)} onSent={() => { setDraft(null); setFolder('sent'); selectCategory(''); void reload() }} />}
     </div>
   )
@@ -210,7 +216,7 @@ function MessageCard({ m, mine }: { m: Full; mine: boolean }) {
         </div>
       )}
       {mine && m.recipients.length > 0 && <small className="af-sub">{m.recipients.every((r) => r.read) ? 'قرأها الجميع' : `قرأها ${m.recipients.filter((r) => r.read).length} من ${m.recipients.length}`}</small>}
-      {(m.kind==='leave_request'||m.kind==='permission_request') && !mine && <Link to="/leaves">فتح سجل الإجازات والأذونات</Link>}
+      {(m.kind==='leave_request'||m.kind==='permission_request') && !mine && <Link to="/messages?folder=leaves">فتح سجل الإجازات والأذونات</Link>}
     </article>
   )
 }
@@ -239,6 +245,6 @@ function LeaveDetails({leave,back,reload}:{leave:Leave;back():void;reload():Prom
       <p className="af-msg-body">{leave.reason}</p>
     </article>
     {review && <footer className="af-conv-actions"><Button disabled={busy} variant="primary" onClick={()=>decide('approved')}>موافقة</Button><Button disabled={busy} onClick={()=>decide('rejected')}>رفض</Button>{hr && <Button disabled={busy} onClick={()=>decide('escalated')}>إحالة للإدارة</Button>}</footer>}
-    <Link className="af-pad" to="/leaves">سجل الإجازات والأذونات</Link>
+     {((leave.user_id===user.id && ['pending','escalated'].includes(leave.status)) || (hr && leave.status==='approved')) && <Button disabled={busy} onClick={()=>decide('cancelled')}>إلغاء الطلب</Button>}
   </div>
 }

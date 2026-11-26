@@ -1,3 +1,4 @@
+import { salaryLabel } from '../api/types'
 import { ChoiceField } from '../ui/ChoiceField'
 import { EmployeeOverview } from './EmployeeOverview'
 import '../styles/employee-overview.css'
@@ -70,10 +71,13 @@ export function EmployeeFile() {
           </p>
           <p className="eyebrow" dir="auto">@{f.user.username}</p>
         </div>
+        {f.can.edit_job && <Button icon={<Wallet size={16}/>} onClick={()=>setEdit('job')}>تعديل القسم والراتب</Button>}
         {f.can.set_status && <Button onClick={() => setEdit('status')}>تغيير الحالة</Button>}
       </section>
       {f.status === 'terminated' && f.termination_reason && <div className="banner danger" style={{ marginTop: 12 }}><p>سبب الفصل: {f.termination_reason}</p></div>}
 
+      </aside>
+      <EmployeeOverview key={f.user.id} file={f} performance={performance} mine={mine} documents={<Attachments file={f} onChange={(attachments) => setData({ ...f, attachments })} />} />
       {!performance && <div className="af-employee-details">
         <Section icon={<UserRound size={18} />} title="البيانات الشخصية" onEdit={f.can.edit_personal ? () => setEdit('personal') : undefined}>
           <Row k="الاسم الكامل" v={f.user.name} />
@@ -122,8 +126,6 @@ export function EmployeeFile() {
         </Section>
 
       </div>}
-      </aside>
-      <EmployeeOverview key={f.user.id} file={f} performance={performance} mine={mine} documents={<Attachments file={f} onChange={(attachments) => setData({ ...f, attachments })} />} />
       </div>
 
       {f.status_log.length > 0 && (
@@ -309,7 +311,7 @@ function JobDialog({ file, onClose, onSaved }: { file: File_; onClose(): void; o
           </div>
         </div>
         <div className="af-row2">
-          <Field label="قيمة الراتب (شيكل)" error={fields.salary_amount}>{(id) => <input id={id} className="input num" inputMode="decimal" dir="ltr" value={form.salary_amount} onChange={(e) => set('salary_amount', e.target.value.replace(/[^0-9.]/g, ''))} />}</Field>
+          <Field label={salaryLabel(form.salary_type)} error={fields.salary_amount}>{(id) => <input id={id} className="input num" inputMode="decimal" dir="ltr" value={form.salary_amount} onChange={(e) => set('salary_amount', e.target.value.replace(/[^0-9.]/g, ''))} />}</Field>
           <Field label="ساعات الدوام باليوم" error={fields.daily_hours}>{(id) => <input id={id} className="input num" inputMode="decimal" dir="ltr" value={form.daily_hours} onChange={(e) => set('daily_hours', e.target.value.replace(/[^0-9.]/g, ''))} />}</Field>
         </div>
         <div className="af-row2">

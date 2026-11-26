@@ -31,6 +31,11 @@ export function PayrollHome() {
   return (
     <>
       <PageHead title="صرف الرواتب" eyebrow="الدفعات الشهرية" actions={manage && <Button variant="primary" icon={<Plus size={18}/>} onClick={()=>setWizard(true)}>تجهيز دفعة رواتب</Button>} />
+      <section className="card glass af-pad"><h2 className="af-h2"><HandCoins size={20}/>من أين يأتي مبلغ الدفعة؟</h2>
+        <p>تُدخل شؤون الموظفين نوع الأجر وقيمته عند إنشاء الحساب أو من «تعديل القسم والراتب» في ملف الموظف. يبدأ كشف الصرف من هذا المبلغ.</p>
+        <details><summary>طريقة الحساب حسب نوع الأجر</summary><p>للشهري والمقاولة تُطبّق نسبة الدفعة على المبلغ المتفق عليه. لليومية يُضرب أجر اليوم في الأيام المحتسبة. للأسبوعي يُقسّم أجر الأسبوع على أيام العمل الأسبوعية ثم يُضرب في الأيام المحتسبة. تُطبّق نسبة الدفعة على الناتج.</p></details>
+        {can(me,'employees.manage') && can(me,'users.view') && <Link className="btn" to="/users">اختيار موظف لتحديد أجره</Link>}
+      </section>
       <div className="pay-stages" role="group" aria-label="حالة الدفعات">{stages.map(({key,label,icon:Icon})=>{
         const group=batches.filter(b=>b.status===key)
         return <button type="button" key={key} className="card glass pay-stage" data-stage={key} aria-pressed={stage===key} onClick={()=>setStage(key)}>

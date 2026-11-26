@@ -1,5 +1,5 @@
 import { ChoiceField } from '../ui/ChoiceField'
-import { KeyRound, Save, UserCog } from 'lucide-react'
+import { KeyRound, Save } from 'lucide-react'
 import { useEffect, useMemo, useState } from 'react'
 import { api, ApiError } from '../api/client'
 import { SCOPE_LABEL, type Override, type PermissionDef, type RoleGrants, type Scope, type User } from '../api/types'
@@ -19,24 +19,36 @@ const groupsOf = (perms: PermissionDef[]) => {
   return [...out.entries()]
 }
 
+function PermissionToggle({name,on,disabled,toggle}:{name:string;on:boolean;disabled:boolean;toggle():void}) {
+  return <button type="button" className="perm-switch" role="switch" aria-checked={on} aria-label={name} data-on={on || undefined} disabled={disabled} onClick={toggle}><i aria-hidden="true"/><span>{on ? 'مفعّلة' : 'موقوفة'}</span></button>
+}
+
+function SaveBar({count,busy,reset,save}:{count:number;busy:boolean;reset():void;save():void}) {
+  return <div className="af-permission-save">
+    <strong role="status">{count ? `تغييرات غير محفوظة · ${count}` : 'جميع التغييرات محفوظة'}</strong>
+    <Button disabled={!count || busy} onClick={reset}>تراجع</Button>
+    <Button variant="primary" icon={<Save size={18}/>} disabled={!count || busy} busy={busy} onClick={save}>حفظ التغييرات</Button>
+  </div>
+}
+
 export function Permissions() {
   const [tab, setTab] = useState<'roles' | 'people'>('roles')
+  const [blocked,setBlocked]=useState(false)
   return (
     <>
       <PageHead title="الصلاحيات" eyebrow="من يطّلع على ماذا، وفي أي فروع" />
       <div className="segmented af-tabs" role="radiogroup" aria-label="نوع الصلاحيات">
-        <button type="button" role="radio" aria-checked={tab === 'roles'} onClick={() => setTab('roles')}>حسب الدور</button>
-        <button type="button" role="radio" aria-checked={tab === 'people'} onClick={() => setTab('people')}>لشخص معيّن</button>
+        <button type="button" role="radio" disabled={blocked} aria-checked={tab === 'roles'} onClick={() => setTab('roles')}>حسب الدور</button>
+        <button type="button" role="radio" disabled={blocked} aria-checked={tab === 'people'} onClick={() => setTab('people')}>لشخص معيّن</button>
       </div>
-      {tab === 'roles' ? <RolesMatrix /> : <PersonOverrides />}
+      {tab === 'roles' ? <RolesMatrix blocked={blocked} setBlocked={setBlocked}/> : <PersonOverrides onBlocked={setBlocked}/>}
     </>
   )
 }
 
-function RolesMatrix() {
+function RolesMatrix({blocked,setBlocked}:{blocked:boolean;setBlocked(v:boolean):void}) {
   const { data, error, loading, setData } = useLoad<Matrix>('/permissions')
   const [roleId, setRoleId] = useState('')
-  const [blocked, setBlocked] = useState(false)
   if (loading && !data) return <Loading />
   if (!data) return <ErrorBanner text={error} />
   const role = data.roles.find((entry) => String(entry.id) === roleId)
@@ -90,6 +102,8 @@ function RoleEditor({ role, permissions, onSaved, onBlocked }: { role: RoleGrant
   return (
     <>
       <form onSubmit={(event) => { event.preventDefault(); if (dirty && !saving) void save() }}>
+        {editable && <SaveBar count={changed.length} busy={saving} reset={()=>{setDraft(role.grants);setError(null)}} save={()=>void save()}/>}
+        <ErrorBanner text={error} />
         {role.locked ? <p>يملك هذا الدور جميع الصلاحيات تلقائيًا.</p> : (
           <div className="af-permission-groups">
             {groupsOf(permissions).map(([group, items]) => (
@@ -98,9 +112,15 @@ function RoleEditor({ role, permissions, onSaved, onBlocked }: { role: RoleGrant
                 {items.map(({ key, name }) => {
                   const cap = me.permissions?.[key]
                   return (
-                    <label className="af-permission-row" key={key}>
+                    <div className="af-permission-row" key={key}>
                       <span>{name}</span>
-                      <ChoiceField className="input select" value={draft[key] ?? ''} disabled={saving || !editable || !permitted(key)}
+                      <PermissionToggle name={name} on={!!draft[key]} disabled={saving || !editable || !permitted(key)} toggle={()=>setDraft(current=>{
+                        const next={...current}
+                        if(next[key]) delete next[key]
+                        else next[key]=role.grants[key] ?? 'own'
+                        return next
+                      })}/>
+                      {draft[key] && <ChoiceField aria-label={`نطاق ${name}`} className="input select" value={draft[key] ?? ''} disabled={saving || !editable || !permitted(key)}
                         onChange={(event) => {
                           const value = event.target.value as Scope | ''
                           setDraft((current) => {
@@ -110,30 +130,24 @@ function RoleEditor({ role, permissions, onSaved, onBlocked }: { role: RoleGrant
                             return next
                           })
                         }}>
-                        <option value="">غير ممنوحة</option>
+
                         {scopeRank.map((scope) => (
                           <option key={scope} value={scope} disabled={!admin && (!cap || scopeRank.indexOf(scope) > scopeRank.indexOf(cap))}>{SCOPE_LABEL[scope]}</option>
                         ))}
-                      </ChoiceField>
-                    </label>
+                      </ChoiceField>}
+                    </div>
                   )
                 })}
               </fieldset>
             ))}
           </div>
         )}
-        <ErrorBanner text={error} />
-        {editable && <div className="af-permission-save">
-          <span role="status">{dirty ? 'لديك تغييرات غير محفوظة' : 'جميع التغييرات محفوظة'}</span>
-          <Button disabled={!dirty || saving} onClick={() => { setDraft(role.grants); setError(null) }}>تراجع</Button>
-          <Button type="submit" variant="primary" busy={saving} disabled={!dirty} icon={<Save size={16} />}>حفظ صلاحيات الدور</Button>
-        </div>}
       </form>
     </>
   )
 }
 
-function PersonOverrides() {
+function PersonOverrides({onBlocked}:{onBlocked(v:boolean):void}) {
   const toast = useToast()
   const me = useUser()
   const users = useLoad<{ users: User[] }>('/users')
@@ -160,10 +174,11 @@ function PersonOverrides() {
   const admin = me.role?.key === 'super_admin'
   const people = useMemo(() => (users.data?.users ?? []).filter((u) => u.id !== me.id && u.role &&
     u.role.key !== 'super_admin' && (admin || u.role.level < (me.role?.level ?? 0))), [users.data, me, admin])
-  const dirty = matrix.data?.permissions.some(({ key }) => {
+  const changes = matrix.data?.permissions.filter(({ key }) => {
     const saved = payload?.overrides.find((override) => override.key === key)
     return (draft[key] || '') !== (saved?.effect === 'deny' ? 'deny' : (saved?.scope ?? ''))
-  })
+  }).length ?? 0
+  useEffect(()=>{onBlocked(changes>0 || busy)},[changes,busy,onBlocked])
 
   async function save() {
     setBusy(true)
@@ -178,15 +193,16 @@ function PersonOverrides() {
   }
 
   return (
-    <div className="card glass af-pad">
+    <div className="card glass af-pad af-permissions">
       <p className="eyebrow">الاستثناء الشخصي: تمنح الموظف صلاحية إضافية على دوره، أو تمنعه من صلاحية في دوره. والاستثناء مقدَّم على الدور.</p>
-      <ChoiceField className="input select" value={userId} disabled={busy} onChange={(e) => { setPayload(null); setDraft({}); setError(null); setUserId(e.target.value) }} aria-label="اختر الموظف" style={{ maxWidth: 420 }}>
+      <ChoiceField className="input select" value={userId} disabled={busy || changes>0} onChange={(e) => { setPayload(null); setDraft({}); setError(null); setUserId(e.target.value) }} aria-label="اختر الموظف" style={{ maxWidth: 420 }}>
         <option value="">اختر الموظف…</option>
         {people.map((u) => <option key={u.id} value={u.id}>{u.name} · {u.role?.name}{u.branch ? ` · ${u.branch.name}` : ''}</option>)}
       </ChoiceField>
       <ErrorBanner text={error} />
       {payload && matrix.data && (
         <>
+          <SaveBar count={changes} busy={busy} save={()=>void save()} reset={()=>setDraft(Object.fromEntries(payload.overrides.map(o=>[o.key,o.effect==='deny'?'deny':o.scope??'branch'])))}/>
           <div className="af-permission-overrides"><ScrollTable label="الاستثناءات الفردية"><table className="tbl af-matrix">
             <thead><tr><th>الصلاحية</th><th>من دوره</th><th>استثناء</th><th>النتيجة</th></tr></thead>
             <tbody>
@@ -201,6 +217,7 @@ function PersonOverrides() {
                     <th scope="row">{p.name}</th>
                     <td>{fromRole ? SCOPE_LABEL[fromRole] : '—'}</td>
                     <td>
+                      <PermissionToggle name={p.name} on={!!result} disabled={busy || (!admin && !cap)} toggle={()=>setDraft(d=>({...d,[p.key]:result?'deny':fromRole?'':'own'}))}/>
                       <ChoiceField className="input select af-scope" value={draft[p.key] ?? ''} aria-label={`استثناء ${p.name}`} disabled={busy || (!admin && !cap)} data-on={draft[p.key] || undefined}
                         onChange={(e) => setDraft((d) => ({ ...d, [p.key]: e.target.value as '' | 'deny' | Scope }))}>
                         <option value="">بدون استثناء</option>
@@ -216,9 +233,7 @@ function PersonOverrides() {
               })}
             </tbody>
           </table></ScrollTable></div>
-          <div style={{ marginTop: 14 }}>
-            <Button variant="primary" busy={busy} disabled={!dirty} icon={<UserCog size={16} />} onClick={() => void save()}>حفظ الاستثناءات</Button>
-          </div>
+
         </>
       )}
       {!userId && <p className="eyebrow" style={{ marginTop: 12 }}><KeyRound size={14} /> لا يظهر السوبر أدمن هنا لأنه يملك جميع الصلاحيات.</p>}

@@ -80,6 +80,12 @@ export function Home() {
           ))}
         </div>
       </section>
+      {role==='management' && data && <section className="card glass af-pad"><h2 className="af-h2">متابعة التشغيل اليوم</h2>
+        <div className="af-hero-metrics">
+        {data.branches.some(b=>b.open_tasks!==null) && <Link to="/tasks"><b>{data.branches.reduce((n,b)=>n+(b.open_tasks??0),0)}</b> مهام مفتوحة في الفروع</Link>}
+        {data.branches.some(b=>b.done_today!==null) && <Link to="/tasks"><b>{data.branches.reduce((n,b)=>n+(b.done_today??0),0)}</b> مهام أُنجزت اليوم</Link>}
+        {data.payroll && <Link to="/payroll"><b>{data.payroll.to_pay}</b> دفعات جاهزة للصرف</Link>}
+        <Link to="/messages?folder=leaves">مراجعة طلبات الإجازة المحالة للإدارة</Link></div></section>}
       {hasAttendance && <PunchCard />}
       <ErrorBanner text={error} />
       {loading && !data ? <Loading /> : data && (
@@ -165,7 +171,7 @@ export function Home() {
                       </>
                     )}
                     {b.open_tasks !== null && (
-                      <p><Link to="/tasks"><ClipboardList size={14} /> مهام مفتوحة <b className="num">{b.open_tasks}</b></Link>{b.late_tasks ? <> · <span className="af-danger-t">متأخرة <b className="num">{b.late_tasks}</b></span></> : null} · أُنجز اليوم <b className="num">{b.done_today}</b></p>
+                      <p><Link to={`/tasks?branch_id=${b.id}`}><ClipboardList size={14} /> مهام مفتوحة <b className="num">{b.open_tasks}</b></Link>{b.late_tasks ? <> · <span className="af-danger-t">متأخرة <b className="num">{b.late_tasks}</b></span></> : null} · أُنجز اليوم <b className="num">{b.done_today}</b></p>
                     )}
                   </article>
                 ))}

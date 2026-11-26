@@ -248,3 +248,12 @@ body { background: var(--bg); background-image: none; }
 :root[data-theme='light'] .sb-item.active:is(:hover,:focus-visible) { background: #e2dcda; border-color: #c9bfbc; box-shadow: 0 5px 14px -10px #322a2940; }
 
 .topbar-end > .rbtn { min-width: 44px; min-height: 44px; }
+
+.header-tools{display:flex;gap:6px;align-items:center}
+.header-search.rbtn{width:auto;display:flex;gap:8px;padding-inline:14px;border-radius:14px}
+.header-tool-panel{position:absolute;z-index:60;inset-block-start:calc(100% + 8px);inset-inline-end:10px;width:min(330px,calc(100% - 20px));max-height:55vh;overflow:auto;display:grid;gap:4px;padding:14px;background:var(--surface);border:1px solid var(--line);border-radius:16px;box-shadow:var(--shadow-lg)}
+.header-tool-panel a{display:flex;align-items:center;gap:8px;padding:9px;color:var(--ink);text-decoration:none}.header-tool-panel a:hover{background:var(--brand-soft)}
+.alert-dot{position:absolute;top:7px;right:8px;width:8px;height:8px;border-radius:50%;background:var(--brand-text)}
+.af-admin-daynav .icon-btn{width:46px;height:46px;background:var(--surface-2);border:1px solid var(--line)}.af-admin-daynav svg{width:25px;height:25px}
+.af-admin-daynav .input{width:auto;min-width:0}
+@media(max-width:760px){.header-search.rbtn{padding:0;width:36px;justify-content:center}.header-search span,.topbar .app-brand-text{display:none}.header-tools{gap:2px}.header-tools .rbtn{width:36px;height:36px;min-width:0}.topbar .grow{min-width:0}}

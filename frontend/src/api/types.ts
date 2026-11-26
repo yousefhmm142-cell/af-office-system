@@ -81,3 +81,5 @@ export interface EmployeeFile {
   status_log: Array<{ from: string | null; to: EmployeeStatus; reason: string | null; by: string | null; at: string }>
   can: { edit_personal: boolean; edit_job: boolean; set_status: boolean }
 }
+
+export const salaryLabel = (type: string) => ({ monthly:'الراتب الشهري',weekly:'أجر الأسبوع',daily:'أجر اليوم',contract:'قيمة المقاولة' }[type] ?? 'الأجر المتفق عليه') + ' (شيكل)'

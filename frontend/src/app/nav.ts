@@ -8,7 +8,6 @@ export function navFor(user: User): NavItem[] {
   const items: NavItem[] = [{ to: '/', label: 'الرئيسية', icon: House }]
   if (user.branch && user.modules?.includes('tasks') && user.field_worker) items.push({ to: '/my-tasks', label: 'مهامي', icon: ListTodo })
   if (user.branch && user.modules?.includes('attendance')) items.push({ to: '/attendance/me', label: 'حضوري', icon: CalendarCheck2 })
-  if (user.branch || ['hr','management'].includes(user.role?.key ?? '')) items.push({ to: '/leaves', label: 'الإجازات والأذونات', icon: CalendarCheck2 })
   items.push({ to: '/messages', label: 'المراسلات', icon: Mail })
   // Personal pay and file only for people who have an employee record.
   if (user.status) items.push({ to: '/my-pay', label: 'رواتبي', icon: Wallet }, { to: '/me', label: 'ملفي', icon: IdCard })

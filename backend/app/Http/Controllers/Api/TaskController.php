@@ -34,17 +34,20 @@ class TaskController extends Controller
     {
         $actor = $request->user();
         $data = $request->validate([
+            'all_branches' => ['sometimes', 'boolean'],
             'branch_id' => ['nullable', 'integer'],
             'day' => ['nullable', 'date_format:Y-m-d'],
             'search' => ['nullable', 'string', 'max:80'],
         ]);
-        $branchId = $this->branchFor($actor, $data['branch_id'] ?? null, 'tasks.view');
+        $all = $request->boolean('all_branches');
+        abort_if($all && Access::scope($actor, 'tasks.view') !== 'all', 403);
+        $branchId = $all ? null : $this->branchFor($actor, $data['branch_id'] ?? null, 'tasks.view');
         $tz = config('app.business_timezone');
         $day = CarbonImmutable::parse($data['day'] ?? CarbonImmutable::now($tz)->toDateString(), $tz);
         [$from, $to] = [$day->startOfDay()->utc(), $day->endOfDay()->utc()];
         $search = trim($data['search'] ?? '');
 
-        $q = Task::where('branch_id', $branchId)->with('assignees:id,name', 'type:id,name', 'zone:id,name');
+        $q = Task::query()->when($all, fn ($q) => $q->whereIn('branch_id', Branch::select('id')), fn ($q) => $q->where('branch_id', $branchId))->with('assignees:id,name', 'type:id,name', 'zone:id,name');
         if ($search !== '') {
             $q->where(fn ($w) => $w->where('number', ltrim($search, '#'))->orWhere('subscriber_name', 'like', "%{$search}%")
                 ->orWhere('subscriber_phone', 'like', "%{$search}%")->orWhere('details', 'like', "%{$search}%")
@@ -65,7 +68,7 @@ class TaskController extends Controller
             'branch_id' => $branchId,
             'day' => $day->toDateString(),
             'tasks' => $q->get()->map(fn ($t) => $this->present($t)),
-            'can_manage' => Access::allowsBranch($actor, 'tasks.manage', $branchId),
+            'can_manage' => ! $all && Access::allowsBranch($actor, 'tasks.manage', $branchId),
         ]);
     }
 

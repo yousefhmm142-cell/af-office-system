@@ -1,3 +1,4 @@
+import { salaryLabel } from '../api/types'
 import { ChoiceField } from '../ui/ChoiceField'
 import { KeyRound, Lock, Pencil, Plus, Search, Trash2, UserPlus } from 'lucide-react'
 import { useMemo, useState, type FormEvent } from 'react'
@@ -141,7 +142,7 @@ function UserDialog({ user, roles, branches, onClose, onSaved }: { user: User | 
   const assignable = roles.filter((r) => r.assignable || r.id === user?.role?.id)
   const [form, setForm] = useState({
     name: user?.name ?? '',
-    department_id: '', salary_type: '', work_schedule_id: '',
+    department_id: '', salary_type: '', salary_amount: '', work_schedule_id: '',
     username: user?.username ?? '',
     password: user ? '' : tempPassword(),
     role_id: String(user?.role?.id ?? assignable.find((r) => r.key === 'employee')?.id ?? ''),
@@ -162,7 +163,7 @@ function UserDialog({ user, roles, branches, onClose, onSaved }: { user: User | 
     e?.preventDefault()
     setBusy(true); setFields({}); setError(null)
     const body: Record<string, unknown> = { name: form.name, username: form.username, role_id: Number(form.role_id), branch_id: form.branch_id ? Number(form.branch_id) : null }
-    if (hiring) Object.assign(body, { department_id: form.department_id, salary_type: form.salary_type, work_schedule_id: form.work_schedule_id || null })
+    if (hiring) Object.assign(body, { department_id: form.department_id, salary_type: form.salary_type, salary_amount: form.salary_amount || null, work_schedule_id: form.work_schedule_id || null })
     try {
       if (user) {
         await api(`/users/${user.id}`, { method: 'PATCH', body })
@@ -236,6 +237,7 @@ function UserDialog({ user, roles, branches, onClose, onSaved }: { user: User | 
             <option value="">اختر القسم</option>{!departments.loading && departments.data?.departments.filter(d => d.is_active).map(d => <option key={d.id} value={d.id}>{d.name}</option>)}</ChoiceField>}</Field>
           <Field label="نوع الراتب" error={fields.salary_type}>{id => <ChoiceField id={id} className="input select" value={form.salary_type} onChange={e => set('salary_type', e.target.value)}>
             <option value="">اختر نوع الراتب</option>{SALARY_TYPES.map(([key, name]) => <option key={key} value={key}>{name}</option>)}</ChoiceField>}</Field>
+          <Field label={salaryLabel(form.salary_type)} error={fields.salary_amount} hint="تسجّل شؤون الموظفين المبلغ المتفق عليه. يلزم تحديده قبل تجهيز أول دفعة.">{id => <input className="input" id={id} type="number" min="0" step="0.01" value={form.salary_amount} onChange={e=>set('salary_amount',e.target.value)} />}</Field>
           <Field label="الدوام الأساسي" error={fields.work_schedule_id}>{id => <ChoiceField id={id} className="input select" value={form.work_schedule_id} onChange={e => set('work_schedule_id', e.target.value)}>
             <option value="">الأساسي للفرع</option>{!schedules.loading && schedules.data?.schedules.map(s => <option key={s.id} value={s.id}>{s.name}</option>)}</ChoiceField>}</Field>
           <ErrorBanner text={departments.error || schedules.error} />

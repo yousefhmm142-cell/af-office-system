@@ -17,3 +17,6 @@
 .af-mail-workspace .af-conv-head {background:var(--surface-2);border-radius:18px 18px 0 0}
 .af-mail-workspace .af-mail-item {padding:14px 10px;min-height:76px;border-bottom:1px solid var(--line-2)}
 .af-mail-workspace .af-inline-reply {margin:12px;border:1px solid var(--line);border-radius:14px;background:var(--surface-2)}
+
+@media(min-width:901px){.af-mail-workspace .af-mail-body{min-height:max(720px,calc(100vh - 170px))}.af-mail-workspace .af-mail-items{max-height:80vh}}
+.af-mail-workspace .af-inline-reply{margin-block-start:auto}.af-mail-workspace .af-inline-reply textarea{min-height:125px;resize:vertical}.af-compose .af-body{min-height:190px;resize:vertical}

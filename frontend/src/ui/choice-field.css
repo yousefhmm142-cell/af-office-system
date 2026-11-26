@@ -18,3 +18,6 @@
 .af-choice-option {min-height:46px;border-color:transparent;background:var(--surface)}
 .af-choice-option[aria-pressed=true] {border-color:color-mix(in srgb,var(--brand) 30%,var(--line))}
 .dialog .form-grid {gap:16px}.dialog .form-grid label {line-height:1.6}
+
+.af-anchored-options {position:fixed;z-index:9999;box-sizing:border-box;margin:0;padding:8px;border:1px solid var(--line);border-radius:14px;background:var(--surface);color:var(--ink);box-shadow:0 8px 28px #0003;overflow:auto;min-width:0}
+.af-anchored-options .af-choice-options {max-height:min(280px,42vh)}
