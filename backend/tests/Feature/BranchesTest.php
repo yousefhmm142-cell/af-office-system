@@ -40,7 +40,7 @@ class BranchesTest extends TestCase
         $this->putJson("/api/branches/{$id}/modules", ['modules' => ['seals' => false]])->assertOk();
         $modules = collect($this->getJson("/api/branches/{$id}")->json('branch.modules'))->pluck('enabled', 'key');
         $this->assertFalse($modules['seals']);
-        $this->assertTrue($modules['readings']);
+        $this->assertTrue($modules['tasks']);
         $this->assertDatabaseHas('audit_logs', ['action' => 'branch.modules']);
     }
 

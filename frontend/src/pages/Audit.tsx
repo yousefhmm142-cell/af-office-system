@@ -1,4 +1,4 @@
-import { Building2, CalendarCheck, ClipboardList, History, KeyRound, UserRound, Wallet } from 'lucide-react'
+import { Building2, CalendarCheck, ClipboardList, History, KeyRound, LayoutGrid, Stamp, UserRound, Wallet, Zap } from 'lucide-react'
 import { useEffect, useState } from 'react'
 import { formatLongDate, formatTime } from '../lib/format'
 import { useLoad } from '../lib/useLoad'
@@ -13,6 +13,17 @@ interface Entry {
 interface Page { data: Entry[]; current_page: number; last_page: number; total: number }
 
 const ACTIONS: Record<string, string> = {
+  'branch.backup': 'تنزيل نسخة احتياطية للفرع', 'branch.department_assigned': 'إضافة قسم للفرع', 'branch.maintenance_plan': 'تعديل جدول صيانة المولدات',
+  'generation.submit': 'إرسال تقرير التوليد', 'generation.approve': 'اعتماد تقرير التوليد', 'generation.return': 'إعادة فتح تقرير التوليد',
+  'generation.edit_closed': 'تعديل تقرير توليد مرسل', 'generation.equipment': 'إضافة أو تعديل مولد أو نوع وقود',
+  'distribution.submit': 'إرسال كشف التوزيع', 'distribution.approve': 'اعتماد كشف التوزيع', 'distribution.return': 'إعادة فتح كشف التوزيع',
+  'distribution.edit_closed': 'تعديل كشف توزيع مرسل', 'distribution.zone': 'إضافة أو تعديل منطقة توزيع',
+  'seals.add-roll': 'تسجيل رول أختام', 'seals.update-roll': 'تعديل رول أختام', 'seals.delete-roll': 'حذف رول أختام', 'seals.issue': 'صرف دفعة أختام',
+  'seals.assign-batch': 'تسمية دفعة أختام', 'seals.update-batch': 'تعديل دفعة أختام', 'seals.add-to-batch': 'إضافة أختام لدفعة', 'seals.delete-batch': 'حذف دفعة أختام',
+  'seals.record': 'تسجيل استخدام ختم', 'seals.return-to-stock': 'إرجاع أختام إلى المخزن', 'seals.import': 'استيراد ملفات الأختام',
+  'employee.field_report': 'تقرير أداء ميداني', 'employee.roster': 'تعديل الجدول الأسبوعي',
+  'leave.allowance': 'تحديد رصيد إجازة', 'leave.decision': 'قرار في طلب إجازة', 'leave.requested': 'طلب إجازة أو إذن',
+  'messages.sms_sent': 'إرسال رسالة SMS', 'tasks.subscribers.import': 'استيراد قائمة المشتركين',
   'user.created': 'إضافة حساب', 'user.updated': 'تعديل حساب', 'user.deleted': 'حذف حساب', 'user.password_reset': 'إصدار رمز مؤقت',
   'user.password_changed': 'تغيير كلمة المرور', 'branch.created': 'إضافة فرع', 'branch.updated': 'تعديل فرع', 'branch.modules': 'تعديل أقسام فرع',
   'branch.deleted': 'حذف فرع', 'schedule.created': 'إضافة دوام', 'schedule.updated': 'تعديل دوام', 'schedule.deleted': 'حذف دوام',
@@ -39,6 +50,10 @@ const SECTIONS = [
   { key: 'branch', label: 'الفروع', icon: Building2 },
   { key: 'permissions', label: 'الصلاحيات', icon: KeyRound },
   { key: 'schedule', label: 'الدوام', icon: ClipboardList },
+  { key: 'leave', label: 'الإجازات', icon: CalendarCheck },
+  { key: 'generation', label: 'التوليد', icon: Zap },
+  { key: 'distribution', label: 'التوزيع', icon: LayoutGrid },
+  { key: 'seals', label: 'الأختام', icon: Stamp },
 ]
 
 /** Every sensitive change, newest first, with who did it, where, and on what. */

@@ -638,3 +638,7 @@ dialog.handoff-dialog{max-width:min(940px,96vw)}.handoff-sheet{min-width:560px;p
   .af-week-actions > .segmented { flex: 1 1 100%; }
   .af-week-actions > .af-report-downloads { flex: 1 1 100%; margin: 0; }
 }
+/* In the employees list, «فعّال» is good news: green, not the brand red that reads like a warning. */
+.af-directory .perm-switch[data-on] { border-color: color-mix(in srgb, var(--ok) 45%, var(--line)); color: var(--ok); }
+.af-directory .perm-switch[data-on] i { background: var(--ok); }
+.af-directory .perm-switch:not([data-on]) { color: var(--muted); }
