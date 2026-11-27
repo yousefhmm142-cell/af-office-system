@@ -135,6 +135,9 @@ Route::middleware(['auth:sanctum', 'active'])->group(function () {
         Route::get('attendance/days/{day}/history', [AttendanceController::class, 'history']);
         Route::get('command/attendance', [AttendanceController::class, 'command'])->middleware('perm:attendance.view');
         Route::get('command/center', [\App\Http\Controllers\Api\CommandController::class, 'center'])->middleware('perm:attendance.view');
+        Route::get('employees/{user}/notes', [\App\Http\Controllers\Api\CommandController::class, 'notes']);
+        Route::post('employees/{user}/notes', [\App\Http\Controllers\Api\CommandController::class, 'addNote'])->middleware('throttle:30,1');
+        Route::delete('employees/{user}/notes/{note}', [\App\Http\Controllers\Api\CommandController::class, 'deleteNote'])->whereNumber('note');
         Route::get('command/people/{user}', [\App\Http\Controllers\Api\CommandController::class, 'person'])->middleware('perm:users.view');
         Route::get('attendance/overview', [AttendanceController::class, 'overview'])->middleware('perm:attendance.view');
         Route::get('attendance/board', [AttendanceController::class, 'board'])->middleware('perm:attendance.view');

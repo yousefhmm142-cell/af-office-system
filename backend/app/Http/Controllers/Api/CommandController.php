@@ -175,7 +175,35 @@ class CommandController extends Controller
         $free = $board->flatten(1)->filter(fn ($r) => in_array($r['state'], ['present', 'late']) && $technicians->contains($r['user']['id']) && ! $busyIds->contains($r['user']['id']))
             ->map(fn ($r) => ['id' => $r['user']['id'], 'name' => $r['user']['name'], 'branch' => $r['user']['branch_id']])->values();
 
+        // ——— the next two weeks ———
+        $until = $now->addDays(13)->toDateString();
+        $away = DB::table('leave_days as d')->join('leave_requests as l', 'l.id', '=', 'd.request_id')->join('users as u', 'u.id', '=', 'l.user_id')
+            ->whereIn('l.branch_id', $ids)->where('l.status', 'approved')->whereBetween('d.date', [$today, $until])
+            ->orderBy('d.date')->get(['d.date', 'l.kind', 'u.id as user_id', 'u.name', 'l.branch_id'])->groupBy('date')
+            ->map(fn ($g) => $g->map(fn ($r) => ['user_id' => $r->user_id, 'name' => $r->name, 'kind' => $r->kind, 'branch' => $names[$r->branch_id] ?? ''])->values());
+        $holidays = DB::table('holidays')->whereBetween('date', [$today, $until])->where(fn ($q) => $q->whereNull('branch_id')->orWhereIn('branch_id', $ids))->get(['date', 'name', 'branch_id'])
+            ->groupBy('date')->map(fn ($g) => $g->map(fn ($h) => ['name' => $h->name, 'branch' => $h->branch_id ? ($names[$h->branch_id] ?? '') : null])->values());
+
+        // ——— HR follow-up ———
+        $hr = null;
+        if (Access::scope($actor, 'employees.manage') || Access::scope($actor, 'users.manage')) {
+            $staff = User::whereIn('branch_id', $ids)->where('is_active', true)->with('employee:id,user_id,status,tracks_attendance,hire_date')->get(['id', 'name', 'branch_id', 'needs_profile_completion']);
+            $seen = AttendanceDay::whereIn('user_id', $staff->modelKeys())->where('date', '>=', $now->subDays(7)->toDateString())->whereNotNull('check_in')->distinct()->pluck('user_id');
+            $pick = fn ($list) => $list->take(8)->map(fn ($u) => ['user_id' => $u->id, 'name' => $u->name, 'branch' => $names[$u->branch_id] ?? ''])->values();
+            $incomplete = $staff->where('needs_profile_completion', true);
+            $trainees = $staff->filter(fn ($u) => $u->employee?->status === 'trainee');
+            $silent = $staff->filter(fn ($u) => $u->employee?->tracks_attendance && $u->employee->status !== 'suspended' && ! $seen->contains($u->id)
+                && (! $u->employee->hire_date || $u->employee->hire_date < $now->subDays(7)->toDateString()));
+            $hr = [
+                'incomplete' => ['count' => $incomplete->count(), 'people' => $pick($incomplete)],
+                'trainees' => ['count' => $trainees->count(), 'people' => $pick($trainees)],
+                'silent' => ['count' => $silent->count(), 'people' => $pick($silent)],
+            ];
+        }
+
         return response()->json([
+            'calendar' => ['away' => $away, 'holidays' => $holidays],
+            'hr' => $hr,
             'now' => $now->toIso8601String(),
             'decisions' => ['leaves' => $leaves->values(), 'batches' => $batches, 'attendance' => $pendingDays],
             'alerts' => ['late_repeat' => $lateRepeat, 'absent_streak' => $absent, 'overdue_tasks' => $overdue->take(8), 'overdue_count' => $overdue->count()],
@@ -184,5 +212,37 @@ class CommandController extends Controller
             'field' => ['busy' => $busy, 'free' => $free],
             'branch_names' => $names,
         ]);
+    }
+
+    /** HR's notes on a person: plain notes, praise and formal warnings. Seen by whoever may see the file. */
+    public function notes(Request $request, User $user): JsonResponse
+    {
+        abort_unless(Access::allowsBranch($request->user(), 'employees.view', $user->branch_id), 403, 'ليست لديك صلاحية على هذا الموظف.');
+
+        return response()->json(['notes' => DB::table('employee_notes as n')->leftJoin('users as u', 'u.id', '=', 'n.created_by')
+            ->where('n.user_id', $user->id)->orderByDesc('n.id')->limit(50)
+            ->get(['n.id', 'n.kind', 'n.body', 'n.created_at', 'u.name as by', 'n.created_by'])]);
+    }
+
+    public function addNote(Request $request, User $user): JsonResponse
+    {
+        $actor = $request->user();
+        abort_unless(Access::allowsBranch($actor, 'employees.manage', $user->branch_id) || Access::scope($actor, 'leaves.final'), 403, 'ليست لديك صلاحية تسجيل ملاحظات على هذا الموظف.');
+        abort_if($actor->id === $user->id, 403, 'لا يمكنك تسجيل ملاحظة على نفسك.');
+        $data = $request->validate(['kind' => ['required', 'in:note,praise,warning'], 'body' => ['required', 'string', 'min:3', 'max:1000']]);
+        $id = DB::table('employee_notes')->insertGetId(['user_id' => $user->id, 'kind' => $data['kind'], 'body' => trim($data['body']), 'created_by' => $actor->id, 'created_at' => now(), 'updated_at' => now()]);
+        \App\Support\Audit::log('employee.note', $user, null, ['kind' => $data['kind']], null, $user->branch_id);
+
+        return response()->json(['id' => $id], 201);
+    }
+
+    public function deleteNote(Request $request, User $user, int $note): JsonResponse
+    {
+        $row = DB::table('employee_notes')->where('id', $note)->where('user_id', $user->id)->first();
+        abort_unless($row, 404);
+        abort_unless($row->created_by === $request->user()->id || $request->user()->isSuperAdmin(), 403, 'يحذف الملاحظة من كتبها فقط.');
+        DB::table('employee_notes')->where('id', $note)->delete();
+
+        return response()->json(['ok' => true]);
     }
 }

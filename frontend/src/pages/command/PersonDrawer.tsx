@@ -1,5 +1,6 @@
 import { BadgeCheck, Briefcase, Building2, CalendarDays, Check, Clock3, ExternalLink, HandCoins, Mail, MapPin, Minus, Palmtree, Pencil, Phone, Plus, Send, Wrench, X } from 'lucide-react'
 import { useEffect, useState, type ReactNode } from 'react'
+import { clock12 } from '../../lib/format'
 import { createPortal } from 'react-dom'
 import { Link } from 'react-router'
 import { api, ApiError } from '../../api/client'
@@ -11,6 +12,7 @@ import { NxAvatar, NxTabs, type Hue } from '../../ui/nx'
 import { Button } from '../../ui/primitives'
 import { useToast } from '../../ui/Toast'
 import { hm, STATE, type Row } from './CommandCenter'
+import { NotesTab } from './Extras'
 
 type CalDay = { date: string; state: 'present' | 'late' | 'absent' | 'leave' | 'off' | 'scheduled'; in: string | null; out: string | null; minutes: number; permission: boolean }
 type Task = { id: number; number: number; type: string | null; status: string; subscriber: string | null; expected_minutes: number | null; minutes: number | null; late: boolean; sent_at: string | null; completed_at: string | null }
@@ -24,7 +26,7 @@ const STATUS_HUE: Record<string, Hue> = { active: 'mint', trainee: 'sky', suspen
 const liveMinutes = (from: string) => { const [h, m] = from.split(':').map(Number); const now = new Date().toLocaleTimeString('en-GB', { timeZone: 'Asia/Gaza', hour: '2-digit', minute: '2-digit' }).split(':').map(Number); return Math.max(0, ((now[0] ?? 0) * 60 + (now[1] ?? 0)) - ((h ?? 0) * 60 + (m ?? 0))) }
 const dm = (iso: string) => new Intl.DateTimeFormat('ar-EG-u-nu-latn-ca-gregory', { day: 'numeric', month: 'short', timeZone: 'UTC' }).format(new Date(`${iso.slice(0, 10)}T12:00:00Z`))
 const wd = (iso: string) => new Intl.DateTimeFormat('ar-EG', { weekday: 'short', timeZone: 'UTC' }).format(new Date(`${iso}T12:00:00Z`))
-type Tab = 'over' | 'att' | 'tasks' | 'leaves' | 'info'
+type Tab = 'over' | 'att' | 'tasks' | 'leaves' | 'notes' | 'info'
 
 /** The quick file: slides in over the board with everything about one person and the few things you would do next. */
 export function PersonDrawer({ id, today, canEditDay, onEditDay, onClose }: { id: number; today: Row | null; canEditDay(r: Row): boolean; onEditDay(r: Row): void; onClose(): void }) {
@@ -57,6 +59,7 @@ export function PersonDrawer({ id, today, canEditDay, onEditDay, onClose }: { id
     { key: 'over', label: 'نظرة' }, { key: 'att', label: 'الحضور' },
     ...(tasks ? [{ key: 'tasks' as const, label: 'المهام', count: openTasks }] : []),
     ...(leaves ? [{ key: 'leaves' as const, label: 'الإجازات', count: pendingLeaves }] : []),
+    { key: 'notes', label: 'ملاحظات' },
     { key: 'info', label: 'البيانات' },
   ]
 
@@ -102,12 +105,12 @@ export function PersonDrawer({ id, today, canEditDay, onEditDay, onClose }: { id
             </div>
             <section className="pd-card">
               <h3>هذا الشهر يوماً بيوم</h3>
-              <div className="pd-strip">{days.map((d) => <i key={d.date} data-hue={CAL[d.state].hue} data-state={d.state} title={`${dm(d.date)} · ${CAL[d.state].label}${d.in ? ` · ${d.in}–${d.out ?? '…'}` : ''}`} />)}</div>
+              <div className="pd-strip">{days.map((d) => <i key={d.date} data-hue={CAL[d.state].hue} data-state={d.state} title={`${dm(d.date)} · ${CAL[d.state].label}${d.in ? ` · ${clock12(d.in)} – ${clock12(d.out) || '…'}` : ''}`} />)}</div>
               <div className="pd-legend">{(['present', 'late', 'absent', 'leave'] as const).map((s) => <span key={s} data-hue={CAL[s].hue}><i />{CAL[s].label} <b className="num">{days.filter((d) => d.state === s).length}</b></span>)}</div>
             </section>
             {today?.day && <section className="pd-card pd-today">
               <h3>اليوم</h3>
-              <div className="pd-today-row num" dir="ltr"><span>{today.day.check_in ?? '--:--'}</span><i /><span>{today.day.check_out ?? '--:--'}</span></div>
+              <div className="pd-today-row num"><span>{clock12(today.day.check_in) || '—'}</span><i /><span>{clock12(today.day.check_out) || '—'}</span></div>
               <p>{hm(today.day.check_out || !today.day.check_in ? today.day.worked_minutes : liveMinutes(today.day.check_in))} عمل{!today.day.check_out && today.day.check_in ? ' حتى الآن' : ''}{today.day.late_minutes ? ` · ${hm(today.day.late_minutes)} تأخير` : ''}{today.day.overtime_minutes ? ` · ${hm(today.day.overtime_minutes)} إضافي` : ''}</p>
             </section>}
             {pendingLeaves > 0 && <button type="button" className="pd-alert" onClick={() => setTab('leaves')}><Palmtree size={17} /> لديه {pendingLeaves} {pendingLeaves === 1 ? 'طلب' : 'طلبات'} بانتظار القرار</button>}
@@ -118,7 +121,7 @@ export function PersonDrawer({ id, today, canEditDay, onEditDay, onClose }: { id
               <div key={d.date} className="pd-li">
                 <span className="pd-li-d"><b className="num">{Number(d.date.slice(-2))}</b><small>{wd(d.date)}</small></span>
                 <span className="nx-chip" data-hue={CAL[d.state].hue}>{CAL[d.state].label}{d.permission ? ' · بإذن' : ''}</span>
-                <span className="pd-li-t num" dir="ltr">{d.in ?? '—'} – {d.out ?? '—'}</span>
+                <span className="pd-li-t num">{clock12(d.in) || '—'} – {clock12(d.out) || '—'}</span>
                 <b className="num">{d.minutes ? hm(d.minutes) : '—'}</b>
               </div>
             ))}
@@ -139,6 +142,7 @@ export function PersonDrawer({ id, today, canEditDay, onEditDay, onClose }: { id
 
           {tab === 'leaves' && <LeavesTab leaves={leaves ?? []} canDecide={can(me, 'leaves.decide')} canFinal={can(me, 'leaves.final')} reload={() => void extra.reload()} />}
 
+          {tab === 'notes' && <NotesTab userId={id} canWrite={(can(me, 'employees.manage') || can(me, 'leaves.final')) && id !== me.id} />}
           {tab === 'info' && f && <dl className="pd-info">
             <Info icon={<Phone size={15} />} k="الجوال" v={f.personal.phone} num />
             <Info icon={<MapPin size={15} />} k="السكن" v={f.personal.address} />
@@ -177,7 +181,7 @@ function LeavesTab({ leaves, canDecide, canFinal, reload }: { leaves: Leave[]; c
       return (
         <div key={l.id} className="pd-leave" data-pending={decidable || undefined}>
           <div className="pd-leave-top"><b>{LEAVE_KIND[l.kind] ?? l.kind}</b><span className="nx-chip nx-chip-dot" data-hue={LEAVE_ST[l.status]?.hue ?? 'slate'}>{LEAVE_ST[l.status]?.label ?? l.status}</span></div>
-          <small className="num">{l.kind === 'permission' ? `${dm(l.starts)} · ${l.from_time?.slice(0, 5)}–${l.to_time?.slice(0, 5)}` : `${dm(l.starts)} – ${dm(l.ends)} · ${l.days} ${l.days === 1 ? 'يوم' : 'أيام'}`}</small>
+          <small className="num">{l.kind === 'permission' ? `${dm(l.starts)} · ${clock12(l.from_time?.slice(0, 5))} – ${clock12(l.to_time?.slice(0, 5))}` : `${dm(l.starts)} – ${dm(l.ends)} · ${l.days} ${l.days === 1 ? 'يوم' : 'أيام'}`}</small>
           <p>{l.reason}</p>
           {decidable && <div className="pd-leave-act">
             <Button variant="primary" className="sm" icon={<Check size={15} />} busy={busy === l.id} onClick={() => void decide(l, 'approved')}>موافقة</Button>

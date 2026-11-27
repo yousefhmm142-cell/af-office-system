@@ -1,3 +1,4 @@
+import { clock12 } from '../lib/format'
 import { salaryLabel } from '../api/types'
 import { ChoiceField } from '../ui/ChoiceField'
 import { EmployeeBody, type EmpTab } from './EmployeeOverview'
@@ -354,7 +355,7 @@ function JobDialog({ file, onClose, onSaved }: { file: File_; onClose(): void; o
           <Field label="تاريخ التوظيف" error={fields.hire_date}>{(id) => <input id={id} className="input num" type="date" value={form.hire_date} onChange={(e) => set('hire_date', e.target.value)} />}</Field>
           <Field label="الدوام" error={fields.work_schedule_id}>{(id) => (
             <ChoiceField id={id} className="input select" value={form.work_schedule_id} onChange={(e) => set('work_schedule_id', e.target.value)} disabled={!file.user.branch}>
-              <option value="">الأساسي للفرع</option>{schedules.data?.schedules.map((s) => <option key={s.id} value={s.id}>{s.name} ({s.start_time}–{s.end_time})</option>)}
+              <option value="">الأساسي للفرع</option>{schedules.data?.schedules.map((s) => <option key={s.id} value={s.id}>{s.name} ({clock12(s.start_time)} – {clock12(s.end_time)})</option>)}
             </ChoiceField>)}</Field>
         </div>
         <div className="af-switches">

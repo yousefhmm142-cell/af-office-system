@@ -1,5 +1,6 @@
 import { ChoiceField } from '../../ui/ChoiceField'
 import { CheckCheck, Clock3, History, Pencil, QrCode, UserCheck, UserX, Users, WifiOff } from 'lucide-react'
+import { clock12, span12 } from '../../lib/format'
 import { useState, type FormEvent } from 'react'
 import { Link, useSearchParams } from 'react-router'
 import { api, ApiError } from '../../api/client'
@@ -137,8 +138,8 @@ export function Board() {
               <tbody>
             {data.rows.map((r) => (
               <tr key={r.user.id}>
-                <th scope="row"><span className="af-att-person"><Avatar name={r.user.name} size={32} /><span>{r.user.name}<small className="af-sub">{r.user.job_title ?? ''}{r.schedule ? ` · ${r.schedule}` : ''}</small></span></span></th>
-                <td><span className="af-att-time num" dir="ltr"><b className="af-time-in">{r.day?.check_in ?? '—'}</b> · <b className="af-time-out">{r.day?.check_out ?? '—'}</b></span></td>
+                <th scope="row"><span className="af-att-person"><Avatar name={r.user.name} size={32} /><span>{r.user.name}<small className="af-sub">{r.user.job_title ?? ''}{r.schedule ? ` · ${span12(r.schedule)}` : ''}</small></span></span></th>
+                <td><span className="af-att-time num"><b className="af-time-in">{clock12(r.day?.check_in) || '—'}</b> · <b className="af-time-out">{clock12(r.day?.check_out) || '—'}</b></span></td>
                 <td><span className="af-badges">
                   <Pill tone={STATE[r.state].tone}>{STATE[r.state].label}</Pill>
                   {r.day && r.day.late_minutes > 0 && <Pill tone="warn" dot={false}>{r.day.late_minutes} دقيقة</Pill>}
@@ -324,7 +325,7 @@ function DayHistory({ row, onClose, onEdit }: { row: BoardRow; onClose(): void; 
           {data.edits.map((e, i) => (
             <div key={`e${i}`} className="row">
               <span className="row-label">تعديل<small className="af-sub">{e.by ?? '—'}{e.reason ? ` · ${e.reason}` : ''}</small></span>
-              <span className="row-value num" dir="ltr">{e.old ? `${e.old.check_in ?? '—'}→${e.old.check_out ?? '—'}` : 'جديد'} ⇒ {e.new.check_in ?? '—'}→{e.new.check_out ?? '—'}</span>
+              <span className="row-value num" dir="ltr">{e.old ? `${clock12(e.old.check_in) || '—'} – ${clock12(e.old.check_out) || '—'}` : 'جديد'} ⇐ {clock12(e.new.check_in) || '—'} – {clock12(e.new.check_out) || '—'}</span>
             </div>
           ))}
         </div>

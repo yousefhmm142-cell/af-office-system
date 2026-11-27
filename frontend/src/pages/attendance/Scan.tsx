@@ -1,5 +1,6 @@
 import { CheckCircle2, CircleAlert, Clock3, LogIn, LogOut, MapPin } from 'lucide-react'
 import { useEffect, useRef, useState } from 'react'
+import { clock12 } from '../../lib/format'
 import { Link, useParams } from 'react-router'
 import { ApiError } from '../../api/client'
 import { useUser } from '../../app/auth'
@@ -58,7 +59,7 @@ export function Scan() {
             <span className="scan-ico">{kindOut ? <LogOut size={34} /> : <LogIn size={34} />}</span>
             <p className="scan-hello">أهلاً {firstName(user.name)}</p>
             <h1>{res.status === 'duplicate' ? (kindOut ? 'انصرافك مسجّل' : 'حضورك مسجّل') : res.message}</h1>
-            <p className="scan-time num">{kindOut ? res.day?.check_out : res.day?.check_in}</p>
+            <p className="scan-time num">{clock12(kindOut ? res.day?.check_out : res.day?.check_in)}</p>
             {res.day && res.day.late_minutes > 0 && !kindOut && <p className="af-late">تأخير {res.day.late_minutes} دقيقة</p>}
           </div>
         ) : res && peeked ? (

@@ -1,5 +1,6 @@
 import { AlarmClock, ArrowDown, ArrowUp, BadgeCheck, CalendarCheck, Check, ChevronLeft, CircleDollarSign, Fuel, Gauge, LayoutGrid, Palmtree, Sparkles, TrendingUp, UserX, Wrench, X, Zap } from 'lucide-react'
 import { useState, type ReactNode } from 'react'
+import { clock12 } from '../../lib/format'
 import { Link } from 'react-router'
 import { api, ApiError } from '../../api/client'
 import { useConfirm } from '../../ui/Confirm'
@@ -25,6 +26,8 @@ export type CenterData = {
   branches: BranchCard[]
   field: { busy: Array<{ task: number; type: string | null; branch: number; since: string | null; expected: number | null; people: Array<{ id: number; name: string }> }>; free: Array<{ id: number; name: string; branch: number }> }
   branch_names: Record<string, string>
+  calendar: { away: Record<string, Array<{ user_id: number; name: string; kind: string; branch: string }>>; holidays: Record<string, Array<{ name: string; branch: string | null }>> }
+  hr: null | Record<'incomplete' | 'trainees' | 'silent', { count: number; people: Array<{ user_id: number; name: string; branch: string }> }>
 }
 
 const LEAVE_KIND: Record<string, string> = { annual: 'إجازة سنوية', sick: 'إجازة مرضية', other: 'إجازة أخرى', permission: 'إذن بالساعات' }
@@ -60,7 +63,7 @@ export function Decisions({ data, reload }: { data: CenterData; reload(): void }
                 <NxAvatar name={l.name} size={38} />
                 <div className="cx-item-t">
                   <b>{l.name} <span className="cx-tag" data-hue={l.status === 'escalated' ? 'violet' : 'sky'}>{l.status === 'escalated' ? 'محالة إليك' : LEAVE_KIND[l.kind] ?? l.kind}</span></b>
-                  <small className="num">{l.kind === 'permission' ? `${dm(l.starts)} · ${l.from_time?.slice(0, 5)}–${l.to_time?.slice(0, 5)}` : `${dm(l.starts)} – ${dm(l.ends)} · ${l.days} ${l.days === 1 ? 'يوم' : 'أيام'}`}{l.branch ? ` · ${l.branch}` : ''}</small>
+                  <small className="num">{l.kind === 'permission' ? `${dm(l.starts)} · ${clock12(l.from_time?.slice(0, 5))} – ${clock12(l.to_time?.slice(0, 5))}` : `${dm(l.starts)} – ${dm(l.ends)} · ${l.days} ${l.days === 1 ? 'يوم' : 'أيام'}`}{l.branch ? ` · ${l.branch}` : ''}</small>
                   <p>{l.reason}</p>
                 </div>
                 <div className="cx-btns">

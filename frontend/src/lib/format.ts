@@ -21,6 +21,7 @@ export function clock12(hhmm: string | null | undefined): string {
   if (h === undefined || m === undefined || Number.isNaN(h) || Number.isNaN(m)) return hhmm
   return `${((h + 11) % 12) + 1}:${String(m).padStart(2, '0')} ${h < 12 ? 'ص' : 'م'}`
 }
+export const span12 = (r: string | null | undefined) => (r ? r.split('–').map((t) => clock12(t.trim())).join(' – ') : '')
 export const formatNumber = (n: number) => number.format(n)
 
 export function greeting(d: Date): string {

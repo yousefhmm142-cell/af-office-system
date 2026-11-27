@@ -30,7 +30,7 @@ const ACTIONS: Record<string, string> = {
   'holiday.created': 'إضافة عطلة', 'holiday.deleted': 'حذف عطلة', 'department.created': 'إضافة قسم', 'department.updated': 'تعديل قسم',
   'permissions.branch_page': 'تغيير الصفحات المفتوحة داخل الفرع',
   'department.deleted': 'حذف قسم', 'permissions.role': 'تعديل صلاحيات دور', 'permissions.user': 'تعديل صلاحيات شخص',
-  'employee.profile_completed': 'استكمال الملف الشخصي', 'assistant.asked': 'سؤال للمساعد الذكي',
+  'employee.profile_completed': 'استكمال الملف الشخصي', 'assistant.asked': 'سؤال للمساعد الذكي', 'employee.note': 'ملاحظة أو تنبيه على موظف',
   'employee.personal': 'تعديل البيانات الشخصية', 'employee.job': 'تعديل بيانات العمل', 'employee.status': 'تغيير حالة موظف',
   'employee.attachment_added': 'إضافة مرفق', 'employee.attachment_deleted': 'حذف مرفق',
   'attendance.edited': 'تعديل حضور يدوياً', 'attendance.approved': 'اعتماد أيام حضور', 'attendance.point_created': 'إضافة نقطة حضور',

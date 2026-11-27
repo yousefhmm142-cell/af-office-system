@@ -54,4 +54,17 @@ class CommandTest extends TestCase
         $this->actAs(Role::EMPLOYEE, $a);
         $this->getJson('/api/command/center')->assertForbidden();
     }
+
+    public function test_hr_writes_notes_and_warnings_that_others_cannot(): void
+    {
+        $a = $this->makeBranch('غزة');
+        $worker = $this->makeUser(Role::EMPLOYEE, $a);
+        $hr = $this->actAs(Role::HR);
+        $this->postJson("/api/employees/{$worker->id}/notes", ['kind' => 'warning', 'body' => 'تأخر متكرر هذا الشهر'])->assertCreated();
+        $this->getJson("/api/employees/{$worker->id}/notes")->assertOk()->assertJsonPath('notes.0.kind', 'warning');
+        $this->postJson("/api/employees/{$hr->id}/notes", ['kind' => 'note', 'body' => 'عن نفسي'])->assertForbidden();
+
+        $this->actAs(Role::EMPLOYEE, $a);
+        $this->postJson("/api/employees/{$worker->id}/notes", ['kind' => 'praise', 'body' => 'ممتاز جداً'])->assertForbidden();
+    }
 }

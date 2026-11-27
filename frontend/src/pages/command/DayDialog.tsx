@@ -1,5 +1,6 @@
 import { BadgeCheck, Clock3, LogIn, LogOut } from 'lucide-react'
 import { useState } from 'react'
+import { span12 } from '../../lib/format'
 import { api, ApiError } from '../../api/client'
 import { Dialog } from '../../ui/Dialog'
 import { ErrorBanner } from '../../ui/Field'
@@ -42,7 +43,7 @@ export function DayDialog({ row, date, onClose, onSaved }: { row: Row; date: str
   }
 
   return (
-    <Dialog open onClose={onClose} className="cc-dialog" title="حضور اليوم" subtitle={`${row.user.name} · ${row.schedule ? `الدوام ${row.schedule}` : 'بلا دوام محدد'}`} icon={<Clock3 size={20} />}
+    <Dialog open onClose={onClose} className="cc-dialog" title="حضور اليوم" subtitle={`${row.user.name} · ${row.schedule ? `الدوام ${span12(row.schedule)}` : 'بلا دوام محدد'}`} icon={<Clock3 size={20} />}
       footer={<>
         <Button variant="ghost" onClick={onClose}>إغلاق</Button>
         {pending && !changed && <Button icon={<BadgeCheck size={17} />} busy={busy === 'approve'} onClick={() => void approve()}>اعتماد اليوم</Button>}

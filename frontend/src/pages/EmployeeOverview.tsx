@@ -1,5 +1,6 @@
 import { CalendarDays, CalendarCheck, ChevronLeft, ChevronRight, Clock3, Palmtree, Receipt, Wallet } from 'lucide-react'
 import { MonthField } from '../ui/MonthField'
+import { clock12 } from '../lib/format'
 import { ChoiceField } from '../ui/ChoiceField'
 import { useState, type FormEvent, type ReactNode } from 'react'
 import { api, ApiError } from '../api/client'
@@ -90,7 +91,7 @@ export function EmployeeBody({ file, tab, profile, documents, leave, personal }:
             <button type="button" key={d.date} className="nx-log-row" aria-pressed={d.date === date} onClick={() => setDate(d.date === date ? '' : d.date)}>
               <span className="nx-log-day"><b className="num">{Number(d.date.slice(-2))}</b><small>{weekday(d.date)}</small></span>
               <span className="nx-chip" data-hue={stateHue[d.state]}>{states[d.state]}{d.permission ? ' · بإذن' : ''}</span>
-              <span className="nx-log-times num" dir="ltr">{d.in ?? '—'} – {d.out ?? '—'}</span>
+              <span className="nx-log-times num">{clock12(d.in) || '—'} – {clock12(d.out) || '—'}</span>
               <b className="nx-log-h num" dir="ltr">{hrs(d.minutes)}</b>
             </button>
           ))}
@@ -135,7 +136,7 @@ export function EmployeeBody({ file, tab, profile, documents, leave, personal }:
       {personal}
       <NxCard title="التقويم" icon={<CalendarDays size={17} />}>
         <Calendar month={month} days={days} date={date} onPick={setDate} />
-        {active && <p className="nx-note">{weekday(active.date)} {dayMonth(active.date)} · {states[active.state]}{active.permission ? ' · بإذن معتمد' : ''} · دخول <span className="num">{active.in ?? '—'}</span> · خروج <span className="num">{active.out ?? '—'}</span></p>}
+        {active && <p className="nx-note">{weekday(active.date)} {dayMonth(active.date)} · {states[active.state]}{active.permission ? ' · بإذن معتمد' : ''} · دخول <span className="num">{clock12(active.in) || '—'}</span> · خروج <span className="num">{clock12(active.out) || '—'}</span></p>}
       </NxCard>
       {leave}
     </div>

@@ -28,7 +28,14 @@ function suggestions(u: User): string[] {
 
 export function AssistantButton() {
   const [open, setOpen] = useState(false)
+  const [seed, setSeed] = useState<string | null>(null)
   const [enabled, setEnabled] = useState<boolean | null>(null)
+  // Other pages can open the assistant with a question already asked.
+  useEffect(() => {
+    const onAsk = (e: Event) => { setSeed((e as CustomEvent<string>).detail); setOpen(true) }
+    window.addEventListener('af-ask', onAsk)
+    return () => window.removeEventListener('af-ask', onAsk)
+  }, [])
   useEffect(() => { api<{ enabled: boolean }>('/assistant').then((r) => setEnabled(r.enabled)).catch(() => setEnabled(false)) }, [])
   useEffect(() => {
     const onKey = (e: KeyboardEvent) => { if ((e.ctrlKey || e.metaKey) && e.key.toLowerCase() === 'j') { e.preventDefault(); setOpen((o) => !o) } }
@@ -39,11 +46,11 @@ export function AssistantButton() {
     <button type="button" className="ai-trigger" onClick={() => setOpen(true)} aria-label="المساعد الذكي (Ctrl+J)" title="المساعد الذكي (Ctrl+J)">
       <Sparkles size={18} aria-hidden="true" /><span>المساعد</span>
     </button>
-    {open && createPortal(<AssistantPanel enabled={enabled} onClose={() => setOpen(false)} />, document.body)}
+    {open && createPortal(<AssistantPanel enabled={enabled} seed={seed} onSeeded={() => setSeed(null)} onClose={() => setOpen(false)} />, document.body)}
   </>
 }
 
-function AssistantPanel({ enabled, onClose }: { enabled: boolean | null; onClose(): void }) {
+function AssistantPanel({ enabled, seed, onSeeded, onClose }: { enabled: boolean | null; seed: string | null; onSeeded(): void; onClose(): void }) {
   const me = useUser()
   const [messages, setMessages] = useState<Msg[]>(load)
   const [text, setText] = useState('')
@@ -53,6 +60,7 @@ function AssistantPanel({ enabled, onClose }: { enabled: boolean | null; onClose
 
   useEffect(() => { keep(messages); end.current?.scrollIntoView({ behavior: 'smooth', block: 'end' }) }, [messages, busy])
   useEffect(() => { input.current?.focus() }, [])
+  useEffect(() => { if (seed && enabled) { onSeeded(); void ask(seed) } }, [seed, enabled]) // eslint-disable-line react-hooks/exhaustive-deps
   useEffect(() => {
     const onKey = (e: KeyboardEvent) => { if (e.key === 'Escape') onClose() }
     window.addEventListener('keydown', onKey)
@@ -168,3 +176,6 @@ function Markdown({ text, onNavigate }: { text: string; onNavigate: () => void }
   }
   return <>{blocks}</>
 }
+
+/** Opens the assistant and asks it this question. */
+export const askAssistant = (q: string) => window.dispatchEvent(new CustomEvent('af-ask', { detail: q }))

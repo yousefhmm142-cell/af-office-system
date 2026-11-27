@@ -1,5 +1,6 @@
-import { AlarmClock, Building2, CalendarCheck, CalendarRange, ChevronLeft, Clock3, LayoutList, ListTodo, Palmtree, Pencil, Rows3, Search, Sparkles, UserCheck, UserX, Users, X } from 'lucide-react'
+import { AlarmClock, Building2, FileText, Minimize2, MonitorPlay, CalendarCheck, CalendarRange, ChevronLeft, Clock3, LayoutList, ListTodo, Palmtree, Pencil, Rows3, Search, Sparkles, UserCheck, UserX, Users, X } from 'lucide-react'
 import { useEffect, useMemo, useRef, useState, type CSSProperties, type ReactNode } from 'react'
+import { clock12 } from '../../lib/format'
 import { can, useUser } from '../../app/auth'
 import { firstName, formatLongDate, formatWeekday, greeting } from '../../lib/format'
 import { useLoad } from '../../lib/useLoad'
@@ -8,6 +9,9 @@ import { ErrorBanner } from '../../ui/Field'
 import { NxAvatar, type Hue } from '../../ui/nx'
 import type { Dashboard } from '../Home'
 import { Alerts, BranchMap, Decisions, FieldNow, WeekBrief, type CenterData } from './Center'
+import { HrFollow, TwoWeeks } from './Extras'
+import { ReportDialog } from './ReportDialog'
+import { askAssistant } from '../../app/Assistant'
 import { DayDialog } from './DayDialog'
 import { PersonDrawer } from './PersonDrawer'
 
@@ -40,6 +44,17 @@ export function CommandCenter() {
   const [grouped, setGrouped] = useState(true)
   const [person, setPerson] = useState<number | null>(null)
   const [editing, setEditing] = useState<Row | null>(null)
+  const [tv, setTv] = useState(false)
+  const [report, setReport] = useState(false)
+  const rootRef = useRef<HTMLDivElement>(null)
+  useEffect(() => {
+    const off = () => { if (!document.fullscreenElement) setTv(false) }
+    document.addEventListener('fullscreenchange', off); return () => document.removeEventListener('fullscreenchange', off)
+  }, [])
+  const toggleTv = () => {
+    if (tv) { setTv(false); if (document.fullscreenElement) void document.exitFullscreen().catch(() => undefined); return }
+    setTv(true); void rootRef.current?.requestFullscreen?.().catch(() => undefined)
+  }
   const searchRef = useRef<HTMLInputElement>(null)
 
   const today = iso(new Date())
@@ -112,11 +127,27 @@ export function CommandCenter() {
     { key: 'pending', label: 'بانتظار الاعتماد', value: sumT('pending'), sub: 'أيام سابقة', hue: 'rose', icon: <CalendarRange size={19} /> },
   ]
 
+  function reportLines(): string[] {
+    const c = center.data
+    const out = [`تقرير اليوم · ${formatWeekday(now)} ${formatLongDate(now)}`, '',
+      `الحضور: ${counts.in} من ${expected}${expected ? ` (${Math.round((counts.in / expected) * 100)}%)` : ''}`,
+      `متأخرون: ${counts.late} · لم يحضروا: ${counts.out} · في إجازة: ${counts.leave}`]
+    if (c) {
+      out.push('', 'الفروع:')
+      c.branches.forEach((b) => { if (b.attendance) out.push(`• ${b.name}: ${b.attendance.present}/${b.attendance.expected} حاضر${b.attendance.late ? `، ${b.attendance.late} متأخر` : ''}${b.attendance.absent ? `، ${b.attendance.absent} غائب` : ''}${b.tasks?.overdue ? `، ${b.tasks.overdue} مهمة متأخرة` : ''}`) })
+      const d = c.decisions
+      const waiting = d.leaves.length + d.batches.length
+      if (waiting) out.push('', `ينتظر القرار: ${d.leaves.length} طلب إجازة، ${d.batches.length} دفعة رواتب`)
+      if (c.week.this.on_time != null) out.push(`الالتزام بالموعد هذا الأسبوع: ${c.week.this.on_time}%`)
+    }
+    return out
+  }
+
   const groups = grouped ? [...new Set(sorted.map((r) => r.user.branch_id))].map((id) => ({ id, rows: sorted.filter((r) => r.user.branch_id === id) })) : [{ id: 0, rows: sorted }]
   const canManage = (r: Row) => !!data?.branches.find((b) => b.id === r.user.branch_id)?.can_manage && r.user.id !== me.id
 
   return (
-    <div className="nx cc">
+    <div className="nx cc" ref={rootRef} data-tv={tv || undefined}>
       {/* ——— greeting, live clock, filters ——— */}
       <header className="cc-top">
         <div className="cc-hello">
@@ -125,10 +156,15 @@ export function CommandCenter() {
           <p>{counts.in && period === 'today' ? `حضر ${counts.in} من ${expected} حتى الآن${counts.late ? `، وتأخر ${counts.late}` : ''}.` : 'نظرة واحدة على الشركة كلها.'}</p>
         </div>
         <div className="cc-clock" aria-label="الساعة الآن">
-          <b className="num" dir="ltr">{now.toLocaleTimeString('en-GB', { timeZone: 'Asia/Gaza', hour: '2-digit', minute: '2-digit' })}<small>{now.toLocaleTimeString('en-GB', { timeZone: 'Asia/Gaza', second: '2-digit' }).padStart(2, '0')}</small></b>
+          <b className="num"><span dir="ltr">{clock12(now.toLocaleTimeString('en-GB', { timeZone: 'Asia/Gaza', hour: '2-digit', minute: '2-digit' })).replace(/ (ص|م)$/, '')}<small>:{now.toLocaleTimeString('en-GB', { timeZone: 'Asia/Gaza', second: '2-digit' }).padStart(2, '0')}</small></span><em>{Number(now.toLocaleTimeString('en-GB', { timeZone: 'Asia/Gaza', hour: '2-digit' })) < 12 ? 'صباحاً' : 'مساءً'}</em></b>
           <span>{board.loading && data ? 'جارٍ التحديث…' : `حُدّث قبل ${ago < 60 ? `${ago} ث` : `${Math.round(ago / 60)} د`}`}</span>
         </div>
       </header>
+      <div className="cc-tools">
+        <button type="button" className="cc-tool cc-tool-ai" onClick={() => askAssistant('لخّص لي وضع الشركة اليوم في فقرة قصيرة: الحضور والتأخير والغياب، وما ينتظر قراري، وأي فرع يحتاج انتباهاً، وأهم ما يجب أن أفعله الآن.')}><Sparkles size={17} /> لخّص لي اليوم</button>
+        <button type="button" className="cc-tool" onClick={() => setReport(true)}><FileText size={17} /> تقرير اليوم</button>
+        <button type="button" className="cc-tool" onClick={toggleTv} aria-pressed={tv}>{tv ? <Minimize2 size={17} /> : <MonitorPlay size={17} />} {tv ? 'إنهاء شاشة المكتب' : 'شاشة المكتب'}</button>
+      </div>
 
       <div className="cc-filters">
         <div className="cc-seg" role="radiogroup" aria-label="الفترة">
@@ -205,12 +241,15 @@ export function CommandCenter() {
         {center.data ? <>
           <Decisions data={center.data} reload={() => { void center.reload(); void board.reload() }} />
           <Alerts data={center.data} onPerson={setPerson} />
+          <HrFollow data={center.data} onPerson={setPerson} />
           <WeekBrief data={center.data} />
           <FieldNow data={center.data} onPerson={setPerson} />
+          <TwoWeeks data={center.data} onPerson={setPerson} />
         </> : center.loading ? <div className="cc-skel">{Array.from({ length: 3 }, (_, i) => <i key={i} style={{ height: 160 }} />)}</div> : null}
       </aside>
       </div>
 
+      {report && <ReportDialog onClose={() => setReport(false)} lines={reportLines()} />}
       {editing && <DayDialog row={editing} date={data!.date} onClose={() => setEditing(null)} onSaved={() => { setEditing(null); void board.reload() }} />}
       {person !== null && <PersonDrawer id={person} today={data?.rows.find((r) => r.user.id === person) ?? null} canEditDay={(r) => canManage(r)} onEditDay={(r) => setEditing(r)} onClose={() => setPerson(null)} />}
       {!can(me, 'users.view') && null}
@@ -241,9 +280,9 @@ function TodayRow({ r, branch, now, manage, onOpen, onEdit }: { r: Row; branch: 
       </span>
       <span className="cc-branch">{branch}</span>
       <span className="cc-times num" dir="ltr">
-        <span data-on={!!r.day?.check_in || undefined}>{r.day?.check_in ?? '--:--'}</span>
+        <span data-on={!!r.day?.check_in || undefined}>{clock12(r.day?.check_in) || '—'}</span>
         <i>→</i>
-        <span data-on={!!r.day?.check_out || undefined}>{r.day?.check_out ?? '--:--'}</span>
+        <span data-on={!!r.day?.check_out || undefined}>{clock12(r.day?.check_out) || '—'}</span>
       </span>
       <span className="cc-line" aria-hidden="true">
         {s0 != null && s1 != null && <i className="cc-shift" style={{ insetInlineStart: pos(s0), width: `calc(${pos(s1)} - ${pos(s0)})` } as CSSProperties} />}

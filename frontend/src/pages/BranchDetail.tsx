@@ -1,3 +1,4 @@
+import { clock12 } from '../lib/format'
 import { AccountHandoff } from './AccountHandoff'
 import { ChoiceField } from '../ui/ChoiceField'
 import { BranchDepartments, BranchRoster } from './BranchPlanning'
@@ -135,7 +136,7 @@ export function BranchDetail() {
                     {!sch.is_default && <button type="button" className="nx-icon-btn" aria-label={`حذف ${sch.name}`} onClick={() => void removeSchedule(sch)}><Trash2 size={15} /></button>}
                   </span>}
                 </header>
-                <strong className="num nxbd-hours"><bdi dir="ltr">{sch.start_time} – {sch.end_time}</bdi></strong>
+                <strong className="num nxbd-hours">{clock12(sch.start_time)} – {clock12(sch.end_time)}</strong>
                 <div className="nxbd-days">{DAYS.map(([d, n]) => <span key={d} data-on={sch.work_days.includes(d) || undefined} title={n}>{n.replace(/^ال/, '').slice(0, 2)}</span>)}</div>
                 <small>سماح التأخير <b className="num">{sch.grace_minutes}</b> دقيقة · {dayNames(sch.work_days)}</small>
               </article>

@@ -1,5 +1,6 @@
 import { CheckCircle2, Clock3, CloudOff, LogIn, LogOut } from 'lucide-react'
 import { useEffect, useState, useSyncExternalStore } from 'react'
+import { clock12 } from '../../lib/format'
 import { Link } from 'react-router'
 import { ApiError } from '../../api/client'
 import { formatTime } from '../../lib/format'
@@ -96,12 +97,12 @@ export function PunchCard({ reminder = false, onRecorded }: { reminder?: boolean
   return (
     <section className="card glass af-punch" data-state={next.status}>
       <div className="af-punch-info">
-        <p className="eyebrow">حضور اليوم{data.is_work_day === false ? ' · يوم راحة' : data.schedule ? ` · دوامك ${data.schedule.start_time}–${data.schedule.end_time}` : ''}</p>
+        <p className="eyebrow">حضور اليوم{data.is_work_day === false ? ' · يوم راحة' : data.schedule ? ` · دوامك ${clock12(data.schedule.start_time)} – ${clock12(data.schedule.end_time)}` : ''}</p>
         {reminder && canPress && next.status === 'in' && data.is_work_day && data.schedule && hhmm(new Date()) >= data.schedule.start_time &&
           <p className="banner warn" role="status"><Clock3 size={16} /> حان موعد دوامك. سجّل حضورك.</p>}
         <div className="af-punch-times">
-          <span><LogIn size={16} /> حضور <b className="num">{day?.check_in ?? '—'}</b></span>
-          <span><LogOut size={16} /> انصراف <b className="num">{day?.check_out ?? '—'}</b></span>
+          <span><LogIn size={16} /> حضور <b className="num">{clock12(day?.check_in) || '—'}</b></span>
+          <span><LogOut size={16} /> انصراف <b className="num">{clock12(day?.check_out) || '—'}</b></span>
           {!waiting.length && day && day.late_minutes > 0 && <span className="af-late">تأخير <b className="num">{day.late_minutes}</b> دقيقة</span>}
         </div>
         {pending > 0 && (

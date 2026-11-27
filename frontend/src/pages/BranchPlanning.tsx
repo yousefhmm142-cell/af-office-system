@@ -1,3 +1,4 @@
+import { clock12 } from '../lib/format'
 import { ChoiceField } from '../ui/ChoiceField'
 import { useState } from 'react'
 import { api, ApiError } from '../api/client'
@@ -77,7 +78,7 @@ function RosterWeek({ path, start, schedules }: { path: string; start: string; s
     {data.days.map(d => <label key={d.date}>{describeDay(d.date).weekday} · {d.date}
       <ChoiceField className="input select" disabled={d.date < data.today} value={changes[d.date] ?? d.value} onChange={e => setChanges({ ...changes, [d.date]: e.target.value })}>
         <option value="">جدول الموظف الأساسي</option><option value="rest">راحة أسبوعية</option>
-        {schedules.map(s => <option key={s.id} value={s.id}>{String(s.id) === d.value && d.label ? d.label : `${s.name} (${s.start_time} – ${s.end_time})`}</option>)}
+        {schedules.map(s => <option key={s.id} value={s.id}>{String(s.id) === d.value && d.label ? d.label : `${s.name} (${clock12(s.start_time)} – ${clock12(s.end_time)})`}</option>)}
         {d.value && d.value !== 'rest' && !schedules.some(s => String(s.id) === d.value) && <option value={d.value}>{d.label || 'مناوبة مؤرشفة'}</option>}
       </ChoiceField></label>)}
     <div className="af-toolbar"><Button disabled={!editable.length} onClick={() => setChanges(Object.fromEntries(editable.map(d => [d.date, d.previous])))}>نسخ الأسبوع السابق</Button>
