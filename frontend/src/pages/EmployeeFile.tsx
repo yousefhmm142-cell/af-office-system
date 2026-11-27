@@ -1,6 +1,7 @@
 import { salaryLabel } from '../api/types'
 import { ChoiceField } from '../ui/ChoiceField'
 import { EmployeeBody, type EmpTab } from './EmployeeOverview'
+import { Crumbs } from '../ui/Crumbs'
 import { NxAvatar, NxCard, NxEmpty, NxTabs, type Hue } from '../ui/nx'
 import { Briefcase, Building2, CalendarDays, Clock3, FileText, Gauge, GraduationCap, History, IdCard, MapPin, Phone, Image as ImageIcon, LayoutGrid, Palmtree, Paperclip, Pencil, Trash2, Upload, UserRound, Wallet } from 'lucide-react'
 import { useRef, useState, type FormEvent, type ReactNode } from 'react'
@@ -145,6 +146,7 @@ export function EmployeeFile() {
 
   return (
     <div className="nx nx-emp">
+      {!mine && <Crumbs trail={[{ label: 'الموظفون', to: '/users' }, ...(f.user.branch ? [{ label: `فرع ${f.user.branch.name}` }] : []), { label: f.user.name }]} />}
       <section className="nx-hero">
         <div className="nx-hero-cover"><span>{mine ? 'ملفي' : 'ملف الموظف'}</span></div>
         <div className="nx-hero-main">

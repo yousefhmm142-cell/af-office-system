@@ -176,7 +176,16 @@ class PayrollController extends Controller
         $used = $this->usedPercent($data['month'], $data['branch_id'] ?? null);
         $draft = new PayrollBatch(['month' => $data['month'], 'branch_id' => $data['branch_id'] ?? null, 'percent' => 100]);
 
-        return response()->json(['used' => $used, 'left' => max(0, 100 - $used), 'employees' => $this->svc->eligible($draft)->count()]);
+        $people = $this->svc->eligible($draft);
+        $fixed = $people->filter(fn ($u) => in_array($u->employee->salary_type, ['monthly', 'contract'], true));
+
+        return response()->json([
+            'used' => $used, 'left' => max(0, 100 - $used), 'employees' => $people->count(),
+            // For the summary: the full month of fixed salaries (a batch pays its share of this),
+            // and how many are paid by attendance, which only the calculation can tell.
+            'fixed_total' => round((float) $fixed->sum(fn ($u) => (float) $u->employee->salary_amount), 2),
+            'by_attendance' => $people->count() - $fixed->count(),
+        ]);
     }
 
     public function storeBatch(Request $request): JsonResponse

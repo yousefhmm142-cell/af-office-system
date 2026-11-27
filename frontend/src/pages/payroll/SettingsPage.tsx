@@ -1,6 +1,7 @@
-import { ArrowRight, Clock4, History, Minus, Save } from 'lucide-react'
+import { Clock4, History, Minus, Save } from 'lucide-react'
 import { Link } from 'react-router'
 import { NxCard } from '../../ui/nx'
+import { Crumbs } from '../../ui/Crumbs'
 import { useEffect, useState, type ReactNode } from 'react'
 import { api, ApiError } from '../../api/client'
 import type { Branch } from '../../api/types'
@@ -45,8 +46,8 @@ export function PayrollSettings() {
 
   return (
     <div className="nx nxs">
-      <PageHead title="قواعد حساب الرواتب" eyebrow="أنت من يحدد القواعد، والنظام يحسب على أساسها"
-        actions={<Link to="/payroll" className="nx-edit"><ArrowRight size={15} /> الرواتب</Link>} />
+      <Crumbs trail={[{ label: 'الرواتب', to: '/payroll' }, { label: 'قواعد الحساب' }]} />
+      <PageHead title="قواعد حساب الرواتب" eyebrow="أنت من يحدد القواعد، والنظام يحسب على أساسها" />
       {all && (
         <div className="nxw-chips nxs-branches">
           <button type="button" className="nxw-chip" aria-pressed={branchId === ''} onClick={() => setBranchId('')}>جميع الفروع (الافتراضي)</button>

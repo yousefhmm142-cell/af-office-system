@@ -1,4 +1,5 @@
 import { ArrowLeft, BadgeCheck, Building2, CalendarRange, Check, ChevronLeft, ChevronRight, CircleDollarSign, HandCoins, Info, Plus, Settings2, Sparkles, Wallet } from 'lucide-react'
+import { FootHint, SummaryAside, saveOnCtrlEnter } from '../../ui/SummaryAside'
 import { NxAvatar, NxCard, NxEmpty, NxStat, type Hue } from '../../ui/nx'
 import { MonthField } from '../../ui/MonthField'
 import { useEffect, useState } from 'react'
@@ -65,11 +66,11 @@ export function PayrollHome() {
   return (
     <div className="nx nxp">
       <nav className="nxp-quick" aria-label="أدوات الرواتب">
-        {manage && <Link to="/payroll/extras" className="nxp-qlink"><span className="nx-ico" data-hue="violet"><HandCoins size={17} /></span>الخصومات والمكافآت</Link>}
-        {manage && <Link to="/payroll/extras?tab=advances" className="nxp-qlink"><span className="nx-ico" data-hue="amber"><CircleDollarSign size={17} /></span>السلف</Link>}
-        {manage && <Link to="/payroll/settings" className="nxp-qlink"><span className="nx-ico" data-hue="sky"><Settings2 size={17} /></span>قواعد الحساب</Link>}
-        <Link to="/my-pay" className="nxp-qlink"><span className="nx-ico" data-hue="mint"><Wallet size={17} /></span>رواتبي</Link>
-        {manage && <button type="button" className="nxp-qnew" onClick={() => setWizard(true)}><Plus size={18} /> دفعة رواتب جديدة</button>}
+        {manage && <button type="button" className="nxp-tile nxp-tile-new" onClick={() => setWizard(true)}><span className="nxp-tile-ico"><Plus size={20} /></span><span><b>دفعة رواتب جديدة</b><small>جهّز وحاسب تلقائياً</small></span></button>}
+        {manage && <Link to="/payroll/extras" className="nxp-tile"><span className="nx-ico" data-hue="violet"><HandCoins size={19} /></span><span><b>الخصومات والمكافآت</b><small>بند لموظف في شهر</small></span></Link>}
+        {manage && <Link to="/payroll/extras?tab=advances" className="nxp-tile"><span className="nx-ico" data-hue="amber"><CircleDollarSign size={19} /></span><span><b>السلف</b><small>تُسدَّد على أقساط</small></span></Link>}
+        {manage && <Link to="/payroll/settings" className="nxp-tile"><span className="nx-ico" data-hue="sky"><Settings2 size={19} /></span><span><b>قواعد الحساب</b><small>الوقت الإضافي</small></span></Link>}
+        <Link to="/my-pay" className="nxp-tile"><span className="nx-ico" data-hue="mint"><Wallet size={19} /></span><span><b>رواتبي</b><small>دفعاتك أنت</small></span></Link>
       </nav>
       <section className="nxp-hero">
         <div className="nxp-hero-top">
@@ -172,7 +173,7 @@ function NewBatchWizard({ initialMonth, onClose }: { initialMonth: string; onClo
   const branches = useLoad<{ branches: Branch[] }>(all ? '/branches' : null)
   const [month, setMonth] = useState(initialMonth)
   const [branchId, setBranchId] = useState<string>(all ? '' : String(me.branch?.id ?? ''))
-  const [plan, setPlan] = useState<{ used: number; left: number; employees: number } | null>(null)
+  const [plan, setPlan] = useState<{ used: number; left: number; employees: number; fixed_total: number; by_attendance: number } | null>(null)
   const [percent, setPercent] = useState<number | null>(null)
   const advances = useLoad<{ advances: {id:number; user:{name:string}; branch_id:number; start_month:string; remaining:number; installment:number}[] }>(can(me, 'payroll.deductions') ? '/payroll/advances' : null)
   const [advanceIds, setAdvanceIds] = useState<number[]>([])
@@ -186,7 +187,7 @@ function NewBatchWizard({ initialMonth, onClose }: { initialMonth: string; onClo
     setAdvanceIds([])
     setPlan(null)
     setPercent(null)
-    api<{ used: number; left: number; employees: number }>(`/payroll/plan?month=${month}${branchId ? `&branch_id=${branchId}` : ''}`)
+    api<{ used: number; left: number; employees: number; fixed_total: number; by_attendance: number }>(`/payroll/plan?month=${month}${branchId ? `&branch_id=${branchId}` : ''}`)
       .then((p) => { if (!active) return; setPlan(p); setPercent(p.left >= 50 && p.used === 0 ? 50 : p.left) })
       .catch((e) => { if (active) setError(e instanceof ApiError ? e.message : 'تعذّر تحميل خطة الدفعة.') })
     return () => { active = false }
@@ -196,6 +197,7 @@ function NewBatchWizard({ initialMonth, onClose }: { initialMonth: string; onClo
   const final = plan ? Math.abs(plan.used + chosen - 100) < 0.01 : false
   const options = plan ? [...new Set([50, 100, plan.left].filter((n) => n > 0 && n <= plan.left))].sort((a, b) => a - b) : []
   const months = [thisMonth(), prevMonth(thisMonth())]
+  const advList = advances.data?.advances.filter(a => a.remaining > 0 && a.start_month <= month && (!branchId || a.branch_id === Number(branchId))) ?? []
 
   async function create() {
     setBusy(true); setError(null)
@@ -210,8 +212,28 @@ function NewBatchWizard({ initialMonth, onClose }: { initialMonth: string; onClo
   }
 
   return (
-    <Dialog open onClose={onClose} title="دفعة رواتب جديدة" subtitle="ثلاث خطوات، والحساب تلقائي" icon={<CalendarRange size={20} />}
-      footer={<><Button onClick={onClose}>إلغاء</Button><Button variant="primary" size="lg" busy={busy} disabled={!plan || chosen <= 0 || chosen > (plan?.left ?? 0)} onClick={() => void create()}>إنشاء وحساب</Button></>}>
+    <Dialog open onClose={onClose} className="pay-wizard" title="دفعة رواتب جديدة" subtitle="اختر الشهر والفرع والنسبة، والحساب تلقائي" icon={<CalendarRange size={20} />}
+      aside={(() => {
+        const picked = advList.filter((a) => advanceIds.includes(a.id))
+        const share = plan ? (plan.fixed_total * (chosen || 0)) / 100 : 0
+        return (
+          <SummaryAside title="ملخص الدفعة" bigLabel="نسبة الدفعة من راتب الشهر"
+            big={<span className="pw-big"><span className="num">{chosen || 0}<small>%</small></span>{plan && plan.fixed_total > 0 && <em className="num">≈ {fmt(share)} ₪</em>}</span>}
+            rows={[
+              ['الشهر', monthLabel(month)],
+              ['الفرع', branchId ? branches.data?.branches.find((b) => String(b.id) === branchId)?.name ?? '' : 'جميع الفروع'],
+              ['الموظفون', plan ? <span className="num">{plan.employees}</span> : ''],
+              ['صُرف من الشهر قبلها', plan ? <span className="num">{plan.used}%</span> : ''],
+            ]}
+            more={[
+              ['أقساط السلف', picked.length ? <span className="num">{picked.length} · {fmt(picked.reduce((n, a) => n + Math.min(a.installment, a.remaining), 0))} ₪</span> : 'لا شيء'],
+              ['العمل الإضافي', final ? 'يُحسب في هذه الدفعة' : 'في الدفعة الأخيرة'],
+            ]}
+            note={plan && plan.by_attendance > 0 ? <span>المبلغ التقريبي للرواتب الثابتة فقط؛ و{plan.by_attendance} {plan.by_attendance === 1 ? 'موظف يُحسب' : 'موظفين يُحسبون'} حسب أيام الحضور.</span> : undefined} />
+        )
+      })()}
+      footer={<><FootHint /><Button variant="ghost" onClick={onClose}>إلغاء</Button><Button variant="primary" size="lg" icon={<Sparkles size={18} />} busy={busy} disabled={!plan || chosen <= 0 || chosen > (plan?.left ?? 0)} onClick={() => void create()}>إنشاء الدفعة وحسابها</Button></>}>
+      <div onKeyDown={saveOnCtrlEnter(() => { if (plan && chosen > 0 && chosen <= plan.left) void create() })}>
       <ol className="nxw">
         <li className="nxw-step">
           <span className="nxw-n">1</span>
@@ -265,7 +287,7 @@ function NewBatchWizard({ initialMonth, onClose }: { initialMonth: string; onClo
           </div>
         </li>
         {can(me, 'payroll.deductions') && (() => {
-          const list = advances.data?.advances.filter(a => a.remaining > 0 && a.start_month <= month && (!branchId || a.branch_id === Number(branchId))) ?? []
+          const list = advList
           return (
             <li className="nxw-step">
               <span className="nxw-n">{all ? 4 : 3}</span>
@@ -295,6 +317,7 @@ function NewBatchWizard({ initialMonth, onClose }: { initialMonth: string; onClo
         })()}
       </ol>
       <ErrorBanner text={error} />
+      </div>
     </Dialog>
   )
 }

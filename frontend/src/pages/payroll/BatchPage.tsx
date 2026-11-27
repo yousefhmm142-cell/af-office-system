@@ -7,6 +7,7 @@ import { useLoad } from '../../lib/useLoad'
 import { useConfirm } from '../../ui/Confirm'
 import { ErrorBanner } from '../../ui/Field'
 import { Loading, PageHead } from '../../ui/PageHead'
+import { Crumbs } from '../../ui/Crumbs'
 import { Button, Pill } from '../../ui/primitives'
 import { ScrollTable } from '../../ui/ScrollTable'
 import { useToast } from '../../ui/Toast'
@@ -59,6 +60,7 @@ export function BatchPage() {
 
   return (
     <div className="af-batch">
+      <Crumbs trail={[{ label: 'الرواتب', to: '/payroll' }, { label: monthLabel(batch.month), to: '/payroll' }, { label: batch.branch?.name ? `فرع ${batch.branch.name}` : 'جميع الفروع' }]} />
       <PageHead title={batch.title} eyebrow={`${monthLabel(batch.month)} · ${batch.branch?.name ?? 'جميع الفروع'}`}
         actions={<Pill tone={STATUS[batch.status].tone}>{STATUS[batch.status].label}</Pill>} />
 

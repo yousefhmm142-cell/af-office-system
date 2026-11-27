@@ -1,5 +1,4 @@
-import { ArrowRight, CalendarRange, CircleDollarSign, HandCoins, Minus, Plus, Trash2 } from 'lucide-react'
-import { Link } from 'react-router'
+import { CalendarRange, CircleDollarSign, HandCoins, Minus, Plus, Trash2 } from 'lucide-react'
 import { NxAvatar, NxCard, NxEmpty, NxTabs } from '../../ui/nx'
 import { MonthField } from '../../ui/MonthField'
 import { useMemo, useState, type FormEvent } from 'react'
@@ -10,6 +9,7 @@ import { useLoad } from '../../lib/useLoad'
 import { useConfirm } from '../../ui/Confirm'
 import { ErrorBanner, Field } from '../../ui/Field'
 import { Loading, PageHead } from '../../ui/PageHead'
+import { Crumbs } from '../../ui/Crumbs'
 import { PersonPicker, type Person } from '../../ui/PersonPicker'
 import { Button } from '../../ui/primitives'
 import { useToast } from '../../ui/Toast'
@@ -22,8 +22,8 @@ export function Extras() {
   const people = useMemo<Person[]>(() => (users.data?.users ?? []).map((u) => ({ id: u.id, name: u.name, sub: [u.job_title ?? u.role?.name, u.branch?.name].filter(Boolean).join(' · ') })), [users.data])
   return (
     <div className="nx nxx">
-      <PageHead title="الخصومات والمكافآت والسلف" eyebrow="تدخل في أول دفعة رواتب للشهر المحدد"
-        actions={<Link to="/payroll" className="nx-edit"><ArrowRight size={15} /> الرواتب</Link>} />
+      <Crumbs trail={[{ label: 'الرواتب', to: '/payroll' }, { label: tab === 'adv' ? 'السلف' : 'الخصومات والمكافآت' }]} />
+      <PageHead title="الخصومات والمكافآت والسلف" eyebrow="تدخل في أول دفعة رواتب للشهر المحدد" />
       <NxTabs label="النوع" value={tab} onChange={(v) => setTab(v as 'adj' | 'adv')} tabs={[
         { key: 'adj', label: 'الخصومات والمكافآت', icon: <HandCoins size={16} /> },
         { key: 'adv', label: 'السلف', icon: <CircleDollarSign size={16} /> },
