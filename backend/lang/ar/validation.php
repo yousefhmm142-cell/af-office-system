@@ -14,6 +14,7 @@ return [
     'exists' => ':attribute غير موجود.',
     'unique' => ':attribute مستخدم من قبل.',
     'confirmed' => 'تأكيد :attribute غير مطابق.',
+    'digits' => 'يجب أن يكون :attribute :digits أرقام بالضبط.',
     'different' => 'يجب أن يختلف :attribute الجديد عن القديم.',
     'regex' => 'صيغة :attribute غير صحيحة.',
     'required_if' => 'حقل :attribute مطلوب.',

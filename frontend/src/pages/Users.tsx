@@ -303,7 +303,7 @@ function UserDialog({ user, roles, branches, onClose, onSaved }: { user: User | 
           {(id) => <input id={id} className="input" dir="auto" autoCapitalize="none" spellCheck={false} value={form.username} onChange={(e) => set('username', e.target.value.replace(/\s/g, ''))} />}
         </Field>
         {!user && (
-          <Field label="الرمز المؤقت" error={fields.password} hint="يُسلَّم للموظف، ويغيّره عند دخوله الأول">
+          <Field label="الرمز المؤقت (6 أرقام)" error={fields.password} hint="يُسلَّم للموظف، ويغيّره عند دخوله الأول">
             {(id) => <PasswordInput id={id} value={form.password} onChange={(v) => set('password', v)} autoComplete="new-password" />}
           </Field>
         )}
@@ -362,7 +362,7 @@ function ResetDialog({ user, onClose, onSaved }: { user: User; onClose(): void; 
   return (
     <Dialog open onClose={onClose} title={`رمز مؤقت لـ${user.name}`} subtitle="يفتح الحساب إن كان مقفلاً، ويسجّل خروجه من جميع أجهزته" icon={<KeyRound size={20} />}
       footer={<><Button onClick={onClose}>إلغاء</Button><Button variant="primary" busy={busy} onClick={() => void save()}>حفظ</Button></>}>
-      <Field label="الرمز المؤقت">{(id) => <PasswordInput id={id} value={password} onChange={setPassword} autoComplete="new-password" />}</Field>
+      <Field label="الرمز المؤقت (6 أرقام)">{(id) => <PasswordInput id={id} value={password} onChange={setPassword} autoComplete="new-password" />}</Field>
       <ErrorBanner text={error} />
     </Dialog>
   )

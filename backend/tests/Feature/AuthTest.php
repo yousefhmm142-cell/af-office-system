@@ -13,12 +13,12 @@ class AuthTest extends TestCase
         $this->getJson('/api/setup')->assertJson(['needed' => true]);
 
         $this->postJson('/api/setup', [
-            'name' => 'يوسف', 'username' => 'Yousef', 'password' => 'secret123', 'password_confirmation' => 'secret123',
+            'name' => 'يوسف', 'username' => 'Yousef', 'password' => '246813', 'password_confirmation' => '246813',
         ])->assertCreated()->assertJsonPath('user.role.key', Role::SUPER_ADMIN)->assertJsonPath('user.username', 'yousef');
 
         $this->getJson('/api/setup')->assertJson(['needed' => false]);
         $this->postJson('/api/setup', [
-            'name' => 'غريب', 'username' => 'other', 'password' => 'secret123', 'password_confirmation' => 'secret123',
+            'name' => 'غريب', 'username' => 'other', 'password' => '246813', 'password_confirmation' => '246813',
         ])->assertStatus(409);
         $this->assertSame(1, User::count());
     }
@@ -68,10 +68,10 @@ class AuthTest extends TestCase
         $this->withToken($token)->getJson('/api/me')->assertOk();
 
         $this->withToken($token)->postJson('/api/me/password', [
-            'current_password' => 'secret123', 'password' => 'secret123', 'password_confirmation' => 'secret123',
-        ])->assertStatus(422);
+            'current_password' => 'secret123', 'password' => 'abc123', 'password_confirmation' => 'abc123',
+        ])->assertStatus(422)->assertJsonValidationErrors('password');
         $this->withToken($token)->postJson('/api/me/password', [
-            'current_password' => 'secret123', 'password' => 'newpass99', 'password_confirmation' => 'newpass99',
+            'current_password' => 'secret123', 'password' => '905317', 'password_confirmation' => '905317',
         ])->assertOk()->assertJsonPath('user.must_change_password', false);
 
         $this->app['auth']->forgetGuards();

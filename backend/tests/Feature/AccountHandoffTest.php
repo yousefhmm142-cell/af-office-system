@@ -17,7 +17,7 @@ class AccountHandoffTest extends TestCase
         $other = $this->makeBranch('الفرع الثاني');
         $hr = $this->actAs(Role::HR);
         $account = ['branch_id'=>$branch->id, 'role_id'=>Role::where('key',Role::EMPLOYEE)->value('id'),
-            'name'=>'موظف التحصيل','department_name'=>'التحصيل الميداني','password'=>'temporary-4321'];
+            'name'=>'موظف التحصيل','department_name'=>'التحصيل الميداني','password'=>'543219'];
         $first = $this->postJson('/api/users',$account+['username'=>'collector.one'])->assertCreated()->json('user.id');
         $this->postJson('/api/users',$account+['username'=>'collector.two'])->assertCreated();
         $this->assertSame(1,Department::where('name',$account['department_name'])->count());
@@ -37,10 +37,10 @@ class AccountHandoffTest extends TestCase
         $this->getJson($path)->assertForbidden();
         $this->getJson($receipt)->assertOk()->assertJsonCount(2,'rows');
         Sanctum::actingAs($hr);
-        $this->postJson("/api/users/$first/reset-password",['password'=>'replacement-4321'])->assertOk();
-        $this->getJson($receipt)->assertOk()->assertJsonPath('rows.0.code','replacement-4321');
+        $this->postJson("/api/users/$first/reset-password",['password'=>'864201'])->assertOk();
+        $this->getJson($receipt)->assertOk()->assertJsonPath('rows.0.code','864201');
         Sanctum::actingAs(User::findOrFail($first));
-        $this->postJson('/api/me/password',['current_password'=>'replacement-4321','password'=>'personal-9876','password_confirmation'=>'personal-9876'])->assertOk();
+        $this->postJson('/api/me/password',['current_password'=>'864201','password'=>'975310','password_confirmation'=>'975310'])->assertOk();
         Sanctum::actingAs($manager);
         $this->getJson($receipt)->assertOk()->assertJsonPath('rows.0.code',null);
         $this->assertDatabaseHas('users',['id'=>$first,'handoff_code'=>null]);

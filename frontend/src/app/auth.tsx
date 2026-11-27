@@ -10,7 +10,8 @@ type State =
 
 interface Auth {
   state: State
-  signIn(username: string, password: string): Promise<void>
+  /** `hold` runs after the server accepted the code and before the system opens (for the success animation). */
+  signIn(username: string, password: string, hold?: () => Promise<void>): Promise<void>
   setup(body: { name: string; username: string; password: string; password_confirmation: string }): Promise<void>
   signOut(): Promise<void>
   refresh(): Promise<void>
@@ -78,8 +79,9 @@ export function AuthProvider({ children }: { children: ReactNode }) {
   const value = useMemo<Auth>(() => ({
     state,
     refresh,
-    async signIn(username, password) {
+    async signIn(username, password, hold) {
       const res = await api<{ token: string; user: User }>('/auth/login', { method: 'POST', body: { username, password, device_name: navigator.userAgent.slice(0, 80) } })
+      if (hold) await hold()
       setToken(res.token)
       cacheUser(res.user)
       setState({ status: 'signed_in', user: res.user })

@@ -20,12 +20,12 @@ class UsersTest extends TestCase
         $this->actAs(Role::HR);
 
         $res = $this->postJson('/api/users', [
-            'name' => 'أحمد محمد علي حسن', 'username' => 'Ahmad.H', 'password' => 'temp1234',
+            'name' => 'أحمد محمد علي حسن', 'username' => 'Ahmad.H', 'password' => '482915',
             'role_id' => $this->roleId(Role::EMPLOYEE), 'branch_id' => $branch->id,
         ])->assertCreated()->assertJsonPath('user.username', 'ahmad.h')->assertJsonPath('user.must_change_password', true);
 
         $this->assertDatabaseHas('audit_logs', ['action' => 'user.created', 'subject_id' => $res->json('user.id')]);
-        $this->assertStringNotContainsString('temp1234', (string) DB::table('audit_logs')->value('new_values'));
+        $this->assertStringNotContainsString('482915', (string) DB::table('audit_logs')->value('new_values'));
     }
 
     public function test_new_account_completes_own_profile_after_changing_password(): void
@@ -33,7 +33,7 @@ class UsersTest extends TestCase
         $branch = $this->makeBranch();
         $this->actAs(Role::HR);
         $id = $this->postJson('/api/users', [
-            'name' => 'موظف جديد', 'username' => 'employee.onboarding', 'password' => 'temporary123',
+            'name' => 'موظف جديد', 'username' => 'employee.onboarding', 'password' => '731406',
             'role_id' => $this->roleId(Role::EMPLOYEE), 'branch_id' => $branch->id,
         ])->assertCreated()->assertJsonPath('user.needs_profile_completion', true)->json('user.id');
 
@@ -42,11 +42,11 @@ class UsersTest extends TestCase
 
         $this->app['auth']->forgetGuards();
         $token = $this->postJson('/api/auth/login', [
-            'username' => 'employee.onboarding', 'password' => 'temporary123',
+            'username' => 'employee.onboarding', 'password' => '731406',
         ])->assertOk()->assertJsonPath('user.must_change_password', true)->json('token');
         $this->withToken($token)->getJson("/api/employees/{$id}")->assertForbidden()->assertJsonPath('code', 'must_change_password');
         $this->postJson('/api/me/password', [
-            'current_password' => 'temporary123', 'password' => 'employee123', 'password_confirmation' => 'employee123',
+            'current_password' => '731406', 'password' => '615283', 'password_confirmation' => '615283',
         ])->assertOk()->assertJsonPath('user.needs_profile_completion', true);
 
         $this->app['auth']->forgetGuards();
@@ -76,7 +76,7 @@ class UsersTest extends TestCase
     {
         $branch = $this->makeBranch();
         $this->actAs(Role::SUPER_ADMIN);
-        $body = ['name' => 'محمد', 'password' => 'temp1234', 'role_id' => $this->roleId(Role::EMPLOYEE), 'branch_id' => $branch->id];
+        $body = ['name' => 'محمد', 'password' => '482915', 'role_id' => $this->roleId(Role::EMPLOYEE), 'branch_id' => $branch->id];
 
         $this->postJson('/api/users', $body + ['username' => 'محمد.ش'])->assertCreated();
         $this->postJson('/api/users', $body + ['username' => 'محمد.ش'])->assertStatus(422)->assertJsonPath('errors.username.0', 'اسم المستخدم مستخدم من قبل. اختر اسماً آخر.');
@@ -88,7 +88,7 @@ class UsersTest extends TestCase
     {
         $this->actAs(Role::SUPER_ADMIN);
         $this->postJson('/api/users', [
-            'name' => 'محمد', 'username' => 'mohd', 'password' => 'temp1234', 'role_id' => $this->roleId(Role::EMPLOYEE),
+            'name' => 'محمد', 'username' => 'mohd', 'password' => '482915', 'role_id' => $this->roleId(Role::EMPLOYEE),
         ])->assertStatus(422)->assertJsonValidationErrors('branch_id');
     }
 
@@ -97,7 +97,7 @@ class UsersTest extends TestCase
         $this->actAs(Role::HR);
         foreach ([Role::HR, Role::MANAGEMENT, Role::SUPER_ADMIN] as $role) {
             $this->postJson('/api/users', [
-                'name' => 'سامي', 'username' => 'up_'.$role, 'password' => 'temp1234', 'role_id' => $this->roleId($role),
+                'name' => 'سامي', 'username' => 'up_'.$role, 'password' => '482915', 'role_id' => $this->roleId($role),
             ])->assertForbidden();
         }
     }
@@ -108,7 +108,7 @@ class UsersTest extends TestCase
         $b = $this->makeBranch('فرع ب');
         $manager = $this->makeUser(Role::BRANCH_MANAGER, $a);
         \Laravel\Sanctum\Sanctum::actingAs($manager);
-        $body = ['name' => 'سامي', 'password' => 'temp1234', 'role_id' => $this->roleId(Role::EMPLOYEE)];
+        $body = ['name' => 'سامي', 'password' => '482915', 'role_id' => $this->roleId(Role::EMPLOYEE)];
 
         $this->postJson('/api/users', $body + ['username' => 'in_a', 'branch_id' => $a->id])->assertCreated();
         $this->postJson('/api/users', $body + ['username' => 'in_b', 'branch_id' => $b->id])->assertForbidden();
@@ -138,10 +138,10 @@ class UsersTest extends TestCase
         $emp->createToken('phone');
         $this->actAs(Role::HR);
 
-        $this->postJson("/api/users/{$emp->id}/reset-password", ['password' => 'fresh1234'])->assertOk()->assertJsonPath('user.is_locked', false);
+        $this->postJson("/api/users/{$emp->id}/reset-password", ['password' => '264810'])->assertOk()->assertJsonPath('user.is_locked', false);
         $this->assertSame(0, $emp->tokens()->count());
 
-        $this->postJson('/api/auth/login', ['username' => 'ahmad', 'password' => 'fresh1234'])->assertOk()->assertJsonPath('user.must_change_password', true);
+        $this->postJson('/api/auth/login', ['username' => 'ahmad', 'password' => '264810'])->assertOk()->assertJsonPath('user.must_change_password', true);
     }
 
     public function test_stopping_a_user_signs_them_out_everywhere(): void
@@ -162,7 +162,7 @@ class UsersTest extends TestCase
         $this->deleteJson("/api/users/{$emp->id}")->assertOk();
         $this->assertSoftDeleted($emp);
         $this->postJson('/api/users', [
-            'name' => 'سامي', 'username' => 'ahmad', 'password' => 'temp1234', 'role_id' => $this->roleId(Role::EMPLOYEE), 'branch_id' => $branch->id,
+            'name' => 'سامي', 'username' => 'ahmad', 'password' => '482915', 'role_id' => $this->roleId(Role::EMPLOYEE), 'branch_id' => $branch->id,
         ])->assertStatus(422);
     }
 }

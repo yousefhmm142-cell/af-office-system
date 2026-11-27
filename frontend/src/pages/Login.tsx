@@ -1,5 +1,6 @@
-import { Building2, CalendarCheck2, Eye, EyeOff, LockKeyhole, Mail, Wallet } from 'lucide-react'
-import { useEffect, useRef, useState, type CSSProperties, type FormEvent } from 'react'
+import { Building2, CalendarCheck2, Eye, EyeOff, LockKeyhole, Mail, ShieldCheck, Wallet } from 'lucide-react'
+import { PinBoxes, type PinState } from '../ui/PinBoxes'
+import { useEffect, useRef, useState, type CSSProperties } from 'react'
 import { ApiError } from '../api/client'
 import { useAuth } from '../app/auth'
 import { LoginLogo } from '../features/login/LoginLogo'
@@ -51,32 +52,42 @@ export function Login() {
   const [name, setName] = useState('')
   const [password, setPassword] = useState('')
   const [password2, setPassword2] = useState('')
+  const [long, setLong] = useState(false)
+  const [pin, setPin] = useState<PinState>('idle')
   const [busy, setBusy] = useState(false)
   const [error, setError] = useState<string | null>(null)
   const [fields, setFields] = useState<Record<string, string>>({})
   const userRef = useRef<HTMLInputElement>(null)
+  const sending = useRef(false)
 
-  useEffect(() => { userRef.current?.focus() }, [])
+  useEffect(() => { if (!username) userRef.current?.focus() }, []) // eslint-disable-line react-hooks/exhaustive-deps
 
-  async function onSubmit(e: FormEvent) {
-    e.preventDefault()
-    setBusy(true)
-    setError(null)
-    setFields({})
+  async function submit(code = password) {
+    if (sending.current) return
+    if (!username.trim()) { setError('اكتب اسم المستخدم أولاً.'); userRef.current?.focus(); return }
+    if (!isSetup && !long && code.length !== 6) return
+    sending.current = true
+    setBusy(true); setPin('busy'); setError(null); setFields({})
     try {
-      if (isSetup) await setup({ name, username, password, password_confirmation: password2 })
-      else await signIn(username, password)
+      if (isSetup) await setup({ name, username, password: code, password_confirmation: password2 })
+      else await signIn(username.trim(), code, long ? undefined : async () => {
+        setPin('success')
+        await new Promise((r) => window.setTimeout(r, 2300))
+      })
       try { localStorage.setItem(LAST_USER, username.trim()) } catch { /* not remembered */ }
     } catch (err) {
       if (err instanceof ApiError) {
         setFields(err.fields)
         setError(Object.keys(err.fields).length ? null : err.message)
       } else setError('حدث خطأ. حاول مرة أخرى.')
-      setPassword('')
+      setPin('error')
+      window.setTimeout(() => { setPassword(''); setPin('idle') }, 650)
       setBusy(false)
+      sending.current = false
     }
   }
 
+  const verified = pin === 'success'
   return (
     <div className="login entry-page">
       <Brand />
@@ -84,36 +95,56 @@ export function Login() {
       <div className="entry-main">
         <div className="entry-main-bg" aria-hidden="true" />
         <div className="entry-theme"><ThemeToggle /></div>
-        <section className="login-card glass">
+        <section className="login-card glass lc" data-verified={verified || undefined}>
+          <span className="lc-glow" aria-hidden="true" />
+          <span className="lc-edge" aria-hidden="true" />
+          <span className="lc-corner c1" aria-hidden="true" /><span className="lc-corner c2" aria-hidden="true" />
+          <div className="lc-intro" aria-hidden="true"><i className="lc-ring" /><i className="lc-ring r2" /><span className="lc-emblem"><LockKeyhole size={34} /></span></div>
           <div className="login-card-head">
-            <span className="entry-badge" aria-hidden="true"><LockKeyhole size={22} /></span>
-            <h2>{isSetup ? 'تجهيز النظام' : 'تسجيل الدخول'}</h2>
-            <p>{isSetup ? 'أول حساب: السوبر أدمن (مسؤول النظام)' : 'باستخدام اسم المستخدم والرمز'}</p>
+            <span className="entry-badge" aria-hidden="true">{verified ? <ShieldCheck size={22} /> : <LockKeyhole size={22} />}</span>
+            <h2 key={verified ? 'ok' : 'in'}>{isSetup ? 'تجهيز النظام' : verified ? 'تم التحقق بنجاح' : 'تسجيل الدخول'}</h2>
+            <p>{isSetup ? 'أول حساب: السوبر أدمن (مسؤول النظام)' : verified ? 'مرحباً بك، جارٍ فتح النظام…' : 'اسم المستخدم ثم رمزك المكوّن من 6 أرقام'}</p>
           </div>
-          <form onSubmit={onSubmit} noValidate className="login-form">
+          <form onSubmit={(e) => { e.preventDefault(); void submit() }} noValidate className="login-form">
             {isSetup && (
               <Field label="الاسم الكامل" error={fields.name}>
                 {(id) => <input id={id} className="input" value={name} onChange={(e) => setName(e.target.value)} disabled={busy} autoComplete="name" />}
               </Field>
             )}
-            <Field label="اسم المستخدم" error={fields.username}>
-              {(id) => (
-                <input ref={userRef} id={id} name="username" className="input" value={username} disabled={busy} autoComplete="username" autoCapitalize="none" spellCheck={false} dir="auto"
-                  onChange={(e) => setUsername(e.target.value.replace(/\s/g, ''))} />
-              )}
-            </Field>
-            <Field label="الرمز" error={fields.password} hint={isSetup ? 'ست خانات على الأقل' : undefined}>
-              {(id) => <PasswordInput id={id} value={password} onChange={setPassword} autoComplete={isSetup ? 'new-password' : 'current-password'} disabled={busy} />}
-            </Field>
-            {isSetup && (
-              <Field label="أعد كتابة الرمز" error={fields.password_confirmation}>
-                {(id) => <PasswordInput id={id} value={password2} onChange={setPassword2} autoComplete="new-password" disabled={busy} />}
+            {!verified && (
+              <Field label="اسم المستخدم" error={fields.username}>
+                {(id) => (
+                  <input ref={userRef} id={id} name="username" className="input" value={username} disabled={busy} autoComplete="username" autoCapitalize="none" spellCheck={false} dir="auto"
+                    onChange={(e) => setUsername(e.target.value.replace(/\s/g, ''))} />
+                )}
               </Field>
             )}
+            {long && !isSetup ? (
+              <Field label="الرمز" error={fields.password}>
+                {(id) => <PasswordInput id={id} value={password} onChange={setPassword} autoComplete="current-password" disabled={busy} />}
+              </Field>
+            ) : (
+              <div className="field">
+                {!verified && <div className="otp-label"><span>{isSetup ? 'رمز الدخول (6 أرقام)' : 'الرمز'}</span>
+                  {!isSetup && <button type="button" onClick={() => { setLong(true); setPassword('') }}>رمزي القديم ليس 6 أرقام</button>}</div>}
+                <PinBoxes value={password} onChange={(v) => { setPassword(v); if (pin === 'error') setPin('idle'); if (error) setError(null); if (Object.keys(fields).length) setFields({}) }} onComplete={isSetup ? undefined : (v) => void submit(v)}
+                  state={pin} celebrate={!isSetup} label="الرمز المكوّن من 6 أرقام" autoFocus={!!username} autoComplete={isSetup ? 'new-password' : 'current-password'} />
+                {fields.password && <span className="field-error" role="alert">{fields.password}</span>}
+              </div>
+            )}
+            {isSetup && (
+              <div className="field">
+                <div className="otp-label"><span>أعد كتابة الرمز</span></div>
+                <PinBoxes value={password2} onChange={setPassword2} label="أعد كتابة الرمز" autoComplete="new-password" />
+                {fields.password_confirmation && <span className="field-error" role="alert">{fields.password_confirmation}</span>}
+              </div>
+            )}
             <ErrorBanner text={error} />
-            <Button type="submit" variant="primary" size="lg" block busy={busy} disabled={!username || !password}>
-              {isSetup ? 'تجهيز ودخول' : 'دخول'}
-            </Button>
+            {!verified && (
+              <Button type="submit" variant="primary" size="lg" block busy={busy} disabled={!username || (long ? !password : password.length !== 6) || (isSetup && password2.length !== 6)}>
+                {isSetup ? 'تجهيز ودخول' : 'دخول'}
+              </Button>
+            )}
           </form>
         </section>
       </div>

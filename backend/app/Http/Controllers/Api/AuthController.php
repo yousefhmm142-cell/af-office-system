@@ -72,7 +72,7 @@ class AuthController extends Controller
         $user = $request->user();
         $data = $request->validate([
             'current_password' => ['required', 'string'],
-            'password' => ['required', 'string', 'min:'.config('access.login.password_min'), 'max:100', 'confirmed', 'different:current_password'],
+            'password' => ['required', 'string', 'digits:6', 'confirmed', 'different:current_password'],
         ]);
 
         if (! Hash::check($data['current_password'], $user->password)) {

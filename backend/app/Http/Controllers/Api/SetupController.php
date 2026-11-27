@@ -24,7 +24,7 @@ class SetupController extends Controller
         $data = $request->validate([
             'name' => ['required', 'string', 'min:2', 'max:120'],
             'username' => ['required', 'string', 'regex:'.UserController::USERNAME_RULE],
-            'password' => ['required', 'string', 'min:'.config('access.login.password_min'), 'max:100', 'confirmed'],
+            'password' => ['required', 'string', 'digits:6', 'confirmed'],
         ]);
 
         try {

@@ -57,7 +57,7 @@ class UserController extends Controller
         $data = $request->validate([
             'name' => ['required', 'string', 'min:2', 'max:120'],
             'username' => ['required', 'string', 'regex:'.self::USERNAME_RULE],
-            'password' => ['required', 'string', 'min:'.config('access.login.password_min'), 'max:100'],
+            'password' => ['required', 'string', 'digits:6'],
             'role_id' => ['required', 'integer', Rule::exists('roles', 'id')],
             'branch_id' => ['nullable', 'integer', Rule::exists('branches', 'id')->whereNull('deleted_at')],
             'is_active' => ['sometimes', 'boolean'],
@@ -166,7 +166,7 @@ class UserController extends Controller
         abort_if($actor->id === $user->id, 403, 'لتغيير رمزك استخدم «تغيير الرمز» من صفحة حسابي.');
         $this->assertCanManage($actor, $user->role, $user->branch_id);
         $data = $request->validate([
-            'password' => ['required', 'string', 'min:'.config('access.login.password_min'), 'max:100'],
+            'password' => ['required', 'string', 'digits:6'],
         ]);
         $user->forceFill([
             'password' => $data['password'],

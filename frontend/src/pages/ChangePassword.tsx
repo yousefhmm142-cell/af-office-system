@@ -7,6 +7,7 @@ import { ErrorBanner, Field } from '../ui/Field'
 import { Button } from '../ui/primitives'
 import { useToast } from '../ui/Toast'
 import { Brand, PasswordInput } from './Login'
+import { PinBoxes } from '../ui/PinBoxes'
 import { ThemeToggle } from '../ui/ThemeToggle'
 
 /** Used at first sign-in (forced) and from «حسابي». */
@@ -43,14 +44,18 @@ export function ChangePasswordForm({ forced, onDone }: { forced?: boolean; onDon
       <Field label={forced ? 'الرمز المؤقت الذي استلمته' : 'الرمز الحالي'} error={fields.current_password}>
         {(id) => <PasswordInput id={id} value={current} onChange={setCurrent} autoComplete="current-password" disabled={busy} />}
       </Field>
-      <Field label="الرمز الجديد" error={fields.password} hint="ست خانات على الأقل">
-        {(id) => <PasswordInput id={id} value={next} onChange={setNext} autoComplete="new-password" disabled={busy} />}
-      </Field>
-      <Field label="أعد كتابة الرمز الجديد" error={fields.password_confirmation}>
-        {(id) => <PasswordInput id={id} value={next2} onChange={setNext2} autoComplete="new-password" disabled={busy} />}
-      </Field>
+      <div className="field">
+        <div className="otp-label"><span>الرمز الجديد (6 أرقام)</span></div>
+        <PinBoxes value={next} onChange={setNext} label="الرمز الجديد من 6 أرقام" autoComplete="new-password" state={busy ? 'busy' : 'idle'} />
+        {fields.password && <span className="field-error" role="alert">{fields.password}</span>}
+      </div>
+      <div className="field">
+        <div className="otp-label"><span>أعد كتابة الرمز الجديد</span>{next2.length === 6 && <span className={next2 === next ? 'otp-match' : 'otp-nomatch'}>{next2 === next ? 'متطابق' : 'غير متطابق'}</span>}</div>
+        <PinBoxes value={next2} onChange={setNext2} label="أعد كتابة الرمز الجديد" autoComplete="new-password" state={busy ? 'busy' : next2.length === 6 && next2 !== next ? 'error' : 'idle'} />
+        {fields.password_confirmation && <span className="field-error" role="alert">{fields.password_confirmation}</span>}
+      </div>
       <ErrorBanner text={error} />
-      <Button type="submit" variant="primary" size="lg" block busy={busy} icon={<KeyRound size={18} />} disabled={!current || !next || !next2}>
+      <Button type="submit" variant="primary" size="lg" block busy={busy} icon={<KeyRound size={18} />} disabled={!current || next.length !== 6 || next2 !== next}>
         حفظ الرمز الجديد
       </Button>
     </form>
