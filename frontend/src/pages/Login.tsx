@@ -1,5 +1,6 @@
 import { Building2, CalendarCheck2, Eye, EyeOff, LockKeyhole, Mail, ShieldCheck, Wallet } from 'lucide-react'
 import { PinBoxes, type PinState } from '../ui/PinBoxes'
+import { ChamferCard } from '../features/login/ChamferCard'
 import { useEffect, useRef, useState, type CSSProperties } from 'react'
 import { ApiError } from '../api/client'
 import { useAuth } from '../app/auth'
@@ -95,10 +96,8 @@ export function Login() {
       <div className="entry-main">
         <div className="entry-main-bg" aria-hidden="true" />
         <div className="entry-theme"><ThemeToggle /></div>
-        <section className="login-card glass lc" data-verified={verified || undefined}>
+        <ChamferCard className="login-card glass lc" verified={verified}>
           <span className="lc-glow" aria-hidden="true" />
-          <span className="lc-edge" aria-hidden="true" />
-          <span className="lc-corner c1" aria-hidden="true" /><span className="lc-corner c2" aria-hidden="true" />
           <div className="lc-intro" aria-hidden="true"><i className="lc-ring" /><i className="lc-ring r2" /><span className="lc-emblem"><LockKeyhole size={34} /></span></div>
           <div className="login-card-head">
             <span className="entry-badge" aria-hidden="true">{verified ? <ShieldCheck size={22} /> : <LockKeyhole size={22} />}</span>
@@ -146,7 +145,7 @@ export function Login() {
               </Button>
             )}
           </form>
-        </section>
+        </ChamferCard>
       </div>
     </div>
   )
