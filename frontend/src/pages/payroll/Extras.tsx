@@ -15,7 +15,7 @@ import { fmt, monthLabel, thisMonth, type Adjustment, type Advance } from './lib
 
 /** Deductions, bonuses and advances: one simple form on top, the list under it. */
 export function Extras() {
-  const [tab, setTab] = useState<'adj' | 'adv'>('adj')
+  const [tab, setTab] = useState<'adj' | 'adv'>(() => new URLSearchParams(window.location.search).get('tab') === 'advances' ? 'adv' : 'adj')
   const users = useLoad<{ users: User[] }>('/users?status=active')
   const people = useMemo<Person[]>(() => (users.data?.users ?? []).map((u) => ({ id: u.id, name: u.name, sub: [u.job_title ?? u.role?.name, u.branch?.name].filter(Boolean).join(' · ') })), [users.data])
   return (

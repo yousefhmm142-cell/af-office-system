@@ -2,7 +2,7 @@ import { AccountHandoff } from '../AccountHandoff'
 import { LeaveRequestForm } from './LeaveRequestForm'
 import { Dialog } from '../../ui/Dialog'
 import { ChoiceField } from '../../ui/ChoiceField'
-import { Archive, ArchiveRestore, ArrowRight, CalendarDays, CalendarPlus, Check, Clock, Forward, Mail, MailOpen, Paperclip, PenLine, ReplyAll, Search, Send, Undo2, X } from 'lucide-react'
+import { Archive, ArchiveRestore, Inbox as InboxIcon, ArrowRight, CalendarDays, CalendarPlus, Check, Clock, Forward, Mail, MailOpen, Paperclip, PenLine, ReplyAll, Search, Send, Undo2, X } from 'lucide-react'
 import { useEffect, useState } from 'react'
 import { useNavigate, useParams, useSearchParams } from 'react-router'
 import { api, ApiError, openFile } from '../../api/client'
@@ -55,25 +55,43 @@ export function Inbox() {
   }
 
   const reading = !!id || (tab === 'leaves' && !!selectedLeave)
+  const folders = [
+    { key: 'inbox' as const, label: 'الوارد', icon: InboxIcon, n: tab === 'inbox' ? data?.unread ?? 0 : 0 },
+    { key: 'sent' as const, label: 'المرسل', icon: Send, n: 0 },
+    { key: 'archive' as const, label: 'الأرشيف', icon: Archive, n: 0 },
+  ]
   return (
-    <div className={`msg-page${reading ? ' reading' : ''}`}>
-      <PageHead title="المراسلات" eyebrow="رسائل العمل وطلبات الإجازة في مكان واحد"
-        actions={<>
-          {me.branch && <Button icon={<CalendarPlus size={18} />} onClick={() => setRequesting(true)}>طلب إجازة أو إذن</Button>}
-          <Button variant="primary" icon={<PenLine size={18} />} onClick={() => setDraft({ kind: 'message' })}>رسالة جديدة</Button>
-        </>} />
+    <div className={`mail${reading ? ' reading' : ''}`}>
+      <PageHead title="المراسلات" eyebrow="رسائل العمل وطلبات الإجازة في مكان واحد" />
+      <div className="mail-grid">
+        <nav className="card mail-folders" aria-label="المجلدات">
+          <Button variant="primary" block icon={<PenLine size={18} />} onClick={() => setDraft({ kind: 'message' })}>رسالة جديدة</Button>
+          <div className="mail-group">
+            {folders.map(({ key, label, icon: Icon, n }) => (
+              <button key={key} type="button" className="mail-folder" aria-current={tab === key && !kind ? 'page' : undefined} onClick={() => { setKind(''); openTab(key) }}>
+                <Icon size={18} /><span>{label}</span>{n > 0 && <span className="mail-n num">{n}</span>}
+              </button>
+            ))}
+          </div>
+          <div className="mail-group">
+            <span className="mail-group-label">الإجازات</span>
+            <button type="button" className="mail-folder" aria-current={tab === 'leaves' ? 'page' : undefined} onClick={() => openTab('leaves')}>
+              <CalendarDays size={18} /><span>{decider ? 'طلبات الإجازة' : 'إجازاتي'}</span>{waiting > 0 && <span className="mail-n num">{waiting}</span>}
+            </button>
+            {me.branch && <button type="button" className="mail-folder soft" onClick={() => setRequesting(true)}><CalendarPlus size={18} /><span>طلب إجازة أو إذن</span></button>}
+          </div>
+          <div className="mail-group">
+            <span className="mail-group-label">التصنيفات</span>
+            {KINDS.filter(([k]) => k && k !== 'message').map(([k, label]) => (
+              <button key={k} type="button" className="mail-folder" aria-current={tab !== 'leaves' && kind === k ? 'page' : undefined} onClick={() => { if (tab === 'leaves') openTab('inbox'); setKind(kind === k ? '' : k as Kind); setPage(1) }}>
+                <i className="mail-dot" data-kind={k} /><span>{label}</span>
+              </button>
+            ))}
+          </div>
+        </nav>
 
-      <div className="segmented msg-tabs" role="tablist" aria-label="أقسام المراسلات">
-        {([['inbox', 'الوارد', data && tab === 'inbox' ? data.unread : 0], ['sent', 'المرسل', 0], ['archive', 'الأرشيف', 0], ['leaves', decider ? 'طلبات الإجازة' : 'إجازاتي', waiting]] as const).map(([key, label, n]) => (
-          <button key={key} type="button" role="tab" aria-selected={tab === key} aria-checked={tab === key} onClick={() => openTab(key)}>
-            {label}{n > 0 && <span className="msg-count num">{n}</span>}
-          </button>
-        ))}
-      </div>
-
-      <div className="msg-layout">
-        <aside className="card msg-list" aria-label="القائمة">
-          <div className="msg-tools">
+        <aside className="card mail-list" aria-label="القائمة">
+          <div className="mail-tools">
             <div className="af-search"><Search size={17} aria-hidden="true" /><input className="input" placeholder={tab === 'leaves' ? 'ابحث باسم الموظف أو السبب' : 'ابحث في الرسائل'} value={search} maxLength={80} onChange={(e) => { setSearch(e.target.value); setPage(1) }} aria-label="بحث" /></div>
             {wide && (
               <ChoiceField className="input select" aria-label="الفرع" value={branch} onChange={(e) => { setBranch(e.target.value); setPage(1) }}>
@@ -81,51 +99,48 @@ export function Inbox() {
               </ChoiceField>
             )}
           </div>
-          {tab !== 'leaves' && (
-            <div className="chips msg-kinds" role="group" aria-label="نوع الرسالة">
-              {KINDS.map(([k, label]) => <button key={k || 'all'} type="button" className="chip" aria-pressed={kind === k} onClick={() => { setKind(k); setPage(1) }}>{label}</button>)}
-            </div>
-          )}
+          <div className="mail-list-head"><b>{tab === 'leaves' ? (decider ? 'طلبات الإجازة' : 'إجازاتي') : kind ? KIND[kind].label : folders.find((f) => f.key === tab)?.label}</b>
+            {tab !== 'leaves' && kind && <button type="button" className="link-btn" onClick={() => setKind('')}>عرض الكل</button>}</div>
 
           {tab === 'leaves' ? (
-            <div className="msg-items">
+            <div className="mail-items">
               <ErrorBanner text={leaves.error} />
               {leaves.loading && !leaves.data ? <Loading /> : leaveRows.map((r) => (
-                <button key={r.id} type="button" className="msg-item" data-active={r.id === leaveId || undefined} data-unread={(!r.read && r.user_id !== me.id) || undefined}
+                <button key={r.id} type="button" className="mail-item" data-active={r.id === leaveId || undefined} data-unread={(!r.read && r.user_id !== me.id) || undefined}
                   onClick={() => { setLeaveId(r.id); if (!r.read) void api(`/leaves/${r.id}/read`, { method: 'POST' }).then(() => leaves.reload()).catch(() => undefined) }}>
                   <Avatar name={r.name} size={40} />
-                  <span className="msg-text">
-                    <span className="msg-top"><b>{r.user_id === me.id ? 'طلبي' : r.name}</b><Pill tone={(LEAVE_STATUS[r.status] ?? LEAVE_STATUS.pending!).tone}>{(LEAVE_STATUS[r.status] ?? LEAVE_STATUS.pending!).label}</Pill></span>
-                    <span className="msg-subject">{r.kind === 'permission' ? <Clock size={14} /> : <CalendarDays size={14} />}{LEAVE_KIND[r.kind]}</span>
-                    <span className="msg-preview">{range(r)}</span>
+                  <span className="mail-text">
+                    <span className="mail-top"><b>{r.user_id === me.id ? 'طلبي' : r.name}</b><Pill tone={(LEAVE_STATUS[r.status] ?? LEAVE_STATUS.pending!).tone}>{(LEAVE_STATUS[r.status] ?? LEAVE_STATUS.pending!).label}</Pill></span>
+                    <span className="mail-subject">{r.kind === 'permission' ? <Clock size={14} /> : <CalendarDays size={14} />}{LEAVE_KIND[r.kind]}</span>
+                    <span className="mail-preview">{range(r)}</span>
                   </span>
                 </button>
               ))}
-              {!leaves.loading && leaveRows.length === 0 && <Empty icon={<CalendarDays size={30} />} text={q ? 'لا توجد نتائج.' : decider ? 'لا توجد طلبات إجازة.' : 'لم تقدّم أي طلب بعد. اضغط «طلب إجازة أو إذن».'} />}
+              {!leaves.loading && leaveRows.length === 0 && <Empty icon={<CalendarDays size={30} />} text={q ? 'لا توجد نتائج.' : decider ? 'لا توجد طلبات إجازة.' : 'لم تقدّم أي طلب بعد.'} />}
             </div>
           ) : (
-            <div className="msg-items">
+            <div className="mail-items">
               <ErrorBanner text={error} />
               {loading && !data ? <Loading /> : data?.messages.map((m) => (
-                <button key={m.id} type="button" className="msg-item" data-unread={!m.read || undefined} data-active={String(m.id) === id || undefined}
+                <button key={m.id} type="button" className="mail-item" data-unread={!m.read || undefined} data-active={String(m.id) === id || undefined}
                   onClick={() => navigate(`/messages/${m.id}${tab === 'inbox' ? '' : `?folder=${tab}`}`)}>
                   <Avatar name={tab === 'sent' ? (m.to || '؟') : (m.sender?.name ?? '؟')} size={40} />
-                  <span className="msg-text">
-                    <span className="msg-top"><b>{tab === 'sent' ? `إلى: ${m.to}${m.recipients_count > 3 ? ` و${m.recipients_count - 3} آخرين` : ''}` : m.sender?.name}</b><small className="num">{when(m.created_at)}</small></span>
-                    <span className="msg-subject">{m.kind !== 'message' && <span className={`af-kind ${m.kind}`}><KindIcon kind={m.kind} />{KIND[m.kind].label}</span>}{m.subject}{m.has_attachments && <Paperclip size={13} />}</span>
-                    <span className="msg-preview">{m.preview}</span>
+                  <span className="mail-text">
+                    <span className="mail-top"><b>{tab === 'sent' ? `إلى: ${m.to}${m.recipients_count > 3 ? ` و${m.recipients_count - 3} آخرين` : ''}` : m.sender?.name}</b><small className="num">{when(m.created_at)}</small></span>
+                    <span className="mail-subject">{m.kind !== 'message' && <i className="mail-dot" data-kind={m.kind} title={KIND[m.kind].label} />}{m.subject}{m.has_attachments && <Paperclip size={13} />}</span>
+                    <span className="mail-preview">{m.preview}</span>
                   </span>
                 </button>
               ))}
               {data?.messages.length === 0 && <Empty icon={<Mail size={30} />} text={q || kind ? 'لا توجد رسائل تطابق البحث.' : tab === 'inbox' ? 'لا توجد رسائل واردة.' : tab === 'sent' ? 'لم ترسل رسائل بعد.' : 'الأرشيف فارغ.'} />}
               {((data?.has_more ?? false) || page > 1) && (
-                <div className="msg-pages"><Button disabled={page === 1} onClick={() => setPage(page - 1)}>الأحدث</Button><span className="num">صفحة {page}</span><Button disabled={!data?.has_more} onClick={() => setPage(page + 1)}>الأقدم</Button></div>
+                <div className="mail-pages"><Button disabled={page === 1} onClick={() => setPage(page - 1)}>الأحدث</Button><span className="num">صفحة {page}</span><Button disabled={!data?.has_more} onClick={() => setPage(page + 1)}>الأقدم</Button></div>
               )}
             </div>
           )}
         </aside>
 
-        <section className="card msg-read" aria-label="القراءة">
+        <section className="card mail-read" aria-label="القراءة">
           {tab === 'leaves' && selectedLeave ? <LeaveCard key={selectedLeave.id} leave={selectedLeave} back={() => setLeaveId(null)} reload={leaves.reload} />
             : id ? <Conversation key={id} id={id} back={() => navigate(tab === 'inbox' ? '/messages' : `/messages?folder=${tab}`)} onReply={setDraft} onChanged={() => void reload()} />
             : <Empty big icon={tab === 'leaves' ? <CalendarDays size={44} /> : <MailOpen size={44} />} text={tab === 'leaves' ? 'اختر طلباً لعرض تفاصيله' : 'اختر رسالة لقراءتها'} />}
@@ -141,7 +156,7 @@ export function Inbox() {
 }
 
 function Empty({ icon, text, big }: { icon: React.ReactNode; text: string; big?: boolean }) {
-  return <div className={`msg-empty${big ? ' big' : ''}`}>{icon}<p>{text}</p></div>
+  return <div className={`mail-empty${big ? ' big' : ''}`}>{icon}<p>{text}</p></div>
 }
 
 function Conversation({ id, back, onReply, onChanged }: { id: string; back(): void; onReply(d: Draft): void; onChanged(): void }) {
@@ -192,27 +207,27 @@ function Conversation({ id, back, onReply, onChanged }: { id: string; back(): vo
   }
 
   return (
-    <div className="msg-conv">
-      <header className="msg-conv-head">
+    <div className="mail-conv">
+      <header className="mail-head">
         <button type="button" className="icon-btn msg-back" aria-label="رجوع إلى القائمة" onClick={back}><ArrowRight size={18} /></button>
-        <div className="msg-conv-title">
+        <div className="mail-head-title">
           <h2>{first.subject}</h2>
-          <small>{first.kind !== 'message' && <><Pill tone={KIND[first.kind].tone}>{KIND[first.kind].label}</Pill> </>}{data.thread.length > 1 ? `${data.thread.length} رسائل` : fullWhen(first.created_at)}</small>
+          <small>{first.kind !== 'message' && <><i className="mail-dot" data-kind={first.kind} /> {KIND[first.kind].label} · </>}{data.thread.length > 1 ? `${data.thread.length} رسائل` : fullWhen(first.created_at)}</small>
         </div>
-        <div className="msg-conv-actions">
-          {people.length > 1 && <button type="button" className="icon-btn" title="رد على الجميع" aria-label="رد على الجميع" onClick={() => onReply({ kind: 'message', replyTo: last.id, subject: replySubject, to: people })}><ReplyAll size={18} /></button>}
-          {me.role?.key !== 'employee' && <button type="button" className="icon-btn" title="رفع أو تحويل لشخص آخر" aria-label="رفع أو تحويل" onClick={() => onReply({ kind: 'message', forwardOf: last, subject: `رفع: ${last.subject}`, body: 'للاطلاع والإفادة.' })}><Forward size={18} /></button>}
+        <div className="mail-head-actions">
+          {people.length > 1 && <Button className="sm" icon={<ReplyAll size={16} />} onClick={() => onReply({ kind: 'message', replyTo: last.id, subject: replySubject, to: people })}>رد على الجميع</Button>}
+          {me.role?.key !== 'employee' && <Button className="sm" icon={<Forward size={16} />} onClick={() => onReply({ kind: 'message', forwardOf: last, subject: `رفع: ${last.subject}`, body: 'للاطلاع والإفادة.' })}>تحويل</Button>}
           {isRecipient && <button type="button" className="icon-btn" title={data.archived ? 'إعادة إلى الوارد' : 'نقل إلى الأرشيف'} aria-label={data.archived ? 'إعادة إلى الوارد' : 'نقل إلى الأرشيف'} onClick={() => void toggleArchive()}>{data.archived ? <ArchiveRestore size={18} /> : <Archive size={18} />}</button>}
         </div>
       </header>
-      <div className="msg-thread">
+      <div className="mail-thread">
         {data.thread.map((m) => <MessageCard key={m.id} m={m} mine={m.sender?.id === me.id} />)}
       </div>
       {target && (
-        <form className="msg-reply" onSubmit={(e) => { e.preventDefault(); void sendReply() }}>
+        <form className="mail-reply" onSubmit={(e) => { e.preventDefault(); void sendReply() }}>
           <textarea className="input textarea" rows={2} value={reply} maxLength={channel === 'sms' ? 480 : 20000} placeholder={`اكتب رداً إلى ${target.name}…`} aria-label={`رد إلى ${target.name}`}
             onChange={(e) => setReply(e.target.value)} onKeyDown={(e) => { if (e.key === 'Enter' && (e.ctrlKey || e.metaKey)) { e.preventDefault(); void sendReply() } }} />
-          <div className="msg-reply-bar">
+          <div className="mail-reply-bar">
             {data.sms_enabled && (
               <ChoiceField className="input select" aria-label="طريقة الإرسال" value={channel} onChange={(e) => setChannel(e.target.value as 'system' | 'sms')}>
                 <option value="system">داخل النظام</option><option value="sms">رسالة قصيرة SMS</option>
@@ -300,10 +315,10 @@ function LeaveCard({ leave, back, reload }: { leave: Leave; back(): void; reload
   }
 
   return (
-    <div className="msg-conv">
-      <header className="msg-conv-head">
+    <div className="mail-conv">
+      <header className="mail-head">
         <button type="button" className="icon-btn msg-back" aria-label="رجوع إلى القائمة" onClick={back}><ArrowRight size={18} /></button>
-        <div className="msg-conv-title"><h2>{LEAVE_KIND[leave.kind]}</h2><small>{mine ? 'طلبك' : leave.name}</small></div>
+        <div className="mail-head-title"><h2>{LEAVE_KIND[leave.kind]}</h2><small>{mine ? 'طلبك' : leave.name}</small></div>
         <Pill tone={LEAVE_STATUS[leave.status]!.tone}>{LEAVE_STATUS[leave.status]!.label}</Pill>
       </header>
       <div className="leave-card">
