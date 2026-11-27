@@ -133,6 +133,8 @@ Route::middleware(['auth:sanctum', 'active'])->group(function () {
             ->whereIn('action', ['add-roll', 'update-roll', 'delete-roll', 'issue', 'assign-batch', 'update-batch', 'add-to-batch', 'delete-batch', 'record', 'return-to-stock']);
         Route::get('attendance/me', [AttendanceController::class, 'me']);
         Route::get('attendance/days/{day}/history', [AttendanceController::class, 'history']);
+        Route::get('command/attendance', [AttendanceController::class, 'command'])->middleware('perm:attendance.view');
+        Route::get('command/people/{user}', [\App\Http\Controllers\Api\CommandController::class, 'person'])->middleware('perm:users.view');
         Route::get('attendance/overview', [AttendanceController::class, 'overview'])->middleware('perm:attendance.view');
         Route::get('attendance/board', [AttendanceController::class, 'board'])->middleware('perm:attendance.view');
         Route::get('attendance/days', [AttendanceController::class, 'days'])->middleware('perm:attendance.view');

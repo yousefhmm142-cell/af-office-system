@@ -93,6 +93,46 @@ class AttendanceController extends Controller
         ]);
     }
 
+    /**
+     * The command board: every person the viewer may see, today, in one list; and for a week or month,
+     * each person's totals. Branches come from the viewer's attendance scope.
+     */
+    public function command(Request $request): JsonResponse
+    {
+        $actor = $request->user();
+        $scope = Access::scope($actor, 'attendance.view');
+        abort_unless($scope === 'all' || ($scope === 'branch' && $actor->branch_id), 403, 'ليست لديك صلاحية عرض الحضور.');
+        $data = $request->validate(['date' => ['nullable', 'date_format:Y-m-d'], 'from' => ['nullable', 'date_format:Y-m-d'], 'to' => ['nullable', 'date_format:Y-m-d', 'after_or_equal:from']]);
+        $date = $data['date'] ?? $this->svc->now()->toDateString();
+        $closed = BranchModule::where('module', 'attendance')->where('is_enabled', false)->select('branch_id');
+        $branches = Branch::where('is_active', true)->whereNotIn('id', $closed)
+            ->when($scope !== 'all', fn ($q) => $q->where('id', $actor->branch_id))->orderBy('name')->get(['id', 'name']);
+        $ids = $branches->modelKeys();
+        $rows = $this->boardRows($ids, $date)->flatten(1)->values();
+
+        $totals = null;
+        if (! empty($data['from']) && ! empty($data['to'])) {
+            abort_if(CarbonImmutable::parse($data['from'])->diffInDays(CarbonImmutable::parse($data['to'])) > 62, 422, 'أقصى مدة شهران.');
+            $totals = AttendanceDay::whereIn('branch_id', $ids)->whereBetween('date', [$data['from'], $data['to']])
+                ->whereNotNull('check_in')->get()->groupBy('user_id')->map(fn ($days) => [
+                    'days' => $days->count(),
+                    'late_days' => $days->where('late_minutes', '>', 0)->count(),
+                    'late_minutes' => (int) $days->sum('late_minutes'),
+                    'worked_minutes' => (int) $days->sum('worked_minutes'),
+                    'overtime_minutes' => (int) $days->sum('overtime_minutes'),
+                    'pending' => $days->where('approval_status', 'pending')->count(),
+                ]);
+        }
+
+        return response()->json([
+            'date' => $date,
+            'now' => $this->svc->now()->format('H:i'),
+            'branches' => $branches->map(fn (Branch $b) => ['id' => $b->id, 'name' => $b->name, 'can_manage' => Access::allowsBranch($actor, 'attendance.manage', $b->id)]),
+            'rows' => $rows,
+            'totals' => $totals,
+        ]);
+    }
+
     public function overview(Request $request): JsonResponse
     {
         abort_unless(Access::scope($request->user(), 'attendance.view') === 'all', 403, 'تتطلب هذه الصفحة صلاحية عرض حضور جميع الفروع.');
@@ -115,7 +155,7 @@ class AttendanceController extends Controller
     {
         $dayDate = CarbonImmutable::parse($date, $this->svc->tz());
         $now = $this->svc->now();
-        $people = User::whereIn('branch_id', $branchIds)->where('is_active', true)->with('employee.schedule', 'role')
+        $people = User::whereIn('branch_id', $branchIds)->where('is_active', true)->with('employee.schedule', 'employee.department', 'role')
             ->whereHas('employee', fn ($q) => $q->where('tracks_attendance', true)->where('status', '!=', 'terminated')
                 ->where(fn ($employment) => $employment->whereNull('hire_date')->orWhere('hire_date', '<=', $date)))
             ->orderBy('name')->get();
@@ -151,7 +191,7 @@ class AttendanceController extends Controller
             };
 
             return [
-                'user' => ['id' => $user->id, 'name' => $user->name, 'job_title' => $user->employee?->job_title ?? $user->role?->name],
+                'user' => ['id' => $user->id, 'name' => $user->name, 'job_title' => $user->employee?->job_title ?? $user->role?->name, 'department' => $user->employee?->department?->name, 'branch_id' => $user->branch_id],
                 'state' => $state,
                 'permission' => ($leaves->get($user->id)?->kind === 'permission') ? substr($leaves[$user->id]->from_time, 0, 5).'–'.substr($leaves[$user->id]->to_time, 0, 5) : null,
                 'schedule_name' => $shift?->is_rest ? 'راحة أسبوعية' : $schedule?->name,

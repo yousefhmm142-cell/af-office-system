@@ -9,6 +9,7 @@ import { Loading, PageHead } from '../ui/PageHead'
 import { PunchCard } from './attendance/PunchCard'
 import { fmt } from './payroll/lib'
 import { BranchManagerHome } from './dashboard/BranchManagerHome'
+import { CommandCenter } from './command/CommandCenter'
 
 interface BranchRow { id: number; name: string; staff: number; present: number | null; late: number | null; not_in: number | null; open_tasks: number | null; late_tasks: number; done_today: number | null }
 export interface Dashboard {
@@ -47,6 +48,8 @@ export function Home() {
   const hasAttendance = !!user.branch && !!user.modules?.includes('attendance')
 
   if (role === 'branch_manager') return <BranchManagerHome user={user} data={data} error={error} loading={loading} />
+  // HR, management and the system admin get the command board.
+  if (['hr', 'management', 'super_admin'].includes(role ?? '') && can(user, 'attendance.view')) return <CommandCenter />
 
   return (
     <div className="home">
