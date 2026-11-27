@@ -1,7 +1,10 @@
 import { AccountHandoff } from './AccountHandoff'
 import { ChoiceField } from '../ui/ChoiceField'
 import { BranchDepartments, BranchRoster } from './BranchPlanning'
-import { CalendarClock, Pencil, Plus, Trash2 } from 'lucide-react'
+import { CalendarCheck, CalendarClock, ClipboardList, LayoutGrid, MessageSquare, Pencil, Plus, Stamp, Trash2, UserRound, Users, Zap } from 'lucide-react'
+import { Link } from 'react-router'
+import { NxAvatar, NxCard, NxEmpty, type Hue } from '../ui/nx'
+import { Crumbs } from '../ui/Crumbs'
 import { useState, type FormEvent } from 'react'
 import { useParams } from 'react-router'
 import { api, ApiError } from '../api/client'
@@ -11,10 +14,9 @@ import { useLoad } from '../lib/useLoad'
 import { useConfirm } from '../ui/Confirm'
 import { Dialog } from '../ui/Dialog'
 import { ErrorBanner, Field, Switch } from '../ui/Field'
-import { ScrollTable } from '../ui/ScrollTable'
 import { TimeField } from '../ui/TimeField'
-import { Loading, PageHead } from '../ui/PageHead'
-import { Button, Pill } from '../ui/primitives'
+import { Loading } from '../ui/PageHead'
+import { Button } from '../ui/primitives'
 import { useToast } from '../ui/Toast'
 
 const dayNames = (days: number[]) =>
@@ -63,62 +65,96 @@ export function BranchDetail() {
     } catch (e) { toast(e instanceof ApiError ? e.message : 'لم يُحذف', 'danger') }
   }
 
+  const team = (staff.data?.users ?? []).filter((u) => u.is_active)
   return (
-    <>
-      <PageHead title={branch.name} eyebrow="الفرع" actions={<>{!branch.is_active && <Pill tone="warn">موقوف</Pill>}{can(me,"users.manage") && ["hr","super_admin"].includes(me.role?.key??"") && <AccountHandoff branchId={String(branch.id)}/>}</>} />
-      <div className="af-grid2">
-        <section className="card glass af-pad">
-          <h2 className="af-h2">أقسام الفرع</h2>
-          <p className="eyebrow">القسم المغلق لا يظهر لموظفي الفرع.</p>
-          <div className="af-switches">
+    <div className="nx nxbd">
+      <Crumbs trail={[{ label: 'الفروع', to: '/branches' }, { label: `فرع ${branch.name}` }]} />
+      <section className="nx-hero">
+        <div className="nx-hero-cover"><span>فرع</span></div>
+        <div className="nx-hero-main">
+          <div className="nx-hero-photo"><NxAvatar name={branch.name} size={96} /></div>
+          <div className="nx-hero-id">
+            <h1>{branch.name}</h1>
+            <p>{branch.manager ? <>مدير الفرع: <b>{branch.manager.name}</b></> : 'لم يُحدَّد مدير للفرع'}</p>
+            <div className="nx-hero-meta">
+              <span><Users size={15} /> <span className="num">{branch.users_count}</span> مستخدماً</span>
+              <span><LayoutGrid size={15} /> <span className="num">{branch.modules.filter((m) => m.enabled).length}</span> من {branch.modules.length} أقسام مفتوحة</span>
+              <span><CalendarClock size={15} /> <span className="num">{schedules.length}</span> {schedules.length === 1 ? 'دوام' : 'دوامات'}</span>
+            </div>
+          </div>
+          <div className="nx-hero-side">
+            <span className="nx-chip nx-chip-dot" data-hue={branch.is_active ? 'mint' : 'amber'}>{branch.is_active ? 'فعّال' : 'موقوف'}</span>
+            {can(me, 'users.manage') && ['hr', 'super_admin'].includes(me.role?.key ?? '') && <div className="nx-hero-actions"><AccountHandoff branchId={String(branch.id)} /></div>}
+          </div>
+        </div>
+      </section>
+
+      <div className="nx-split">
+        <NxCard title="أقسام الفرع" icon={<LayoutGrid size={17} />}>
+          <p className="nxw-hint">القسم المغلق لا يظهر لموظفي الفرع.</p>
+          <div className="nxbd-mods">
             {branch.modules.map((m) => (
-              <Switch key={m.key} label={m.name} on={m.enabled} disabled={!manageBranch || busyModule === m.key} onChange={(v) => void toggleModule(m.key, v)} />
+              <label key={m.key} className="nxbd-mod" data-on={m.enabled || undefined} data-busy={busyModule === m.key || undefined}>
+                <span className="nx-ico" data-hue={m.enabled ? MOD_HUE[m.key] ?? 'violet' : 'slate'}>{MOD_ICON[m.key] ?? <LayoutGrid size={18} />}</span>
+                <span className="nxbd-mod-t"><b>{m.name}</b><small>{m.enabled ? 'مفتوح' : 'مغلق'}</small></span>
+                <input type="checkbox" className="nxbd-switch" checked={m.enabled} disabled={!manageBranch || busyModule === m.key} onChange={(e) => void toggleModule(m.key, e.target.checked)} aria-label={m.name} />
+              </label>
             ))}
           </div>
-        </section>
-        <section className="card glass af-pad">
-          <h2 className="af-h2">مدير الفرع</h2>
-          {manageBranch ? (
-            <ChoiceField className="input select" value={branch.manager?.id ?? ''} onChange={(e) => void setManager(e.target.value)} aria-label="مدير الفرع">
-              <option value="">— بدون مدير —</option>
-              {staff.data?.users.filter((u) => u.is_active).map((u) => <option key={u.id} value={u.id}>{u.name} ({u.role?.name})</option>)}
-            </ChoiceField>
-          ) : <p><b>{branch.manager?.name ?? 'بدون مدير'}</b></p>}
-          <p className="eyebrow" style={{ marginTop: 10 }}>تظهر هنا أسماء موظفي الفرع فقط. <b className="num">{branch.users_count}</b> مستخدماً في الفرع.</p>
-        </section>
+        </NxCard>
+        <NxCard title="مدير الفرع والفريق" icon={<UserRound size={17} />}>
+          <div className="nxbd-manager">
+            <NxAvatar name={branch.manager?.name ?? '؟'} size={52} />
+            <div>
+              {manageBranch ? (
+                <ChoiceField className="input select" value={branch.manager?.id ?? ''} onChange={(e) => void setManager(e.target.value)} aria-label="مدير الفرع">
+                  <option value="">— بدون مدير —</option>
+                  {team.map((u) => <option key={u.id} value={u.id}>{u.name} ({u.role?.name})</option>)}
+                </ChoiceField>
+              ) : <b>{branch.manager?.name ?? 'بدون مدير'}</b>}
+              <small>يُختار من موظفي الفرع فقط.</small>
+            </div>
+          </div>
+          {team.length > 0 && <div className="nxbd-team">
+            <div className="nxbd-faces">{team.slice(0, 9).map((u) => <Link key={u.id} to={`/employees/${u.id}`} title={u.name}><NxAvatar name={u.name} size={38} /></Link>)}{team.length > 9 && <span className="nxbd-more num">+{team.length - 9}</span>}</div>
+            <Link to="/users" className="nx-edit">كل الموظفين</Link>
+          </div>}
+        </NxCard>
       </div>
 
-      <section className="card glass af-pad" style={{ marginTop: 16 }}>
-        <div className="af-row-between">
-          <h2 className="af-h2"><CalendarClock size={18} /> الدوامات</h2>
-          {manageSchedules && <Button icon={<Plus size={16} />} onClick={() => setEditing('new')}>دوام جديد</Button>}
-        </div>
+      <NxCard title="الدوامات" icon={<CalendarClock size={17} />} action={manageSchedules && <Button icon={<Plus size={16} />} onClick={() => setEditing('new')}>دوام جديد</Button>}>
         {schedules.length > 0 ? (
-          <ScrollTable label="دوامات الفرع">
-            <table className="tbl af-schedule-table">
-              <thead><tr><th scope="col">الدوام</th><th scope="col">أيام العمل</th><th scope="col">الساعات</th><th scope="col">السماح</th>{manageSchedules && <th scope="col">الإجراءات</th>}</tr></thead>
-              <tbody>{schedules.map((schedule) => (
-                <tr key={schedule.id}>
-                  <th scope="row">{schedule.name} {schedule.is_default && <Pill tone="brand" dot={false}>الأساسي</Pill>}</th>
-                  <td>{dayNames(schedule.work_days)}</td>
-                  <td><bdi className="num" dir="ltr">{schedule.start_time} – {schedule.end_time}</bdi></td>
-                  <td>{schedule.grace_minutes} دقيقة</td>
-                  {manageSchedules && <td><span className="af-row-actions">
-                    <button type="button" className="icon-btn" aria-label={`تعديل ${schedule.name}`} onClick={() => setEditing(schedule)}><Pencil size={16} /></button>
-                    {!schedule.is_default && <button type="button" className="icon-btn" aria-label={`حذف ${schedule.name}`} onClick={() => void removeSchedule(schedule)}><Trash2 size={16} /></button>}
-                  </span></td>}
-                </tr>
-              ))}</tbody>
-            </table>
-          </ScrollTable>
-        ) : <p className="eyebrow">لا توجد دوامات لهذا الفرع.</p>}
-      </section>
+          <div className="nxbd-shifts">
+            {schedules.map((sch) => (
+              <article key={sch.id} className="nxbd-shift" data-default={sch.is_default || undefined}>
+                <header>
+                  <b>{sch.name}</b>
+                  {sch.is_default && <span className="nx-chip" data-hue="rose">الأساسي</span>}
+                  {manageSchedules && <span className="nxbd-shift-act">
+                    <button type="button" className="nx-icon-btn" aria-label={`تعديل ${sch.name}`} onClick={() => setEditing(sch)}><Pencil size={15} /></button>
+                    {!sch.is_default && <button type="button" className="nx-icon-btn" aria-label={`حذف ${sch.name}`} onClick={() => void removeSchedule(sch)}><Trash2 size={15} /></button>}
+                  </span>}
+                </header>
+                <strong className="num nxbd-hours"><bdi dir="ltr">{sch.start_time} – {sch.end_time}</bdi></strong>
+                <div className="nxbd-days">{DAYS.map(([d, n]) => <span key={d} data-on={sch.work_days.includes(d) || undefined} title={n}>{n.replace(/^ال/, '').slice(0, 2)}</span>)}</div>
+                <small>سماح التأخير <b className="num">{sch.grace_minutes}</b> دقيقة · {dayNames(sch.work_days)}</small>
+              </article>
+            ))}
+          </div>
+        ) : <NxEmpty icon={<CalendarClock size={26} />} title="لا توجد دوامات لهذا الفرع" />}
+      </NxCard>
       {can(me, 'departments.manage') && <BranchDepartments key={branch.id} branch={branch.id} />}
       {manageSchedules && <BranchRoster key={branch.id} branch={branch.id} staff={staff.data?.users ?? []} schedules={schedules} />}
       {editing && <ScheduleDialog branchId={branch.id} schedule={editing === 'new' ? null : editing} onClose={() => setEditing(null)} onSaved={() => { setEditing(null); void reload() }} />}
-    </>
+    </div>
   )
 }
+
+const MOD_ICON: Record<string, React.ReactNode> = {
+  attendance: <CalendarCheck size={18} />, generation: <Zap size={18} />, distribution: <LayoutGrid size={18} />,
+  tasks: <ClipboardList size={18} />, seals: <Stamp size={18} />, sms: <MessageSquare size={18} />,
+}
+const MOD_HUE: Record<string, Hue> = { attendance: 'mint', generation: 'amber', distribution: 'sky', tasks: 'violet', seals: 'rose', sms: 'sky' }
 
 function ScheduleDialog({ branchId, schedule, onClose, onSaved }: { branchId: number; schedule: Schedule | null; onClose(): void; onSaved(): void }) {
   const toast = useToast()

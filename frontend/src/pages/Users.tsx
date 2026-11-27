@@ -1,7 +1,8 @@
 import { AccountHandoff } from './AccountHandoff'
 import { salaryLabel } from '../api/types'
 import { ChoiceField } from '../ui/ChoiceField'
-import { KeyRound, Lock, Pencil, Plus, Power, Search, Trash2, UserPlus, Users as UsersIcon } from 'lucide-react'
+import { Building2, FileWarning, GraduationCap, KeyRound, LayoutGrid, List, Lock, Pencil, Plus, Power, Search, Trash2, UserCheck, UserPlus, Users as UsersIcon, UserX } from 'lucide-react'
+import { NxAvatar, NxEmpty, type Hue } from '../ui/nx'
 import { useMemo, useState, type FormEvent } from 'react'
 import { Link, useSearchParams } from 'react-router'
 import { api, ApiError } from '../api/client'
@@ -10,10 +11,9 @@ import { can, scopeOf, useUser } from '../app/auth'
 import { useLoad } from '../lib/useLoad'
 import { useConfirm } from '../ui/Confirm'
 import { Dialog } from '../ui/Dialog'
-import { ErrorBanner, Field, Switch } from '../ui/Field'
+import { ErrorBanner, Field } from '../ui/Field'
 import { Loading, PageHead } from '../ui/PageHead'
 import { Avatar, Button, Pill } from '../ui/primitives'
-import { ScrollTable } from '../ui/ScrollTable'
 import { useToast } from '../ui/Toast'
 import { PasswordInput } from './Login'
 
@@ -37,6 +37,9 @@ export function Users({ embedded = false }: { embedded?: boolean }) {
   const incompleteOnly = filters.get('profile') === 'incomplete'
   const [editing, setEditing] = useState<User | 'new' | null>(null)
   const [resetting, setResetting] = useState<User | null>(null)
+  const [status, setStatus] = useState<'all' | 'active' | 'trainee' | 'off'>('all')
+  const [view, setView] = useState<'grid' | 'list'>(() => { try { return localStorage.getItem('af-users-view') === 'list' ? 'list' : 'grid' } catch { return 'grid' } })
+  const pickView = (v: 'grid' | 'list') => { setView(v); try { localStorage.setItem('af-users-view', v) } catch { /* not kept */ } }
   const manages = can(me, 'users.manage')
 
   const list = useMemo(() => {
@@ -121,67 +124,107 @@ export function Users({ embedded = false }: { embedded?: boolean }) {
     )
   }
 
+  const all = data?.users ?? []
+  const counts = {
+    all: all.length,
+    active: all.filter((u) => u.is_active && (u.status ?? 'active') === 'active').length,
+    trainee: all.filter((u) => u.status === 'trainee').length,
+    off: all.filter((u) => !u.is_active || u.status === 'suspended' || u.status === 'terminated').length,
+    incomplete: all.filter((u) => u.is_active && u.needs_profile_completion).length,
+  }
+  const shown = list.filter((u) => status === 'all' ? true
+    : status === 'active' ? u.is_active && (u.status ?? 'active') === 'active'
+    : status === 'trainee' ? u.status === 'trainee'
+    : !u.is_active || u.status === 'suspended' || u.status === 'terminated')
+  const STAT: Array<{ key: typeof status | 'incomplete'; label: string; n: number; hue: Hue; icon: React.ReactNode }> = [
+    { key: 'all', label: 'كل الحسابات', n: counts.all, hue: 'violet', icon: <UsersIcon size={19} /> },
+    { key: 'active', label: 'فعّالون', n: counts.active, hue: 'mint', icon: <UserCheck size={19} /> },
+    { key: 'trainee', label: 'متدربون', n: counts.trainee, hue: 'sky', icon: <GraduationCap size={19} /> },
+    { key: 'off', label: 'موقوفون', n: counts.off, hue: 'rose', icon: <UserX size={19} /> },
+    { key: 'incomplete', label: 'ملفات ناقصة', n: counts.incomplete, hue: 'amber', icon: <FileWarning size={19} /> },
+  ]
+  const badges = (u: User) => <>
+    {u.is_active && (u.status ?? 'active') === 'active' && <span className="nx-chip nx-chip-dot" data-hue="mint">فعّال</span>}
+    {u.status && u.status !== 'active' && <span className="nx-chip nx-chip-dot" data-hue={u.status === 'terminated' ? 'rose' : u.status === 'trainee' ? 'sky' : 'amber'}>{STATUS_LABEL[u.status]}</span>}
+    {!u.is_active && u.status !== 'terminated' && <span className="nx-chip" data-hue="amber">الحساب موقوف</span>}
+    {u.is_locked && <span className="nx-chip" data-hue="rose"><Lock size={12} /> مقفل</span>}
+    {u.must_change_password && u.is_active && <span className="nx-chip" data-hue="sky">رمز مؤقت</span>}
+    {u.needs_profile_completion && u.is_active && <span className="nx-chip" data-hue="amber">ملف ناقص</span>}
+  </>
+  const actions = (u: User) => canTouch(u) && (
+    <span className="nxu-actions" onClick={(e) => e.preventDefault()}>
+      <button type="button" className="nx-icon-btn nxu-act" title="تعديل" aria-label={`تعديل ${u.name}`} onClick={() => setEditing(u)}><Pencil size={16} /></button>
+      <button type="button" className="nx-icon-btn nxu-act" title="رمز دخول مؤقت" aria-label={`رمز مؤقت لـ${u.name}`} onClick={() => setResetting(u)}><KeyRound size={16} /></button>
+      <button type="button" className="nx-icon-btn nxu-act" title={u.is_active ? 'إيقاف الحساب' : 'إعادة التفعيل'} aria-label={u.is_active ? `إيقاف ${u.name}` : `تفعيل ${u.name}`} onClick={() => void toggleActive(u)}><Power size={16} /></button>
+      <button type="button" className="nx-icon-btn" title="حذف" aria-label={`حذف ${u.name}`} onClick={() => void remove(u)}><Trash2 size={16} /></button>
+    </span>
+  )
+  const href = (u: User) => (u.id === me.id ? '/me' : `/employees/${u.id}`)
+
   return (
-    <>
+    <div className="nx nxu">
       <PageHead title="الموظفون" eyebrow="الحسابات والملفات الشخصية" actions={create} />
-      <div className="af-toolbar">
-        <div className="af-search">
-          <Search size={17} aria-hidden="true" />
-          <input className="input" placeholder="ابحث بالاسم أو اسم المستخدم" value={search} onChange={(e) => setSearch(e.target.value)} aria-label="بحث" />
-        </div>
+      <div className="nxu-stats">
+        {STAT.map((t) => {
+          const on = t.key === 'incomplete' ? incompleteOnly : !incompleteOnly && status === t.key
+          return (
+            <button key={t.key} type="button" className="nxu-stat" data-hue={t.hue} aria-pressed={on}
+              onClick={() => { if (t.key === 'incomplete') { setStatus('all'); setFilters(incompleteOnly ? {} : { profile: 'incomplete' }, { replace: true }) } else { setStatus(t.key); setFilters({}, { replace: true }) } }}>
+              <span className="nx-ico">{t.icon}</span>
+              <span><b className="num">{loading && !data ? '—' : t.n}</b><small>{t.label}</small></span>
+            </button>
+          )
+        })}
+      </div>
+      <div className="nxu-bar">
+        <label className="nxm-search nxu-search"><Search size={17} aria-hidden="true" /><input placeholder="ابحث بالاسم أو اسم المستخدم" value={search} onChange={(e) => setSearch(e.target.value)} aria-label="بحث" /></label>
         {(branches.data?.branches.length ?? 0) > 1 && (
-          <ChoiceField className="input select" value={branchFilter} onChange={(e) => setBranchFilter(e.target.value)} aria-label="الفرع">
+          <ChoiceField className="input select nxu-branch" value={branchFilter} onChange={(e) => setBranchFilter(e.target.value)} aria-label="الفرع">
             <option value="">كل الفروع</option>
             <option value="none">الإدارة العامة</option>
             {branches.data?.branches.map((b) => <option key={b.id} value={b.id}>{b.name}</option>)}
           </ChoiceField>
         )}
-        {selectedBranch && selectedBranch!=='none' && manages && scopeOf(me, 'users.manage') === 'all' && <AccountHandoff key={selectedBranch} branchId={selectedBranch}/>}
-        <ChoiceField className="input select" value={incompleteOnly ? 'incomplete' : ''} aria-label="حالة الملف الشخصي"
-          onChange={(event) => setFilters(event.target.value ? { profile: event.target.value } : {}, { replace: true })}>
-          <option value="">جميع الملفات</option>
-          <option value="incomplete">ملفات تحتاج إلى استكمال</option>
-        </ChoiceField>
+        {selectedBranch && selectedBranch !== 'none' && manages && scopeOf(me, 'users.manage') === 'all' && <AccountHandoff key={selectedBranch} branchId={selectedBranch} />}
+        <div className="nxu-view" role="group" aria-label="طريقة العرض">
+          <button type="button" aria-pressed={view === 'grid'} onClick={() => pickView('grid')} title="بطاقات" aria-label="بطاقات"><LayoutGrid size={17} /></button>
+          <button type="button" aria-pressed={view === 'list'} onClick={() => pickView('list')} title="قائمة" aria-label="قائمة"><List size={17} /></button>
+        </div>
       </div>
       <ErrorBanner text={error} />
-      {loading && !data ? <Loading /> : (
-        <div className="card glass af-directory">
-          <ScrollTable label="الموظفون">
-            <table className="tbl">
-              <thead><tr><th scope="col">الموظف</th><th scope="col">الدور والفرع</th><th scope="col">الحالة</th>{manages && <th scope="col">الإجراءات</th>}</tr></thead>
-              <tbody>{list.map((u) => (
-                <tr key={u.id}>
-                  <th scope="row">
-                    <Link to={u.id === me.id ? '/me' : `/employees/${u.id}`} className="af-directory-name af-link">
-                      <Avatar name={u.name} /><span>{u.name}<small className="af-sub" dir="auto">@{u.username}</small></span>
-                    </Link>
-                  </th>
-                  <td>{u.role?.name ?? '—'}<small className="af-sub">{[u.branch?.name ?? 'الإدارة العامة', u.job_title].filter(Boolean).join(' · ')}</small></td>
-                  <td><span className="af-badges">
-                    {u.is_active && u.status === 'active' && <Pill tone="ok">فعّال</Pill>}
-                    {u.status && u.status !== 'active' && <Pill tone={u.status === 'terminated' ? 'danger' : u.status === 'trainee' ? 'info' : 'warn'}>{STATUS_LABEL[u.status]}</Pill>}
-                    {!u.is_active && u.status !== 'terminated' && <Pill tone="warn">الحساب موقوف</Pill>}
-                    {u.is_locked && <Pill tone="danger"><Lock size={12} /> مقفل</Pill>}
-                    {u.must_change_password && u.is_active && <Pill tone="info">كلمة مرور مؤقتة</Pill>}
-                    {u.needs_profile_completion && <Pill tone="warn">ملف شخصي غير مكتمل</Pill>}
-                  </span></td>
-                  {manages && <td>{canTouch(u) ? (
-                    <span className="af-row-actions">
-                      <button type="button" className="icon-btn" title="تعديل" aria-label={`تعديل ${u.name}`} onClick={() => setEditing(u)}><Pencil size={16} /></button>
-                      <button type="button" className="icon-btn" title="رمز مؤقت" aria-label={`رمز مؤقت لـ${u.name}`} onClick={() => setResetting(u)}><KeyRound size={16} /></button>
-                      <Switch label={u.is_active ? 'فعّال' : 'موقوف'} on={u.is_active} onChange={() => void toggleActive(u)} />
-                      <button type="button" className="icon-btn" title="حذف" aria-label={`حذف ${u.name}`} onClick={() => void remove(u)}><Trash2 size={16} /></button>
-                    </span>
-                  ) : '—'}</td>}
-                </tr>
-              ))}</tbody>
-            </table>
-          </ScrollTable>
-          {list.length === 0 && <p className="eyebrow af-pad">لا توجد نتائج.</p>}
+      {loading && !data ? <Loading /> : shown.length === 0 ? (
+        <div className="nx-card"><NxEmpty icon={<UsersIcon size={26} />} title="لا توجد نتائج" text="جرّب اسماً آخر أو أزل أحد الفلاتر." /></div>
+      ) : view === 'grid' ? (
+        <div className="nxu-grid">
+          {shown.map((u) => (
+            <Link key={u.id} to={href(u)} className="nxu-card" data-off={!u.is_active || undefined}>
+              <div className="nxu-card-top">
+                <NxAvatar name={u.name} size={60} />
+                {actions(u)}
+              </div>
+              <b className="nxu-name">{u.name}</b>
+              <span className="nxu-job">{u.job_title || u.role?.name || '—'}</span>
+              <span className="nxu-meta"><Building2 size={14} /> {u.branch?.name ?? 'الإدارة العامة'}<i>·</i><span className="num" dir="ltr">@{u.username}</span></span>
+              <span className="nxu-badges">{badges(u)}</span>
+            </Link>
+          ))}
+        </div>
+      ) : (
+        <div className="nx-card nxu-list">
+          {shown.map((u) => (
+            <Link key={u.id} to={href(u)} className="nxu-row" data-off={!u.is_active || undefined}>
+              <NxAvatar name={u.name} size={44} />
+              <span className="nxu-row-main"><b>{u.name}</b><small className="num" dir="ltr">@{u.username}</small></span>
+              <span className="nxu-row-role"><b>{u.job_title || u.role?.name || '—'}</b><small>{u.job_title ? u.role?.name : ''}</small></span>
+              <span className="nx-chip" data-hue="slate"><Building2 size={13} /> {u.branch?.name ?? 'الإدارة العامة'}</span>
+              <span className="nxu-badges">{badges(u)}</span>
+              {actions(u) || <span />}
+            </Link>
+          ))}
         </div>
       )}
       {dialogs}
-    </>
+    </div>
   )
 }
 
