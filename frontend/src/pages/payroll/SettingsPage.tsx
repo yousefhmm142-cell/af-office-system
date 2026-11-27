@@ -1,4 +1,6 @@
-import { Clock4, Save } from 'lucide-react'
+import { ArrowRight, Clock4, History, Minus, Save } from 'lucide-react'
+import { Link } from 'react-router'
+import { NxCard } from '../../ui/nx'
 import { useEffect, useState, type ReactNode } from 'react'
 import { api, ApiError } from '../../api/client'
 import type { Branch } from '../../api/types'
@@ -42,49 +44,51 @@ export function PayrollSettings() {
   }
 
   return (
-    <>
-      <PageHead title="قواعد حساب الرواتب" eyebrow="أنت من يحدد القواعد، والنظام يحسب على أساسها" />
+    <div className="nx nxs">
+      <PageHead title="قواعد حساب الرواتب" eyebrow="أنت من يحدد القواعد، والنظام يحسب على أساسها"
+        actions={<Link to="/payroll" className="nx-edit"><ArrowRight size={15} /> الرواتب</Link>} />
       {all && (
-        <div className="chips af-pad0">
-          <button type="button" className="chip" aria-pressed={branchId === ''} onClick={() => setBranchId('')}>جميع الفروع (الافتراضي)</button>
-          {branches.data?.branches.map((b) => <button key={b.id} type="button" className="chip" aria-pressed={branchId === String(b.id)} onClick={() => setBranchId(String(b.id))}>{b.name}</button>)}
+        <div className="nxw-chips nxs-branches">
+          <button type="button" className="nxw-chip" aria-pressed={branchId === ''} onClick={() => setBranchId('')}>جميع الفروع (الافتراضي)</button>
+          {branches.data?.branches.map((b) => <button key={b.id} type="button" className="nxw-chip" aria-pressed={branchId === String(b.id)} onClick={() => setBranchId(String(b.id))}>{b.name}</button>)}
         </div>
       )}
-      <div className="af-rules">
-        <p>تُسجّل شؤون الموظفين أي خصم يدوياً مع المبلغ والسبب.</p>
-        <Rule icon={<Clock4 size={22} />} title="الوقت الإضافي" mode={s.overtime_mode} value={s.overtime_value}
+      <div className="nx-split nx-split-even">
+        <Rule icon={<Clock4 size={20} />} title="الوقت الإضافي" mode={s.overtime_mode} value={s.overtime_value}
           onMode={(m) => set('overtime_mode', m)} onValue={(v) => set('overtime_value', v)}
-          wageLabel="معامل أجر الساعة" fixedLabel="المبلغ عن كل ساعة إضافية"
+          wageLabel="معامل أجر الساعة" fixedLabel="المبلغ عن كل ساعة إضافية (₪)"
           sentence={s.overtime_mode === 'none' ? 'لا يُحسب الوقت الإضافي.' : s.overtime_mode === 'wage' ? `كل ساعة إضافية تُضاف بأجر ساعة × ${s.overtime_value}.` : `كل ساعة إضافية تُضاف ${s.overtime_value} شيكل.`}>
           {s.overtime_mode !== 'none' && (
-            <label className="af-inline">حد أعلى بالشهر (ساعات، اختياري)
-              <input className="input num" inputMode="numeric" dir="ltr" value={s.overtime_cap_hours ?? ''} onChange={(e) => set('overtime_cap_hours', e.target.value === '' ? null : Number(e.target.value.replace(/\D/g, '')))} />
+            <label className="field"><span className="label">حد أعلى بالشهر (ساعات، اختياري)</span>
+              <input className="input num" inputMode="numeric" dir="ltr" placeholder="بلا حد" value={s.overtime_cap_hours ?? ''} onChange={(e) => set('overtime_cap_hours', e.target.value === '' ? null : Number(e.target.value.replace(/\D/g, '')))} />
             </label>
           )}
         </Rule>
+        <div className="nx-stack">
+          <NxCard title="الخصومات" icon={<Minus size={17} />}>
+            <p className="nx-note">لا يخصم النظام تلقائياً عن التأخير أو الغياب. تُسجّل شؤون الموظفين أي خصم يدوياً مع المبلغ والسبب من <Link to="/payroll/extras">الخصومات والمكافآت</Link>.</p>
+          </NxCard>
+          <NxCard title="الحفظ" icon={<Save size={17} />}>
+            <label className="field"><span className="label">تسري القواعد من تاريخ</span>
+              <input className="input num" type="date" value={from} onChange={(e) => setFrom(e.target.value)} />
+            </label>
+            <p className="nxw-hint">لا تغيّر القواعد الجديدة الدفعات المعتمدة قبل هذا التاريخ.</p>
+            <ErrorBanner text={error} />
+            <Button variant="primary" size="lg" icon={<Save size={18} />} busy={busy} onClick={() => void save()}>حفظ القواعد</Button>
+          </NxCard>
+        </div>
       </div>
-      <section className="card glass af-pad af-save-bar">
-        <label className="af-inline">تسري القواعد من تاريخ
-          <input className="input num" type="date" value={from} onChange={(e) => setFrom(e.target.value)} />
-        </label>
-        <p className="eyebrow">لا تغيّر القواعد الجديدة الدفعات المعتمدة قبل هذا التاريخ.</p>
-        <ErrorBanner text={error} />
-        <Button variant="primary" size="lg" icon={<Save size={18} />} busy={busy} onClick={() => void save()}>حفظ القواعد</Button>
-      </section>
       {(data?.settings.length ?? 0) > 0 && (
-        <section className="card glass af-pad" style={{ marginTop: 16 }}>
-          <h2 className="af-h2">سجل القواعد</h2>
-          <div className="rows">
+        <NxCard title="سجل القواعد" icon={<History size={17} />}>
+          <ol className="nx-timeline">
             {data!.settings.map((r) => (
-              <div key={r.id} className="row af-kv">
-                <span className="row-label">من {r.effective_from}{r.branch_id ? ' · فرع' : ' · الافتراضي'}</span>
-                <span className="row-value">تأخير: {label(r.late_mode)} · غياب: {label(r.absence_mode)} · إضافي: {label(r.overtime_mode)}</span>
-              </div>
+              <li key={r.id}><b>من {r.effective_from} · {r.branch_id ? 'فرع' : 'الافتراضي لجميع الفروع'}</b>
+                <small>الوقت الإضافي: {label(r.overtime_mode)}{r.overtime_mode !== 'none' ? ` (${r.overtime_value})` : ''}</small></li>
             ))}
-          </div>
-        </section>
+          </ol>
+        </NxCard>
       )}
-    </>
+    </div>
   )
 }
 
@@ -95,20 +99,20 @@ function Rule({ icon, title, mode, value, onMode, onValue, wageLabel, fixedLabel
   wageLabel: string; fixedLabel: string; sentence: string; children?: ReactNode
 }) {
   return (
-    <section className="card glass af-pad af-rule" data-on={mode !== 'none' || undefined}>
-      <h2 className="af-h2"><span className="af-tile-ico">{icon}</span> {title}</h2>
-      <div className="segmented" role="radiogroup" aria-label={title}>
-        <button type="button" role="radio" aria-checked={mode === 'none'} onClick={() => onMode('none')}>لا يُحسب</button>
-        <button type="button" role="radio" aria-checked={mode === 'wage'} onClick={() => onMode('wage')}>حسب الأجر</button>
-        <button type="button" role="radio" aria-checked={mode === 'fixed'} onClick={() => onMode('fixed')}>مبلغ ثابت</button>
+    <section className="nx-card nxs-rule" data-on={mode !== 'none' || undefined}>
+      <header className="nx-card-head"><h3><span className="nx-card-ico">{icon}</span>{title}</h3></header>
+      <div className="nxw-pcts nxs-modes" role="radiogroup" aria-label={title}>
+        {([['none', 'لا يُحسب', 'لا يدخل الراتب'], ['wage', 'حسب الأجر', 'أجر الساعة × معامل'], ['fixed', 'مبلغ ثابت', 'عن كل ساعة']] as const).map(([k, t, d]) => (
+          <button key={k} type="button" role="radio" className="nxw-pct" aria-pressed={mode === k} aria-checked={mode === k} onClick={() => onMode(k)}><b>{t}</b><small>{d}</small></button>
+        ))}
       </div>
       {mode !== 'none' && (
-        <label className="af-inline">{mode === 'wage' ? wageLabel : fixedLabel}
-          <input className="input num af-big-input" inputMode="decimal" dir="ltr" value={value} onChange={(e) => onValue(Number(e.target.value.replace(/[^0-9.]/g, '')) || 0)} />
+        <label className="field"><span className="label">{mode === 'wage' ? wageLabel : fixedLabel}</span>
+          <input className="input num nxs-big" inputMode="decimal" dir="ltr" value={value} onChange={(e) => onValue(Number(e.target.value.replace(/[^0-9.]/g, '')) || 0)} />
         </label>
       )}
       {children}
-      <p className="af-sentence">{sentence}</p>
+      <p className="nxw-note" data-hue={mode === 'none' ? 'slate' : 'mint'}><Clock4 size={17} /> {sentence}</p>
     </section>
   )
 }

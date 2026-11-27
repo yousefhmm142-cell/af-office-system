@@ -1,4 +1,4 @@
-import { ArrowLeft, BadgeCheck, CalendarRange, Check, ChevronLeft, ChevronRight, CircleDollarSign, HandCoins, Info, Plus, Settings2, Sparkles, Wallet } from 'lucide-react'
+import { ArrowLeft, BadgeCheck, Building2, CalendarRange, Check, ChevronLeft, ChevronRight, CircleDollarSign, HandCoins, Info, Plus, Settings2, Sparkles, Wallet } from 'lucide-react'
 import { NxAvatar, NxCard, NxEmpty, NxStat, type Hue } from '../../ui/nx'
 import { MonthField } from '../../ui/MonthField'
 import { useEffect, useState } from 'react'
@@ -64,6 +64,13 @@ export function PayrollHome() {
 
   return (
     <div className="nx nxp">
+      <nav className="nxp-quick" aria-label="أدوات الرواتب">
+        {manage && <Link to="/payroll/extras" className="nxp-qlink"><span className="nx-ico" data-hue="violet"><HandCoins size={17} /></span>الخصومات والمكافآت</Link>}
+        {manage && <Link to="/payroll/extras?tab=advances" className="nxp-qlink"><span className="nx-ico" data-hue="amber"><CircleDollarSign size={17} /></span>السلف</Link>}
+        {manage && <Link to="/payroll/settings" className="nxp-qlink"><span className="nx-ico" data-hue="sky"><Settings2 size={17} /></span>قواعد الحساب</Link>}
+        <Link to="/my-pay" className="nxp-qlink"><span className="nx-ico" data-hue="mint"><Wallet size={17} /></span>رواتبي</Link>
+        {manage && <button type="button" className="nxp-qnew" onClick={() => setWizard(true)}><Plus size={18} /> دفعة رواتب جديدة</button>}
+      </nav>
       <section className="nxp-hero">
         <div className="nxp-hero-top">
           <div className="nxp-month">
@@ -108,7 +115,7 @@ export function PayrollHome() {
         </div>
 
         <NxCard title={`دفعات ${monthLabel(month)}`} icon={<CalendarRange size={17} />}
-          action={manage && <Button icon={<Plus size={16} />} onClick={() => setWizard(true)}>دفعة جديدة</Button>}>
+>
           {batches.length > 0 ? (
             <div className="nxp-rows">
               {batches.map((b) => (
@@ -140,13 +147,6 @@ export function PayrollHome() {
           </NxCard>
         )}
       </>}
-
-      <nav className="nxp-tools" aria-label="أدوات الرواتب">
-        {manage && <Link to="/payroll/extras" className="nxp-tool"><span className="nx-ico" data-hue="violet"><HandCoins size={20} /></span><span><b>الخصومات والمكافآت</b><small>بند لموظف في شهر محدد</small></span><ArrowLeft size={16} /></Link>}
-        {manage && <Link to="/payroll/extras?tab=advances" className="nxp-tool"><span className="nx-ico" data-hue="amber"><CircleDollarSign size={20} /></span><span><b>السلف</b><small>مبلغ يُسدَّد على أقساط</small></span><ArrowLeft size={16} /></Link>}
-        {manage && <Link to="/payroll/settings" className="nxp-tool"><span className="nx-ico" data-hue="sky"><Settings2 size={20} /></span><span><b>قواعد الحساب</b><small>الوقت الإضافي والخصومات</small></span><ArrowLeft size={16} /></Link>}
-        <Link to="/my-pay" className="nxp-tool"><span className="nx-ico" data-hue="mint"><Wallet size={20} /></span><span><b>رواتبي</b><small>دفعاتك أنت</small></span><ArrowLeft size={16} /></Link>
-      </nav>
 
       <details className="nxp-help">
         <summary><Info size={18} /> كيف يُحسب الراتب؟</summary>
@@ -212,52 +212,89 @@ function NewBatchWizard({ initialMonth, onClose }: { initialMonth: string; onClo
   return (
     <Dialog open onClose={onClose} title="دفعة رواتب جديدة" subtitle="ثلاث خطوات، والحساب تلقائي" icon={<CalendarRange size={20} />}
       footer={<><Button onClick={onClose}>إلغاء</Button><Button variant="primary" size="lg" busy={busy} disabled={!plan || chosen <= 0 || chosen > (plan?.left ?? 0)} onClick={() => void create()}>إنشاء وحساب</Button></>}>
-      <div className="af-steps">
-        <section className="af-step">
-          <h3><span className="af-step-n">1</span> أي شهر؟</h3>
-          <div className="chips">
-            {months.map((m) => <button key={m} type="button" className="chip" aria-pressed={month === m} onClick={() => setMonth(m)}>{monthLabel(m)}</button>)}
-            <MonthField className="af-month-input" value={month} onChange={setMonth} aria-label="شهر آخر" />
-          </div>
-        </section>
-        {all && (
-          <section className="af-step">
-            <h3><span className="af-step-n">2</span> لأي فرع؟</h3>
-            <div className="chips">
-              <button type="button" className="chip" aria-pressed={branchId === ''} onClick={() => setBranchId('')}>جميع الفروع</button>
-              {branches.data?.branches.map((b) => <button key={b.id} type="button" className="chip" aria-pressed={branchId === String(b.id)} onClick={() => setBranchId(String(b.id))}>{b.name}</button>)}
+      <ol className="nxw">
+        <li className="nxw-step">
+          <span className="nxw-n">1</span>
+          <div className="nxw-body">
+            <h3>أي شهر؟</h3>
+            <div className="nxw-chips">
+              {months.map((m) => <button key={m} type="button" className="nxw-chip" aria-pressed={month === m} onClick={() => setMonth(m)}>{monthLabel(m)}</button>)}
+              <MonthField className="nxw-month" value={month} onChange={setMonth} aria-label="شهر آخر" />
             </div>
-          </section>
-        )}
-        <section className="af-step">
-          <h3><span className="af-step-n">{all ? 3 : 2}</span> كم من راتب الشهر؟</h3>
-          {!plan ? (error ? null : <Loading />) : plan.left <= 0 ? (
-            <p className="banner warn"><span>صُرف هذا الشهر كاملاً (100%). اختر شهراً آخر.</span></p>
-          ) : (
-            <>
-              <div className="af-pcts">
-                {options.map((n) => (
-                  <button key={n} type="button" className="af-pct" aria-pressed={percent === n} onClick={() => { setPercent(n); setCustom('') }}>
-                    <b className="num">{n}%</b><small>{n === plan.left && plan.used > 0 ? 'المتبقي من الشهر' : n === 100 ? 'الشهر كاملاً' : 'نصف الشهر'}</small>
-                  </button>
-                ))}
-                <label className="af-pct af-pct-custom" data-on={percent === null && custom ? '' : undefined}>
-                  <input className="input num" inputMode="decimal" placeholder="نسبة أخرى" value={custom} onChange={(e) => { setCustom(e.target.value.replace(/[^0-9.]/g, '')); setPercent(null) }} />
-                </label>
+          </div>
+        </li>
+        {all && (
+          <li className="nxw-step">
+            <span className="nxw-n">2</span>
+            <div className="nxw-body">
+              <h3>لأي فرع؟</h3>
+              <div className="nxw-branches">
+                <button type="button" className="nxw-branch" aria-pressed={branchId === ''} onClick={() => setBranchId('')}><span className="nxw-all"><Building2 size={16} /></span>جميع الفروع</button>
+                {branches.data?.branches.map((b) => <button key={b.id} type="button" className="nxw-branch" aria-pressed={branchId === String(b.id)} onClick={() => setBranchId(String(b.id))}><NxAvatar name={b.name} size={28} />{b.name}</button>)}
               </div>
-              <p className="af-explain">
-                سيُصرف <b className="num">{chosen || 0}%</b> من راتب {monthLabel(month)} لـ <b className="num">{plan.employees}</b> موظفاً.
-                {plan.used > 0 && <> سبقته دفعات بنسبة <b className="num">{plan.used}%</b>.</>}
-                {final ? ' هذه الدفعة تُكمل الشهر، لذلك تُحسب فيها ساعات العمل الإضافي.' : ' تُحسب ساعات العمل الإضافي في الدفعة التي تُكمل الشهر.'}
-              </p>
-            </>
-          )}
-        </section>
-        {can(me, 'payroll.deductions') && <fieldset className="form-grid"><legend>أقساط السلف المطلوب خصمها من هذه الدفعة</legend>
-          <p>حدّد السلفة لاعتماد خصم قسطها.</p>{advances.data?.advances.filter(a => a.remaining > 0 && a.start_month <= month && (!branchId || a.branch_id === Number(branchId))).map(a =>
-          <label key={a.id}><input type="checkbox" checked={advanceIds.includes(a.id)} onChange={e => setAdvanceIds(e.target.checked ? [...advanceIds,a.id] : advanceIds.filter(id => id !== a.id))} /> {a.user?.name} · {Math.min(a.installment,a.remaining)} شيكل</label>)}</fieldset>}
-        <ErrorBanner text={error} />
-      </div>
+            </div>
+          </li>
+        )}
+        <li className="nxw-step">
+          <span className="nxw-n">{all ? 3 : 2}</span>
+          <div className="nxw-body">
+            <h3>كم من راتب الشهر؟</h3>
+            {!plan ? (error ? null : <Loading />) : plan.left <= 0 ? (
+              <p className="nxw-note" data-hue="amber"><Check size={18} /> صُرف راتب {monthLabel(month)} كاملاً (100%). اختر شهراً آخر.</p>
+            ) : (
+              <>
+                <div className="nxw-pcts">
+                  {options.map((n) => (
+                    <button key={n} type="button" className="nxw-pct" aria-pressed={percent === n} onClick={() => { setPercent(n); setCustom('') }}>
+                      <b className="num">{n}%</b><small>{n === plan.left && plan.used > 0 ? 'المتبقي من الشهر' : n === 100 ? 'الشهر كاملاً' : 'نصف الشهر'}</small>
+                    </button>
+                  ))}
+                  <label className="nxw-pct nxw-custom" data-on={percent === null && custom ? '' : undefined}>
+                    <input className="num" inputMode="decimal" placeholder="نسبة أخرى" value={custom} onChange={(e) => { setCustom(e.target.value.replace(/[^0-9.]/g, '')); setPercent(null) }} aria-label="نسبة أخرى" />
+                    <small>%</small>
+                  </label>
+                </div>
+                <p className="nxw-note" data-hue="mint">
+                  <Sparkles size={18} />
+                  <span>سيُصرف <b className="num">{chosen || 0}%</b> من راتب {monthLabel(month)} لـ <b className="num">{plan.employees}</b> موظفاً.
+                  {plan.used > 0 && <> سبقته دفعات بنسبة <b className="num">{plan.used}%</b>.</>}
+                  {final ? ' وهذه الدفعة تُكمل الشهر، فيُحسب فيها العمل الإضافي.' : ' ويُحسب العمل الإضافي في الدفعة التي تُكمل الشهر.'}</span>
+                </p>
+              </>
+            )}
+          </div>
+        </li>
+        {can(me, 'payroll.deductions') && (() => {
+          const list = advances.data?.advances.filter(a => a.remaining > 0 && a.start_month <= month && (!branchId || a.branch_id === Number(branchId))) ?? []
+          return (
+            <li className="nxw-step">
+              <span className="nxw-n">{all ? 4 : 3}</span>
+              <div className="nxw-body">
+                <div className="nxw-head"><h3>أقساط السلف <small>(اختياري)</small></h3>
+                  {list.length > 1 && <button type="button" className="nxw-link" onClick={() => setAdvanceIds(advanceIds.length === list.length ? [] : list.map(a => a.id))}>{advanceIds.length === list.length ? 'إلغاء الكل' : 'اختيار الكل'}</button>}</div>
+                <p className="nxw-hint">اختر السلف التي يُخصم قسطها من هذه الدفعة.</p>
+                {list.length === 0 ? <p className="nxw-empty">لا توجد سلف مستحقة في هذا الشهر.</p> : (
+                  <div className="nxw-advs">
+                    {list.map(a => {
+                      const on = advanceIds.includes(a.id)
+                      return (
+                        <label key={a.id} className="nxw-adv" data-on={on || undefined}>
+                          <input type="checkbox" checked={on} onChange={e => setAdvanceIds(e.target.checked ? [...advanceIds, a.id] : advanceIds.filter(id => id !== a.id))} />
+                          <NxAvatar name={a.user?.name ?? '؟'} size={34} />
+                          <span className="nxw-adv-t"><b>{a.user?.name}</b><small>متبقٍّ <span className="num">{fmt(a.remaining)}</span> ₪</small></span>
+                          <b className="num nxw-adv-amt">{fmt(Math.min(a.installment, a.remaining))} <small>₪</small></b>
+                          <span className="nxw-check" aria-hidden="true"><Check size={14} /></span>
+                        </label>
+                      )
+                    })}
+                  </div>
+                )}
+              </div>
+            </li>
+          )
+        })()}
+      </ol>
+      <ErrorBanner text={error} />
     </Dialog>
   )
 }
