@@ -30,6 +30,7 @@ import './styles/mail-workspace.css'
 import './styles/guide-map.css'
 import './styles/manager-effects.css'
 import './styles/af.css'
+import './styles/nx.css'
 
 import { StrictMode } from 'react'
 import { createRoot } from 'react-dom/client'

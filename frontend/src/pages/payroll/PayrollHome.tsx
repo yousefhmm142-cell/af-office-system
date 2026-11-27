@@ -1,4 +1,5 @@
-import { ArrowLeft, BadgeCheck, CalendarRange, CircleDollarSign, HandCoins, Plus, Settings2, Sparkles, Wallet } from 'lucide-react'
+import { ArrowLeft, BadgeCheck, CalendarRange, Check, ChevronLeft, ChevronRight, CircleDollarSign, HandCoins, Info, Plus, Settings2, Sparkles, Wallet } from 'lucide-react'
+import { NxAvatar, NxCard, NxEmpty, NxStat, type Hue } from '../../ui/nx'
 import { MonthField } from '../../ui/MonthField'
 import { useEffect, useState } from 'react'
 import { Link, useNavigate } from 'react-router'
@@ -8,10 +9,12 @@ import { can, scopeOf, useUser } from '../../app/auth'
 import { useLoad } from '../../lib/useLoad'
 import { Dialog } from '../../ui/Dialog'
 import { ErrorBanner } from '../../ui/Field'
-import { Loading, PageHead } from '../../ui/PageHead'
-import { Button, Pill } from '../../ui/primitives'
+import { Loading } from '../../ui/PageHead'
+import { Button } from '../../ui/primitives'
 import { useToast } from '../../ui/Toast'
 import { fmt, monthLabel, prevMonth, STATUS, thisMonth, type Batch } from './lib'
+
+const STATUS_HUE: Record<string, Hue> = { draft: 'amber', approved: 'sky', paid: 'mint' }
 
 /** Payroll by month: where the month stands (prepared, approved, paid) and the one thing to do next. */
 export function PayrollHome() {
@@ -54,82 +57,99 @@ export function PayrollHome() {
     { key: 'approved', label: 'الاعتماد', icon: BadgeCheck, list: approved, hint: 'جاهزة للصرف' },
     { key: 'paid', label: 'الصرف', icon: Wallet, list: paid, hint: 'سُجّل صرفها' },
   ] as const
+  // The step the month is at now: the first one that still holds a batch, else done.
+  const current = drafts.length ? 0 : approved.length ? 1 : batches.length ? 2 : -1
+  const sum = (l: typeof batches) => l.reduce((n, b) => n + b.total_net, 0)
+  const nextMonth = (ym: string) => { const [y, m] = ym.split('-').map(Number) as [number, number]; const d = new Date(Date.UTC(y, m, 1)); return `${d.getUTCFullYear()}-${String(d.getUTCMonth() + 1).padStart(2, '0')}` }
 
   return (
-    <div className="pay-home">
-      <PageHead title="الرواتب" eyebrow="جهّز الدفعة، ثم تُعتمد، ثم يُسجَّل صرفها"
-        actions={manage && <Button variant="primary" icon={<Plus size={18} />} onClick={() => setWizard(true)}>دفعة رواتب جديدة</Button>} />
-
-      <div className="pay-month">
-        <span className="pay-month-label"><CalendarRange size={18} /> الشهر</span>
-        <div className="chips">
-          {[thisMonth(), prevMonth(thisMonth())].map((m) => <button key={m} type="button" className="chip" aria-pressed={month === m} onClick={() => setMonth(m)}>{monthLabel(m)}</button>)}
+    <div className="nx nxp">
+      <section className="nxp-hero">
+        <div className="nxp-hero-top">
+          <div className="nxp-month">
+            <span className="nxp-eyebrow">رواتب شهر</span>
+            <div className="nxp-month-nav">
+              <button type="button" className="nxp-arrow" aria-label="الشهر السابق" onClick={() => setMonth(prevMonth(month))}><ChevronRight size={20} /></button>
+              <h1>{monthLabel(month)}</h1>
+              <button type="button" className="nxp-arrow" aria-label="الشهر التالي" onClick={() => setMonth(nextMonth(month))} disabled={month >= thisMonth()}><ChevronLeft size={20} /></button>
+            </div>
+            <MonthField className="nxp-month-pick" value={month} onChange={setMonth} aria-label="اختيار شهر" />
+          </div>
+          <div className="nxp-total">
+            <span className="nxp-eyebrow">صافي الدفعات</span>
+            <strong className="num">{fmt(total)} <small>₪</small></strong>
+            <div className="nxp-planned"><div className="nxp-planned-bar"><i style={{ width: `${planned}%` }} /></div><span className="num">{planned}% من الشهر</span></div>
+          </div>
         </div>
-        <MonthField className="pay-month-pick" value={month} onChange={setMonth} aria-label="شهر آخر" />
-      </div>
+        <ol className="nxp-steps">
+          {steps.map(({ key, label, icon: Icon, list }, i) => (
+            <li key={key} data-state={current === -1 ? 'todo' : i < current || (i === current && current === 2 && planned >= 100 && !drafts.length && !approved.length) ? 'done' : i === current ? 'now' : list.length ? 'done' : 'todo'}>
+              <span className="nxp-step-dot">{list.length && i !== current ? <Check size={16} /> : <Icon size={16} />}</span>
+              <span className="nxp-step-t"><b>{label}</b><small className="num">{list.length ? `${list.length} ${list.length === 1 ? 'دفعة' : 'دفعات'}` : '—'}</small></span>
+            </li>
+          ))}
+        </ol>
+      </section>
 
       <ErrorBanner text={error} />
       {loading && !data ? <Loading /> : <>
-        <section className="card pay-next" data-tone={next.tone}>
-          <div className="pay-next-text">
-            <h2>{next.title}</h2>
-            <p>{next.text}</p>
-          </div>
+        <section className="nxp-next" data-tone={next.tone}>
+          <span className="nx-ico" data-hue={next.tone === 'warn' ? 'amber' : next.tone === 'ok' ? 'mint' : 'sky'}>{next.tone === 'ok' ? <Check size={20} /> : next.tone === 'warn' ? <BadgeCheck size={20} /> : <Sparkles size={20} />}</span>
+          <div className="nxp-next-t"><small>الخطوة التالية</small><h2>{next.title}</h2><p>{next.text}</p></div>
           {next.action && (next.action.to
             ? <Link className="btn primary lg" to={next.action.to}>{next.action.label}<ArrowLeft size={18} /></Link>
-            : <Button variant="primary" size="lg" onClick={next.action.onClick}>{next.action.label}</Button>)}
+            : <Button variant="primary" size="lg" icon={<Plus size={18} />} onClick={next.action.onClick}>{next.action.label}</Button>)}
         </section>
 
-        <section className="card pay-journey" aria-label={`مسار رواتب ${monthLabel(month)}`}>
-          <header className="pay-journey-head">
-            <div><h2>{monthLabel(month)}</h2><small>صُرف أو خُطط <b className="num">{planned}%</b> من الشهر</small></div>
-            <div className="pay-total"><small>المجموع</small><b className="num">{fmt(total)}</b><small>شيكل</small></div>
-          </header>
-          <div className="pay-bar" role="img" aria-label={`خُطط ${planned}% من الشهر`}>
-            {batches.map((b) => <i key={b.id} data-status={b.status} style={{ width: `${b.percent}%` }} />)}
-          </div>
-          <ol className="pay-steps">
-            {steps.map(({ key, label, icon: Icon, list, hint }, i) => (
-              <li key={key} data-on={list.length > 0 || undefined}>
-                <span className="pay-step-ico"><Icon size={18} /></span>
-                <span><b>{i + 1}. {label}</b><small>{list.length ? `${list.length} ${list.length === 1 ? 'دفعة' : 'دفعات'} · ${hint}` : '—'}</small></span>
-              </li>
-            ))}
-          </ol>
+        <div className="nx-stats nx-stats-3">
+          <NxStat icon={<Sparkles size={19} />} hue="amber" label="بانتظار الاعتماد" value={fmt(sum(drafts))} unit="₪" sub={drafts.length ? `${drafts.length} ${drafts.length === 1 ? 'دفعة' : 'دفعات'}` : 'لا شيء'} />
+          <NxStat icon={<BadgeCheck size={19} />} hue="sky" label="جاهزة للصرف" value={fmt(sum(approved))} unit="₪" sub={approved.length ? `${approved.length} ${approved.length === 1 ? 'دفعة' : 'دفعات'}` : 'لا شيء'} />
+          <NxStat icon={<Wallet size={19} />} hue="mint" label="صُرفت" value={fmt(sum(paid))} unit="₪" sub={paid.length ? `${paid.length} ${paid.length === 1 ? 'دفعة' : 'دفعات'}` : 'لا شيء'} />
+        </div>
+
+        <NxCard title={`دفعات ${monthLabel(month)}`} icon={<CalendarRange size={17} />}
+          action={manage && <Button icon={<Plus size={16} />} onClick={() => setWizard(true)}>دفعة جديدة</Button>}>
           {batches.length > 0 ? (
-            <div className="pay-rows">
+            <div className="nxp-rows">
               {batches.map((b) => (
-                <Link key={b.id} to={`/payroll/${b.id}`} className="pay-row">
-                  <span className="pay-row-pct num">{b.percent}%</span>
-                  <span className="pay-row-main"><b>{b.title}</b><small>{b.branch?.name ?? 'جميع الفروع'} · {b.employees_count} موظفاً{b.is_final ? ' · تُكمل الشهر' : ''}</small></span>
-                  <b className="num pay-row-net">{fmt(b.total_net)}</b>
-                  <Pill tone={STATUS[b.status].tone}>{STATUS[b.status].label}</Pill>
-                  <ArrowLeft size={16} className="pay-row-go" />
+                <Link key={b.id} to={`/payroll/${b.id}`} className="nxp-row">
+                  <NxAvatar name={b.branch?.name ?? 'جميع الفروع'} size={44} />
+                  <span className="nxp-row-main"><b>{b.branch?.name ? `فرع ${b.branch.name}` : 'جميع الفروع'}</b><small>{b.title} · <span className="num">{b.employees_count}</span> موظفاً{b.is_final ? ' · تُكمل الشهر' : ''}</small></span>
+                  <span className="nxp-pct"><span className="nx-progress" data-hue={STATUS_HUE[b.status]}><i style={{ width: `${b.percent}%` }} /></span><small className="num">{b.percent}%</small></span>
+                  <b className="num nxp-net">{fmt(b.total_net)} <small>₪</small></b>
+                  <span className="nx-chip nx-chip-dot" data-hue={STATUS_HUE[b.status]}>{STATUS[b.status].label}</span>
+                  <ArrowLeft size={17} className="nxp-go" />
                 </Link>
               ))}
             </div>
-          ) : <p className="pay-empty">لا توجد دفعات لهذا الشهر.</p>}
-        </section>
+          ) : <NxEmpty icon={<Wallet size={26} />} title="لا توجد دفعات لهذا الشهر" text={manage ? 'جهّز دفعة: تختار الفرع والنسبة، ويحسب النظام الباقي.' : undefined} />}
+        </NxCard>
 
         {elsewhere.length > 0 && (
-          <section className="card pay-elsewhere">
-            <h3>دفعات أشهر أخرى لم تُصرف بعد</h3>
-            {elsewhere.slice(0, 4).map((b) => (
-              <Link key={b.id} to={`/payroll/${b.id}`} className="pay-row compact"><span className="pay-row-main"><b>{b.title}</b><small>{b.branch?.name ?? 'جميع الفروع'}</small></span><Pill tone={STATUS[b.status].tone}>{STATUS[b.status].label}</Pill><ArrowLeft size={16} className="pay-row-go" /></Link>
-            ))}
-          </section>
+          <NxCard title="دفعات أشهر أخرى لم تُصرف بعد" icon={<CalendarRange size={17} />}>
+            <div className="nxp-rows">
+              {elsewhere.slice(0, 4).map((b) => (
+                <Link key={b.id} to={`/payroll/${b.id}`} className="nxp-row nxp-row-sm">
+                  <span className="nxp-row-main"><b>{b.title}</b><small>{b.branch?.name ?? 'جميع الفروع'}</small></span>
+                  <b className="num nxp-net">{fmt(b.total_net)} <small>₪</small></b>
+                  <span className="nx-chip nx-chip-dot" data-hue={STATUS_HUE[b.status]}>{STATUS[b.status].label}</span>
+                  <ArrowLeft size={17} className="nxp-go" />
+                </Link>
+              ))}
+            </div>
+          </NxCard>
         )}
       </>}
 
-      <nav className="pay-tools" aria-label="أدوات الرواتب">
-        {manage && <Link to="/payroll/extras" className="pay-tool"><span className="pay-tool-ico"><HandCoins size={20} /></span><b>الخصومات والمكافآت</b><small>بند لموظف في شهر محدد</small></Link>}
-        {manage && <Link to="/payroll/extras?tab=advances" className="pay-tool"><span className="pay-tool-ico"><CircleDollarSign size={20} /></span><b>السلف</b><small>مبلغ يُسدّد على أقساط</small></Link>}
-        {manage && <Link to="/payroll/settings" className="pay-tool"><span className="pay-tool-ico"><Settings2 size={20} /></span><b>قواعد الحساب</b><small>الوقت الإضافي والخصومات</small></Link>}
-        <Link to="/my-pay" className="pay-tool"><span className="pay-tool-ico"><Wallet size={20} /></span><b>رواتبي</b><small>دفعاتك أنت</small></Link>
+      <nav className="nxp-tools" aria-label="أدوات الرواتب">
+        {manage && <Link to="/payroll/extras" className="nxp-tool"><span className="nx-ico" data-hue="violet"><HandCoins size={20} /></span><span><b>الخصومات والمكافآت</b><small>بند لموظف في شهر محدد</small></span><ArrowLeft size={16} /></Link>}
+        {manage && <Link to="/payroll/extras?tab=advances" className="nxp-tool"><span className="nx-ico" data-hue="amber"><CircleDollarSign size={20} /></span><span><b>السلف</b><small>مبلغ يُسدَّد على أقساط</small></span><ArrowLeft size={16} /></Link>}
+        {manage && <Link to="/payroll/settings" className="nxp-tool"><span className="nx-ico" data-hue="sky"><Settings2 size={20} /></span><span><b>قواعد الحساب</b><small>الوقت الإضافي والخصومات</small></span><ArrowLeft size={16} /></Link>}
+        <Link to="/my-pay" className="nxp-tool"><span className="nx-ico" data-hue="mint"><Wallet size={20} /></span><span><b>رواتبي</b><small>دفعاتك أنت</small></span><ArrowLeft size={16} /></Link>
       </nav>
 
-      <details className="card pay-help">
-        <summary>كيف يُحسب الراتب؟</summary>
+      <details className="nxp-help">
+        <summary><Info size={18} /> كيف يُحسب الراتب؟</summary>
         <ul>
           <li>يبدأ الحساب من نوع الأجر وقيمته في ملف الموظف (شهري، يومي، أسبوعي، مقاولة).</li>
           <li>الشهري والمقاولة: نسبة الدفعة من المبلغ المتفق عليه. اليومي: أجر اليوم × أيام الحضور. الأسبوعي: أجر الأسبوع ÷ أيام العمل × أيام الحضور.</li>

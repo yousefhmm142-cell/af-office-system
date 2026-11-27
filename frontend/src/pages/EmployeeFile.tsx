@@ -1,9 +1,10 @@
 import { salaryLabel } from '../api/types'
 import { ChoiceField } from '../ui/ChoiceField'
-import { EmployeeOverview } from './EmployeeOverview'
-import { Briefcase, FileText, History, Image as ImageIcon, Paperclip, Pencil, Trash2, Upload, UserRound, Wallet } from 'lucide-react'
+import { EmployeeBody, type EmpTab } from './EmployeeOverview'
+import { NxAvatar, NxCard, NxEmpty, NxTabs, type Hue } from '../ui/nx'
+import { Briefcase, Building2, CalendarDays, Clock3, FileText, Gauge, GraduationCap, History, IdCard, MapPin, Phone, Image as ImageIcon, LayoutGrid, Palmtree, Paperclip, Pencil, Trash2, Upload, UserRound, Wallet } from 'lucide-react'
 import { useRef, useState, type FormEvent, type ReactNode } from 'react'
-import { useNavigate, useParams } from 'react-router'
+import { useNavigate, useParams, useSearchParams } from 'react-router'
 import { api, ApiError, openFile } from '../api/client'
 import {
   ATTACHMENT_TYPES, EDUCATION, SALARY_TYPES, STATUS_LABEL,
@@ -16,11 +17,11 @@ import { useConfirm } from '../ui/Confirm'
 import { Dialog } from '../ui/Dialog'
 import { ErrorBanner, Field, Switch } from '../ui/Field'
 import { Loading, PageHead } from '../ui/PageHead'
-import { Avatar, Button, Pill, type Tone } from '../ui/primitives'
+import { Button } from '../ui/primitives'
 import { useToast } from '../ui/Toast'
 
 const label = (list: Array<[string, string]>, v: string | null | undefined) => list.find(([k]) => k === v)?.[1] ?? '—'
-const STATUS_TONE: Record<EmployeeStatus, Tone> = { active: 'ok', trainee: 'info', suspended: 'warn', terminated: 'danger' }
+const STATUS_HUE: Record<EmployeeStatus, Hue> = { active: 'mint', trainee: 'sky', suspended: 'amber', terminated: 'rose' }
 
 /** /employees/:id, or the signed-in person's own file when no id is given. */
 export function EmployeeFile() {
@@ -33,7 +34,9 @@ export function EmployeeFile() {
   const [allowance,setAllowance] = useState('')
   const [year,setYear] = useState(String(new Date().getFullYear()))
   const [uploading,setUploading] = useState(false)
-  const [performance, setPerformance] = useState(false)
+  const [search, setSearch] = useSearchParams()
+  const tab = (search.get('tab') as EmpTab | null) ?? 'overview'
+  const setTab = (t: EmpTab) => setSearch(t === 'overview' ? {} : { tab: t }, { replace: true })
   const [edit, setEdit] = useState<'personal' | 'wallet' | 'job' | 'status' | null>(null)
 
   if (loading && !data) return <Loading />
@@ -53,73 +56,122 @@ export function EmployeeFile() {
     )
   }
 
-  const leaveForm = can(me, 'leaves.decide') && !mine && <form className="emp-allowance" onSubmit={async e=>{
+  const leaveForm = can(me, 'leaves.decide') && !mine && <form className="nx-inline-form" onSubmit={async e=>{
     e.preventDefault()
     try { await api(`/employees/${id}/leave-allowance`,{method:'PUT',body:{year:Number(year),days:Number(allowance)}})
       setData(await api<File_>(`/employees/${id}`)); setAllowance(''); toast('حُفظ الرصيد')
     } catch(err) { toast(err instanceof ApiError ? err.message : 'تعذّر الحفظ','danger') }
-  }}><label className="field"><span className="label">السنة</span><input className="input num" type="number" min="2000" max="2100" required value={year} onChange={e=>setYear(e.target.value)} /></label>
-    <label className="field"><span className="label">أيام الإجازة السنوية</span><input className="input num" type="number" min="0" max="366" required value={allowance} onChange={e=>setAllowance(e.target.value)} placeholder="مثل: 14" /></label>
-    <Button type="submit">حفظ الرصيد</Button></form>
+  }}><span className="nx-inline-t">تحديد الرصيد</span>
+    <input className="input num" type="number" min="2000" max="2100" required value={year} onChange={e=>setYear(e.target.value)} aria-label="السنة" />
+    <input className="input num" type="number" min="0" max="366" required value={allowance} onChange={e=>setAllowance(e.target.value)} placeholder="عدد الأيام" aria-label="أيام الإجازة السنوية" />
+    <Button type="submit" className="sm">حفظ</Button></form>
+
+  const leave = f.annual_leave
+  const left = leave.days === null ? null : Math.max(0, leave.days - leave.used)
+  const tabs: Array<{ key: EmpTab; label: string; icon: ReactNode; count?: number }> = [
+    { key: 'overview', label: 'نظرة عامة', icon: <LayoutGrid size={16} /> },
+    { key: 'attendance', label: 'الحضور', icon: <CalendarDays size={16} /> },
+    { key: 'pay', label: 'الراتب', icon: <Wallet size={16} /> },
+    { key: 'profile', label: 'البيانات', icon: <UserRound size={16} /> },
+    { key: 'documents', label: 'المرفقات', icon: <Paperclip size={16} />, count: f.attachments.length },
+    ...(f.job.tracks_attendance ? [{ key: 'performance' as const, label: 'الأداء الميداني', icon: <Gauge size={16} /> }] : []),
+  ]
+  const editBtn = (what: 'personal' | 'wallet' | 'job', text: string) => <button type="button" className="nx-edit" onClick={() => setEdit(what)} aria-label={text}><Pencil size={15} /> تعديل</button>
+
+  const profile = (
+    <div className="nx-split nx-split-even">
+      <NxCard title="البيانات الشخصية" icon={<UserRound size={17} />} action={f.can.edit_personal && editBtn('personal', 'تعديل البيانات الشخصية')}>
+        <dl className="nx-info">
+          <Info k="الاسم الكامل" v={f.user.name} wide />
+          <Info k="رقم الهوية" v={p.national_id} num />
+          <Info k="رقم الجوال" v={p.phone} num />
+          <Info k="مكان السكن" v={p.address} />
+          <Info k="الجنس" v={p.gender === 'male' ? 'ذكر' : p.gender === 'female' ? 'أنثى' : null} />
+          <Info k="آخر مؤهل" v={label(EDUCATION, p.education_level)} />
+          <Info k="التخصص" v={p.specialty} />
+        </dl>
+      </NxCard>
+      <div className="nx-stack">
+        <NxCard title="العمل والأجر" icon={<Briefcase size={17} />} action={f.can.edit_job && editBtn('job', 'تعديل العمل والأجر')}>
+          <dl className="nx-info">
+            <Info k="المسمى الوظيفي" v={f.job.job_title} />
+            <Info k="القسم" v={f.job.department?.name} />
+            <Info k="نوع الأجر" v={label(SALARY_TYPES, f.job.salary_type)} />
+            <Info k="المبلغ" v={f.job.salary_amount ? `${Number(f.job.salary_amount)} ₪` : null} num />
+            <Info k="تاريخ التوظيف" v={f.job.hire_date} num />
+            <Info k="الدوام" v={`${f.job.schedule?.name ?? 'الأساسي للفرع'} · ${Number(f.job.daily_hours)} ساعات`} />
+          </dl>
+        </NxCard>
+        <NxCard title={p.payment_method === 'bank' ? 'الحساب البنكي' : 'المحفظة'} icon={<Wallet size={17} />} action={f.can.edit_personal && editBtn('wallet', 'تعديل المحفظة')}>
+          <div className="nx-paycard">
+            <span className="nx-paycard-top"><b>{p.provider || (p.payment_method === 'bank' ? 'بنك' : 'محفظة')}</b><Wallet size={20} /></span>
+            <span className="nx-paycard-no num" dir="ltr">{p.account_number || '— — — —'}</span>
+            <span className="nx-paycard-bottom"><span><small>صاحب الحساب</small>{p.account_holder_name || '—'}</span><span><small>رقم الهوية</small><span className="num">{p.account_holder_national_id || '—'}</span></span></span>
+          </div>
+        </NxCard>
+        {f.status_log.length > 0 && <NxCard title="سجل الحالة" icon={<History size={17} />}>
+          <ol className="nx-timeline">{f.status_log.map((l, i) => <li key={i}>
+            <b>{l.from ? `${STATUS_LABEL[l.from as EmployeeStatus]} ← ` : ''}{STATUS_LABEL[l.to]}</b>
+            <small>{formatLongDate(new Date(l.at))} · {l.by ?? '—'}{l.reason ? ` · ${l.reason}` : ''}</small>
+          </li>)}</ol>
+        </NxCard>}
+      </div>
+    </div>
+  )
+
+  const personalCard = (
+    <NxCard title="البيانات الشخصية" icon={<UserRound size={17} />} action={<button type="button" className="nx-edit" onClick={() => setTab('profile')}>الكل</button>}>
+      <ul className="nx-plist">
+        <PItem icon={<UserRound size={17} />} hue="violet" k="الجنس" v={p.gender === 'male' ? 'ذكر' : p.gender === 'female' ? 'أنثى' : null} />
+        <PItem icon={<IdCard size={17} />} hue="rose" k="رقم الهوية" v={p.national_id} num />
+        <PItem icon={<Phone size={17} />} hue="mint" k="رقم الجوال" v={p.phone} num />
+        <PItem icon={<MapPin size={17} />} hue="amber" k="مكان السكن" v={p.address} />
+        <PItem icon={<GraduationCap size={17} />} hue="sky" k="المؤهل والتخصص" v={[p.education_level ? label(EDUCATION, p.education_level) : null, p.specialty].filter(Boolean).join(' · ') || null} />
+        <PItem icon={<CalendarDays size={17} />} hue="violet" k="تاريخ التوظيف" v={f.job.hire_date} num />
+      </ul>
+    </NxCard>
+  )
+
+  const leaveCard = (
+    <NxCard title={<>الإجازة السنوية <span className="num nx-muted">{leave.year}</span></>} icon={<Palmtree size={17} />}>
+      <div className="nx-leave">
+        <div className="nx-leave-big">{left !== null && <strong className="num">{left}</strong>}<span>{left === null ? 'لم يُحدَّد الرصيد بعد' : 'يوماً متبقية'}</span></div>
+        <div className="nx-progress" data-hue="sky"><i style={{ width: leave.days ? `${Math.min(100, (leave.used / leave.days) * 100)}%` : '0%' }} /></div>
+        <div className="nx-leave-row"><span>المستخدم <b className="num">{leave.used}</b></span><span>الرصيد الكلي <b className="num">{leave.days ?? '—'}</b></span></div>
+      </div>
+      {leaveForm}
+    </NxCard>
+  )
 
   return (
-    <div className="emp">
-      <PageHead title={mine ? 'ملفي' : f.user.name} eyebrow={mine ? 'بياناتك وحضورك ورواتبك' : 'ملف الموظف'}
-        actions={f.job.tracks_attendance && <div className="segmented" role="group" aria-label="العرض">
-          <button type="button" aria-pressed={!performance} onClick={()=>setPerformance(false)}>الملف</button>
-          <button type="button" aria-pressed={performance} onClick={()=>setPerformance(true)}>الأداء الميداني</button>
-        </div>} />
-      <div className="emp-grid">
-        <aside className="emp-side">
-          <section className="card emp-id">
-            <div className="emp-photo"><Avatar name={f.user.name} size={88} /></div>
-            <h2>{f.user.name}</h2>
-            <p>{[f.job.job_title ?? f.user.role?.name, f.job.department?.name].filter(Boolean).join(' · ')}</p>
-            <div className="emp-tags"><span className="emp-tag num" dir="ltr">@{f.user.username}</span><Pill tone={STATUS_TONE[f.status]}>{STATUS_LABEL[f.status]}</Pill></div>
-            <dl className="emp-facts">
-              <div><dt>الفرع</dt><dd>{f.user.branch?.name ?? 'الإدارة العامة'}</dd></div>
-              <div><dt>نوع الأجر</dt><dd>{label(SALARY_TYPES, f.job.salary_type)}{f.job.salary_amount ? <> · <span className="num">{Number(f.job.salary_amount)}</span> ₪</> : ''}</dd></div>
-              <div><dt>تاريخ التوظيف</dt><dd className="num">{f.job.hire_date ?? '—'}</dd></div>
-              <div><dt>الدوام</dt><dd>{f.job.schedule?.name ?? 'الأساسي للفرع'} · <span className="num">{Number(f.job.daily_hours)}</span> ساعات</dd></div>
-              <div><dt>الحضور</dt><dd>{f.job.tracks_attendance ? (f.job.punch_anywhere ? 'يسجّل من أي مكان' : 'يسجّل') : 'لا يسجّل'}</dd></div>
-            </dl>
-            {(f.can.edit_job || f.can.set_status) && <div className="emp-actions">
-              {f.can.edit_job && <Button icon={<Wallet size={16}/>} onClick={()=>setEdit('job')}>العمل والراتب</Button>}
+    <div className="nx nx-emp">
+      <section className="nx-hero">
+        <div className="nx-hero-cover"><span>{mine ? 'ملفي' : 'ملف الموظف'}</span></div>
+        <div className="nx-hero-main">
+          <div className="nx-hero-photo"><NxAvatar name={f.user.name} size={96} hue="rose" /></div>
+          <div className="nx-hero-id">
+            <h1>{f.user.name}</h1>
+            <p>{[f.job.job_title ?? f.user.role?.name, f.job.department?.name].filter(Boolean).join(' · ') || '—'}</p>
+            <div className="nx-hero-meta">
+              <span><Building2 size={15} /> {f.user.branch ? `فرع ${f.user.branch.name}` : 'الإدارة العامة'}</span>
+              {f.job.hire_date && <span><CalendarDays size={15} /> منذ <span className="num">{f.job.hire_date}</span></span>}
+              <span><Clock3 size={15} /> {f.job.tracks_attendance ? (f.job.punch_anywhere ? 'يسجّل الحضور من أي مكان' : 'يسجّل الحضور') : 'لا يسجّل الحضور'}</span>
+              <span className="num" dir="ltr">@{f.user.username}</span>
+            </div>
+          </div>
+          <div className="nx-hero-side">
+            <span className="nx-chip nx-chip-dot" data-hue={STATUS_HUE[f.status]}>{STATUS_LABEL[f.status]}</span>
+            {(f.can.edit_job || f.can.set_status) && <div className="nx-hero-actions">
               {f.can.set_status && <Button variant="ghost" onClick={() => setEdit('status')}>تغيير الحالة</Button>}
+              {f.can.edit_job && <Button variant="primary" icon={<Briefcase size={16} />} onClick={() => setEdit('job')}>العمل والأجر</Button>}
             </div>}
-          </section>
-          {f.status === 'terminated' && f.termination_reason && <div className="banner danger"><p>سبب الفصل: {f.termination_reason}</p></div>}
-          <Section icon={<UserRound size={18} />} title="البيانات الشخصية" onEdit={f.can.edit_personal ? () => setEdit('personal') : undefined}>
-            <Row k="رقم الهوية" v={p.national_id} num />
-            <Row k="رقم الجوال" v={p.phone} num />
-            <Row k="مكان السكن" v={p.address} />
-            <Row k="آخر مؤهل" v={label(EDUCATION, p.education_level)} />
-            <Row k="التخصص" v={p.specialty} />
-            <Row k="الجنس" v={p.gender === 'male' ? 'ذكر' : p.gender === 'female' ? 'أنثى' : null} />
-          </Section>
-          <Section icon={<Wallet size={18} />} title={p.payment_method === 'bank' ? 'الحساب البنكي' : 'المحفظة'} onEdit={f.can.edit_personal ? () => setEdit('wallet') : undefined}>
-            <Row k={p.payment_method === 'bank' ? 'البنك' : 'المحفظة'} v={p.provider} />
-            <Row k="رقم الحساب" v={p.account_number} num />
-            <Row k="صاحب الحساب" v={p.account_holder_name} />
-            <Row k="هوية صاحب الحساب" v={p.account_holder_national_id} num />
-          </Section>
-        </aside>
-        <EmployeeOverview key={f.user.id} file={f} performance={performance}
-          documents={<Attachments file={f} onChange={(attachments) => setData({ ...f, attachments })} />}
-          extra={<>
-            <section className="card emp-card">
-              <h3 className="emp-card-h"><History size={18} /> الإجازة السنوية · <span className="num">{f.annual_leave.year}</span></h3>
-              <div className="emp-kv"><span>الرصيد</span><b className="num">{f.annual_leave.days ?? '—'}</b></div>
-              <div className="emp-kv"><span>المستخدم</span><b className="num">{f.annual_leave.used}</b></div>
-              <div className="emp-kv"><span>المتبقي</span><b className="num">{f.annual_leave.days === null ? 'لم يُحدَّد' : f.annual_leave.days - f.annual_leave.used}</b></div>
-              {leaveForm}
-            </section>
-            {f.status_log.length > 0 && <section className="card emp-card">
-              <h3 className="emp-card-h"><History size={18} /> سجل الحالة</h3>
-              {f.status_log.map((l, i) => <div key={i} className="emp-kv"><span>{l.from ? `${STATUS_LABEL[l.from as EmployeeStatus]} ← ` : ''}{STATUS_LABEL[l.to]}<small>{l.by ?? '—'}{l.reason ? ` · ${l.reason}` : ''}</small></span><b>{formatLongDate(new Date(l.at))}</b></div>)}
-            </section>}
-          </>} />
-      </div>
+          </div>
+        </div>
+        <NxTabs label="أقسام الملف" tabs={tabs} value={tab} onChange={setTab} />
+      </section>
+      {f.status === 'terminated' && f.termination_reason && <div className="banner danger"><p>سبب الفصل: {f.termination_reason}</p></div>}
+      <EmployeeBody key={f.user.id} file={f} tab={tab} profile={profile} leave={leaveCard} personal={personalCard}
+        documents={<Attachments file={f} onChange={(attachments) => setData({ ...f, attachments })} />} />
 
       {(edit === 'personal' || edit === 'wallet') && <PersonalDialog file={f} part={edit} onClose={() => setEdit(null)} onSaved={(nf) => { setData(nf); setEdit(null) }} />}
       {edit === 'job' && <JobDialog file={f} onClose={() => setEdit(null)} onSaved={(nf) => { setData(nf); setEdit(null) }} />}
@@ -128,23 +180,20 @@ export function EmployeeFile() {
   )
 }
 
-function Section({ icon, title, onEdit, children, style }: { icon: ReactNode; title: string; onEdit?(): void; children: ReactNode; style?: React.CSSProperties }) {
+function PItem({ icon, hue, k, v, num }: { icon: ReactNode; hue: Hue; k: string; v: string | null | undefined; num?: boolean }) {
   return (
-    <section className="card glass af-pad" style={style}>
-      <div className="af-row-between">
-        <h2 className="af-h2">{icon} {title}</h2>
-        {onEdit && <button type="button" className="icon-btn" aria-label={`تعديل ${title}`} onClick={onEdit}><Pencil size={16} /></button>}
-      </div>
-      <div className="rows">{children}</div>
-    </section>
+    <li>
+      <span className="nx-pico" data-hue={hue}>{icon}</span>
+      <span className="nx-pt"><small>{k}</small><b className={num ? 'num' : undefined} dir={num && v ? 'ltr' : undefined} data-empty={!v || undefined}>{v || 'غير مُدخل'}</b></span>
+    </li>
   )
 }
 
-function Row({ k, v, num }: { k: string; v: string | null | undefined; num?: boolean }) {
+function Info({ k, v, num, wide }: { k: string; v: string | null | undefined; num?: boolean; wide?: boolean }) {
   return (
-    <div className="row af-kv">
-      <span className="row-label">{k}</span>
-      <span className={`row-value${num ? ' num' : ''}`} dir={num ? 'ltr' : undefined}>{v || '—'}</span>
+    <div className={wide ? 'nx-info-wide' : undefined}>
+      <dt>{k}</dt>
+      <dd className={num ? 'num' : undefined} dir={num && v ? 'ltr' : undefined} data-empty={!v || v === '—' || undefined}>{v || 'غير مُدخل'}</dd>
     </div>
   )
 }
@@ -372,6 +421,34 @@ function Attachments({ file, onChange, onboarding=false, onBusy }: { onboarding?
       onChange(file.attachments.filter((a) => a.id !== id))
     } catch (e) { toast(e instanceof ApiError ? e.message : 'لم يُحذف', 'danger') }
   }
+
+  const picker = <input ref={input} type="file" accept="image/*,application/pdf" hidden onChange={(e) => { const f = e.target.files?.[0]; if (f) void upload(f) }} />
+  if (!onboarding) return (
+    <NxCard title="المرفقات" icon={<Paperclip size={17} />} action={canEdit && <div className="nx-upload">
+      <ChoiceField className="input select" value={type} onChange={(e) => setType(e.target.value)} aria-label="نوع المرفق">
+        {ATTACHMENT_TYPES.map(([k, v]) => <option key={k} value={k}>{v}</option>)}
+      </ChoiceField>
+      <Button variant="primary" icon={<Upload size={16} />} busy={busy} onClick={() => input.current?.click()}>رفع ملف</Button>
+      {picker}
+    </div>}>
+      {file.attachments.length === 0 ? <NxEmpty icon={<Paperclip size={26} />} title="لا توجد مرفقات بعد" text={canEdit ? 'اختر نوع المرفق ثم ارفع صورة أو ملف PDF، حتى ٦ ميغابايت.' : undefined} /> : (
+        <div className="nx-docs">
+          {file.attachments.map((a) => {
+            const img = a.mime.startsWith('image/')
+            return (
+              <div key={a.id} className="nx-doc">
+                <button type="button" className="nx-doc-open" onClick={() => void openFile(`/employees/${file.user.id}/attachments/${a.id}`).catch((e) => toast(e.message, 'danger'))}>
+                  <span className="nx-ico" data-hue={img ? 'sky' : 'rose'}>{img ? <ImageIcon size={20} /> : <FileText size={20} />}</span>
+                  <span className="nx-doc-t"><b>{label(ATTACHMENT_TYPES, a.type)}</b><small><span dir="auto">{a.name}</span> · <span className="num">{Math.max(1, Math.round(a.size / 1024))}</span> ك.ب</small></span>
+                </button>
+                {canEdit && <button type="button" className="nx-icon-btn" aria-label={`حذف ${a.name}`} onClick={() => void remove(a.id, a.name)}><Trash2 size={16} /></button>}
+              </div>
+            )
+          })}
+        </div>
+      )}
+    </NxCard>
+  )
 
   return (
     <section className="card glass af-pad">
