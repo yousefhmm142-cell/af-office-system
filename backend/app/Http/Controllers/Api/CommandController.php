@@ -106,7 +106,9 @@ class CommandController extends Controller
         }
 
         $taskIds = array_values(array_diff($ids, $closed('tasks')));
-        $canTasks = (bool) (Access::scope($actor, 'tasks.view') ?? Access::scope($actor, 'tasks.manage'));
+        // Field work is followed by HR (and the system admin); management is spared the detail.
+        $role = $actor->role?->key;
+        $canTasks = $role !== 'management' && ($role === 'hr' || (bool) (Access::scope($actor, 'tasks.view') ?? Access::scope($actor, 'tasks.manage')));
         $open = $canTasks ? Task::whereIn('branch_id', $taskIds)->whereIn('status', Task::OPEN)->with('assignees:id,name', 'type:id,name')->get() : collect();
         $overdue = $open->map(function (Task $t) use ($now) {
             $since = $t->started_at ?? $t->sent_at ?? $t->created_at;
@@ -138,7 +140,7 @@ class CommandController extends Controller
         $off = ['generation' => $closed('generation'), 'distribution' => $closed('distribution'), 'attendance' => $closed('attendance'), 'tasks' => $closed('tasks')];
         $inField = $open->where('status', 'in_progress');
 
-        $branchCards = $branches->map(function (Branch $b) use ($board, $gen, $dist, $waiting, $lastGen, $off, $open, $inField, $overdue, $now, $tz) {
+        $branchCards = $branches->map(function (Branch $b) use ($canTasks, $board, $gen, $dist, $waiting, $lastGen, $off, $open, $inField, $overdue, $now, $tz) {
             $rows = $board->get($b->id, collect());
             $fuel = null;
             if ($row = $lastGen->get($b->id)) {
@@ -161,7 +163,7 @@ class CommandController extends Controller
                 'distribution' => in_array($b->id, $off['distribution']) ? null : ($dist[$b->id] ?? 'none'),
                 'waiting' => (int) ($waiting[$b->id] ?? 0),
                 'fuel' => in_array($b->id, $off['generation']) ? null : $fuel,
-                'tasks' => in_array($b->id, $off['tasks']) ? null : ['open' => $mine->count(), 'in_field' => $inField->where('branch_id', $b->id)->count(), 'overdue' => $overdue->where('branch_id', $b->id)->count()],
+                'tasks' => (! $canTasks || in_array($b->id, $off['tasks'])) ? null : ['open' => $mine->count(), 'in_field' => $inField->where('branch_id', $b->id)->count(), 'overdue' => $overdue->where('branch_id', $b->id)->count()],
             ];
         })->values();
 
@@ -169,7 +171,7 @@ class CommandController extends Controller
         $busy = $inField->map(fn (Task $t) => ['task' => $t->number, 'type' => $t->type?->name, 'branch' => $t->branch_id, 'since' => $t->started_at?->toIso8601String(), 'expected' => $t->expected_minutes,
             'people' => $t->assignees->map(fn ($p) => ['id' => $p->id, 'name' => $p->name])])->values();
         $busyIds = $inField->flatMap(fn ($t) => $t->assignees->pluck('id'))->unique();
-        $technicians = DB::table('task_assignees')->select('user_id')->distinct()->pluck('user_id');
+        $technicians = $canTasks ? DB::table('task_assignees')->select('user_id')->distinct()->pluck('user_id') : collect();
         $free = $board->flatten(1)->filter(fn ($r) => in_array($r['state'], ['present', 'late']) && $technicians->contains($r['user']['id']) && ! $busyIds->contains($r['user']['id']))
             ->map(fn ($r) => ['id' => $r['user']['id'], 'name' => $r['user']['name'], 'branch' => $r['user']['branch_id']])->values();
 

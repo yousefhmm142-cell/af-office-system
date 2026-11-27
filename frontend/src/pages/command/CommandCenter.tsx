@@ -79,8 +79,11 @@ export function CommandCenter() {
     pending: base.filter((r) => r.day?.approval_status === 'pending').length,
   }
   const expected = base.filter((r) => r.state !== 'off' && r.state !== 'leave').length
-  const openTasks = (dash.data?.branches ?? []).filter((b) => !branch || b.id === Number(branch)).reduce((n, b) => n + (b.open_tasks ?? 0), 0)
-  const lateTasks = (dash.data?.branches ?? []).filter((b) => !branch || b.id === Number(branch)).reduce((n, b) => n + (b.late_tasks ?? 0), 0)
+  // Field work comes from the decision centre, which follows it for HR and not for management.
+  const taskBranches = (center.data?.branches ?? []).filter((b) => b.tasks && (!branch || b.id === Number(branch)))
+  const followsTasks = taskBranches.length > 0
+  const openTasks = taskBranches.reduce((n, b) => n + (b.tasks?.open ?? 0), 0)
+  const lateTasks = taskBranches.reduce((n, b) => n + (b.tasks?.overdue ?? 0), 0)
 
   const shown = base.filter((r) => pulse === 'all' ? true : pulse === 'in' ? isIn(r) : pulse === 'late' ? (r.day?.late_minutes ?? 0) > 0
     : pulse === 'out' ? r.state === 'absent' || r.state === 'not_yet' : pulse === 'leave' ? r.state === 'leave' : r.day?.approval_status === 'pending')
@@ -97,7 +100,9 @@ export function CommandCenter() {
     { key: 'late', label: 'متأخرون', value: counts.late, sub: counts.late ? `${hm(base.reduce((n, r) => n + (r.day?.late_minutes ?? 0), 0))} تأخير مجموع` : 'لا تأخير اليوم', hue: 'amber', icon: <AlarmClock size={19} /> },
     { key: 'out', label: 'لم يحضروا', value: counts.out, sub: `${base.filter((r) => r.state === 'absent').length} غائب · ${base.filter((r) => r.state === 'not_yet').length} لم يصل بعد`, hue: 'rose', icon: <UserX size={19} /> },
     { key: 'leave', label: 'في إجازة', value: counts.leave, sub: base.some((r) => r.permission) ? `${base.filter((r) => r.permission).length} بإذن ساعات` : 'إجازات معتمدة', hue: 'sky', icon: <Palmtree size={19} /> },
-    { key: 'pending', label: 'مهام مفتوحة', value: openTasks, sub: lateTasks ? `${lateTasks} متأخرة عن وقتها` : 'لا مهام متأخرة', hue: 'amber', icon: <ListTodo size={19} /> },
+    followsTasks
+      ? { key: 'pending', label: 'مهام مفتوحة', value: openTasks, sub: lateTasks ? `${lateTasks} متأخرة عن وقتها` : 'لا مهام متأخرة', hue: 'amber', icon: <ListTodo size={19} /> }
+      : { key: 'pending', label: 'بانتظار الاعتماد', value: counts.pending, sub: 'أيام حضور اليوم', hue: 'amber', icon: <CalendarRange size={19} /> },
   ] : [
     { key: 'all', label: 'الموظفون', value: counts.all, sub: period === 'week' ? 'آخر 7 أيام' : 'منذ بداية الشهر', hue: 'violet', icon: <Users size={19} /> },
     { key: 'in', label: 'أيام حضور', value: sumT('days'), sub: 'مجموع الأيام المسجلة', hue: 'mint', icon: <CalendarCheck size={19} /> },
@@ -154,7 +159,7 @@ export function CommandCenter() {
       <section className="cc-pulse" aria-label="نبض الشركة">
         {cards.map((c) => (
           <button key={c.key} type="button" className="cc-card" data-hue={c.hue} aria-pressed={pulse === c.key && c.key !== 'all'}
-            onClick={() => setPulse(pulse === c.key || (period === 'today' && c.key === 'pending') ? 'all' : c.key)} disabled={period === 'today' && c.key === 'pending'}>
+            onClick={() => setPulse(pulse === c.key ? 'all' : c.key)} disabled={period === 'today' && c.key === 'pending' && followsTasks}>
             <span className="cc-card-top"><span className="cc-card-ico">{c.icon}</span><span className="cc-card-l">{c.label}</span></span>
             <b className="cc-card-n num">{board.loading && !data ? '—' : c.value}{c.unit && <small>{c.unit}</small>}</b>
             <span className="cc-card-s">{c.sub}</span>

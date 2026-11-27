@@ -1611,3 +1611,5 @@ html { scroll-behavior: smooth; }
 .cc-group-h { border-radius: 12px; background: color-mix(in srgb, var(--nx-sunk) 70%, var(--nx-card)); padding: 10px 12px; margin-top: 4px; }
 .cc-side { align-items: start; }
 .cx-card { align-content: start; }
+.cx-list { grid-auto-rows: max-content; }
+.cx-item:not([data-gone]) { max-height: none; }
