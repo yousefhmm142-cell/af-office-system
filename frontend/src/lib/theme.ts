@@ -29,3 +29,30 @@ export function useTheme(): [Theme, () => void] {
   )
   return [theme, () => setTheme(theme === 'dark' ? 'light' : 'dark')]
 }
+
+type ViewTransition = { ready: Promise<void> }
+type WithTransitions = Document & { startViewTransition?: (update: () => void) => ViewTransition }
+
+/**
+ * Switches the theme with a circle that grows out of (x, y) until it covers the screen.
+ * Falls back to a plain switch where the browser has no view transitions or the person
+ * asked for less motion.
+ */
+export function setThemeFrom(theme: Theme, x: number, y: number, apply: (update: () => void) => void = (u) => u()) {
+  const doc = document as WithTransitions
+  const still = window.matchMedia?.('(prefers-reduced-motion: reduce)').matches
+  if (!doc.startViewTransition || still) {
+    setTheme(theme)
+    return
+  }
+  const radius = Math.hypot(Math.max(x, window.innerWidth - x), Math.max(y, window.innerHeight - y))
+  document.documentElement.classList.add('theme-switching')
+  const t = doc.startViewTransition(() => apply(() => setTheme(theme)))
+  t.ready.then(() => {
+    const anim = document.documentElement.animate(
+      { clipPath: [`circle(0px at ${x}px ${y}px)`, `circle(${radius}px at ${x}px ${y}px)`] },
+      { duration: 750, easing: 'cubic-bezier(.65, 0, .35, 1)', pseudoElement: '::view-transition-new(root)' },
+    )
+    anim.finished.finally(() => document.documentElement.classList.remove('theme-switching'))
+  }).catch(() => document.documentElement.classList.remove('theme-switching'))
+}

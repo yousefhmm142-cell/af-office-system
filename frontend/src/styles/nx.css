@@ -880,3 +880,16 @@
 .nx-monthbar-nav button:disabled { opacity: .35; cursor: default; }
 .nx-monthbar-now { height: 38px; padding: 0 14px; border: 0; border-radius: 12px; cursor: pointer; font: inherit; font-weight: 800; font-size: .8125rem; background: var(--brand-soft); color: var(--brand-text); }
 @media (max-width: 760px) { .nx-monthbar { justify-self: stretch; } .nx-monthbar-t { flex: 1; min-width: 0; } }
+
+/* ---- theme switch: a circle grows from the button ---- */
+::view-transition-old(root), ::view-transition-new(root) { animation: none; mix-blend-mode: normal; }
+::view-transition-old(root) { z-index: 1; }
+::view-transition-new(root) { z-index: 2; }
+.theme-toggle { position: relative; overflow: hidden; }
+.theme-ico { position: absolute; inset: 0; display: grid; place-items: center; transition: transform .6s cubic-bezier(.65, 0, .35, 1), opacity .4s; }
+.theme-toggle[data-theme-now='light'] .theme-sun { transform: translateY(110%) rotate(90deg); opacity: 0; }
+.theme-toggle[data-theme-now='light'] .theme-moon { transform: none; opacity: 1; }
+.theme-toggle[data-theme-now='dark'] .theme-moon { transform: translateY(-110%) rotate(-90deg); opacity: 0; }
+.theme-toggle[data-theme-now='dark'] .theme-sun { transform: rotate(0); opacity: 1; color: #F7C46C; }
+.theme-toggle:hover .theme-sun { transform: rotate(45deg); }
+@media (prefers-reduced-motion: reduce) { .theme-ico { transition: none; } }
