@@ -861,3 +861,22 @@
 .pay-wizard .nxw-pct b { font-size: 2rem; letter-spacing: -.02em; }
 .pay-wizard .nxw-custom input { font-size: 1.6rem; }
 .nxp-tile b { white-space: normal; overflow: visible; }
+
+/* ---- employee file: the month switcher, on the right ---- */
+.nx-monthbar {
+  justify-self: start; display: inline-flex; align-items: center; gap: 12px; padding: 8px 10px 8px 8px; border-radius: 20px;
+  background: var(--nx-card); box-shadow: var(--nx-shadow);
+}
+.nx-monthbar .nx-ico { width: 44px; height: 44px; border-radius: 14px; }
+.nx-monthbar-t { display: grid; line-height: 1.2; min-width: 150px; }
+.nx-monthbar-t small { color: var(--nx-mute); font-size: .72rem; font-weight: 700; padding-inline-start: 2px; }
+.nx-monthbar-t .nx-month, .nx-monthbar-t .input {
+  min-width: 0 !important; width: auto !important; height: auto !important; min-height: 0 !important; padding: 0 2px !important; border: 0 !important;
+  background: transparent !important; box-shadow: none !important; font-size: 1.15rem !important; font-weight: 800; color: var(--nx-ink);
+}
+.nx-monthbar-nav { display: flex; gap: 4px; padding-inline-start: 10px; border-inline-start: 1px solid var(--nx-hair); }
+.nx-monthbar-nav button { width: 38px; height: 38px; border: 0; border-radius: 12px; display: grid; place-items: center; cursor: pointer; background: var(--nx-sunk); color: var(--nx-ink-2); transition: background .2s, color .2s; }
+.nx-monthbar-nav button:hover:not(:disabled) { background: var(--brand-soft); color: var(--brand-text); }
+.nx-monthbar-nav button:disabled { opacity: .35; cursor: default; }
+.nx-monthbar-now { height: 38px; padding: 0 14px; border: 0; border-radius: 12px; cursor: pointer; font: inherit; font-weight: 800; font-size: .8125rem; background: var(--brand-soft); color: var(--brand-text); }
+@media (max-width: 760px) { .nx-monthbar { justify-self: stretch; } .nx-monthbar-t { flex: 1; min-width: 0; } }

@@ -1,4 +1,4 @@
-import { CalendarDays, CalendarCheck, Clock3, Palmtree, Receipt, Wallet } from 'lucide-react'
+import { CalendarDays, CalendarCheck, ChevronLeft, ChevronRight, Clock3, Palmtree, Receipt, Wallet } from 'lucide-react'
 import { MonthField } from '../ui/MonthField'
 import { ChoiceField } from '../ui/ChoiceField'
 import { useState, type FormEvent, type ReactNode } from 'react'
@@ -51,7 +51,19 @@ export function EmployeeBody({ file, tab, profile, documents, leave, personal }:
   const net = data?.pay ? data.pay.reduce((s, p) => s + Number(p.net), 0) : null
   const active = days.find((d) => d.date === date)
 
-  const head = <div className="nx-toolbar"><span className="nx-toolbar-t">الشهر المعروض</span>{picker}</div>
+  const shiftMonth = (by: number) => { const d = new Date(`${month}-15T12:00:00Z`); d.setUTCMonth(d.getUTCMonth() + by); setMonth(d.toISOString().slice(0, 7)); setDate('') }
+  const current = todayISO().slice(0, 7)
+  const head = (
+    <div className="nx-monthbar">
+      <span className="nx-ico" data-hue="rose"><CalendarDays size={20} /></span>
+      <div className="nx-monthbar-t"><small>الشهر المعروض</small>{picker}</div>
+      <div className="nx-monthbar-nav">
+        <button type="button" onClick={() => shiftMonth(-1)} aria-label="الشهر السابق" title="الشهر السابق"><ChevronRight size={18} /></button>
+        <button type="button" onClick={() => shiftMonth(1)} disabled={month >= current} aria-label="الشهر التالي" title="الشهر التالي"><ChevronLeft size={18} /></button>
+      </div>
+      {month !== current && <button type="button" className="nx-monthbar-now" onClick={() => { setMonth(current); setDate('') }}>هذا الشهر</button>}
+    </div>
+  )
 
   if (!data) return <>{head}<ErrorBanner text={error} />{loading && <Loading />}</>
 
