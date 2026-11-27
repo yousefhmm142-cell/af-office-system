@@ -835,3 +835,86 @@ dialog.handoff-dialog{max-width:min(940px,96vw)}.handoff-sheet{min-width:560px;p
   .mail-head { flex-wrap: wrap; }
   .mail-head-actions { width: 100%; }
 }
+
+/* ---------- Employee file ---------- */
+.emp { display: grid; gap: 16px; }
+.emp-grid { display: grid; grid-template-columns: 300px minmax(0, 1fr) 320px; gap: 16px; align-items: start; }
+.emp-side, .emp-main, .emp-aside { display: grid; gap: 16px; min-width: 0; }
+.emp-wide { grid-column: 2 / -1; }
+.emp-card { padding: 18px 20px; display: grid; gap: 10px; }
+.emp-card-h { display: flex; align-items: center; gap: 8px; margin: 0; font-size: 1rem; font-weight: 800; }
+.emp-card-top { display: flex; justify-content: space-between; align-items: center; gap: 10px; }
+.emp-month { width: auto; min-width: 150px; height: 38px; font-size: .875rem; }
+.emp-toolbar { display: flex; justify-content: flex-end; }
+.emp-id { padding: 24px 20px; display: grid; justify-items: center; text-align: center; gap: 6px; }
+.emp-photo { padding: 5px; border-radius: 28px; background: linear-gradient(160deg, var(--brand-soft), transparent); margin-bottom: 6px; }
+.emp-photo .avatar { width: 88px !important; height: 88px !important; border-radius: 24px; font-size: 2rem; }
+.emp-id h2 { margin: 0; font-size: 1.25rem; }
+.emp-id > p { margin: 0; color: var(--muted); font-size: .875rem; }
+.emp-tags { display: flex; gap: 6px; align-items: center; justify-content: center; flex-wrap: wrap; margin: 6px 0 4px; }
+.emp-tag { padding: 3px 10px; border-radius: 99px; background: color-mix(in srgb, var(--ink) 6%, var(--surface)); font-size: .78rem; color: var(--ink-2, var(--ink)); }
+.emp-facts { width: 100%; margin: 8px 0 0; display: grid; border: 1px solid var(--line-2); border-radius: 14px; overflow: hidden; text-align: start; }
+.emp-facts div { display: flex; justify-content: space-between; gap: 10px; padding: 10px 12px; font-size: .875rem; }
+.emp-facts div + div { border-top: 1px solid var(--line-2); }
+.emp-facts dt { color: var(--muted); }
+.emp-facts dd { margin: 0; font-weight: 700; text-align: end; }
+.emp-actions { display: flex; gap: 8px; justify-content: center; flex-wrap: wrap; margin-top: 8px; }
+.emp-rings { display: grid; grid-template-columns: repeat(4, minmax(0, 1fr)); gap: 12px; }
+.emp-ring { padding: 14px 10px; display: grid; justify-items: center; gap: 6px; text-align: center; }
+.emp-ring-label { font-weight: 800; font-size: .8125rem; color: var(--ink-2, var(--ink)); }
+.emp-ring-svg { position: relative; width: 76px; height: 76px; }
+.emp-ring-svg svg { width: 100%; height: 100%; transform: rotate(-90deg); }
+.emp-ring-track { fill: none; stroke: color-mix(in srgb, var(--ink) 8%, var(--surface)); stroke-width: 7; }
+.emp-ring-bar { fill: none; stroke: var(--brand); stroke-width: 7; stroke-linecap: round; transition: stroke-dashoffset .6s var(--ease); }
+.emp-ring[data-tone='ok'] .emp-ring-bar { stroke: var(--ok); }
+.emp-ring[data-tone='warn'] .emp-ring-bar { stroke: var(--warn); }
+.emp-ring[data-tone='info'] .emp-ring-bar { stroke: var(--info); }
+.emp-ring-svg > span { position: absolute; inset: 0; display: grid; place-content: center; line-height: 1; }
+.emp-ring-svg b { font-size: 1.375rem; font-weight: 800; }
+.emp-ring-svg small { font-size: .75rem; color: var(--muted); }
+.emp-ring-sub { color: var(--muted); font-size: .75rem; }
+.emp-big { font-size: 1.875rem; font-weight: 800; }
+.emp-big small { font-size: .875rem; color: var(--muted); font-weight: 400; }
+.emp-bars { display: flex; align-items: flex-end; gap: 3px; height: 130px; padding-top: 6px; }
+.emp-bars i { flex: 1; min-width: 3px; border-radius: 5px 5px 2px 2px; background: color-mix(in srgb, var(--brand) 70%, var(--surface)); transition: opacity .15s; }
+.emp-bars i:hover { opacity: .7; }
+.emp-bars i[data-state='late'] { background: var(--warn); }
+.emp-bars i[data-state='absent'], .emp-bars i[data-state='off'], .emp-bars i[data-state='scheduled'] { background: color-mix(in srgb, var(--ink) 8%, var(--surface)); }
+.emp-legend { display: grid; grid-template-columns: repeat(4, minmax(0, 1fr)); gap: 6px; font-size: .75rem; color: var(--muted); }
+.emp-legend span { display: grid; justify-items: center; gap: 2px; }
+.emp-legend i { width: 18px; height: 6px; border-radius: 99px; background: var(--ok); }
+.emp-legend [data-state='late'] i { background: var(--warn); }
+.emp-legend [data-state='absent'] i { background: var(--danger); }
+.emp-legend [data-state='leave'] i { background: var(--info); }
+.emp-legend b { color: var(--ink); font-size: .9375rem; }
+.emp-day { margin: 0; font-size: .8125rem; color: var(--muted); padding: 8px 10px; border-radius: 10px; background: color-mix(in srgb, var(--ink) 4%, var(--surface)); }
+.emp-kv { display: flex; justify-content: space-between; align-items: center; gap: 10px; padding: 8px 0; font-size: .875rem; }
+.emp-kv + .emp-kv { border-top: 1px dashed var(--line-2); }
+.emp-kv span { color: var(--muted); display: grid; }
+.emp-kv span small { font-size: .75rem; }
+.emp-net { border-top: 1.5px solid var(--line) !important; font-size: 1rem; }
+.emp-net span { color: var(--ink); font-weight: 800; }
+.emp-net b { color: var(--brand-text); font-size: 1.125rem; }
+.emp-pay + .emp-pay { margin-top: 10px; padding-top: 10px; border-top: 1px solid var(--line-2); }
+.emp-pay-title { color: var(--muted); font-weight: 700; }
+.emp-allowance { display: grid; grid-template-columns: 1fr 1fr; gap: 8px; align-items: end; padding-top: 8px; border-top: 1px solid var(--line-2); }
+.emp-allowance .btn { grid-column: 1 / -1; }
+.emp-docs > .card { margin: 0; }
+@media (max-width: 1280px) {
+  .emp-grid { grid-template-columns: 280px minmax(0, 1fr); }
+  .emp-aside { grid-column: 2; }
+  .emp-wide { grid-column: 2; }
+}
+@media (max-width: 900px) {
+  .emp-grid { grid-template-columns: 1fr; }
+  .emp-aside, .emp-wide { grid-column: auto; }
+  .emp-rings { grid-template-columns: repeat(2, minmax(0, 1fr)); }
+}
+.emp-ring-label { min-height: 2.6em; display: grid; place-items: center; line-height: 1.3; }
+@media (max-width: 900px) {
+  .emp-side { display: contents; }
+  .emp-id { order: 0; }
+  .emp-main { order: 1; }
+  .emp-aside { order: 2; }
+  .emp-side > :not(.emp-id) { order: 3; }
+}

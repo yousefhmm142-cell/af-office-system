@@ -53,100 +53,78 @@ export function EmployeeFile() {
     )
   }
 
+  const leaveForm = can(me, 'leaves.decide') && !mine && <form className="emp-allowance" onSubmit={async e=>{
+    e.preventDefault()
+    try { await api(`/employees/${id}/leave-allowance`,{method:'PUT',body:{year:Number(year),days:Number(allowance)}})
+      setData(await api<File_>(`/employees/${id}`)); setAllowance(''); toast('حُفظ الرصيد')
+    } catch(err) { toast(err instanceof ApiError ? err.message : 'تعذّر الحفظ','danger') }
+  }}><label className="field"><span className="label">السنة</span><input className="input num" type="number" min="2000" max="2100" required value={year} onChange={e=>setYear(e.target.value)} /></label>
+    <label className="field"><span className="label">أيام الإجازة السنوية</span><input className="input num" type="number" min="0" max="366" required value={allowance} onChange={e=>setAllowance(e.target.value)} placeholder="مثل: 14" /></label>
+    <Button type="submit">حفظ الرصيد</Button></form>
+
   return (
-    <>
-      <PageHead title={mine ? 'ملفي' : f.user.name} eyebrow={mine ? f.user.name : 'ملف الموظف'}
-        actions={<Pill tone={STATUS_TONE[f.status]}>{STATUS_LABEL[f.status]}</Pill>} />
-
-      <div className="segmented af-tabs" role="group" aria-label="أقسام ملف الموظف">
-        <button type="button" aria-pressed={!performance} onClick={()=>setPerformance(false)}>ملف الموظف</button>
-        <button type="button" aria-pressed={performance} onClick={()=>setPerformance(true)}>تقرير الأداء الميداني</button>
+    <div className="emp">
+      <PageHead title={mine ? 'ملفي' : f.user.name} eyebrow={mine ? 'بياناتك وحضورك ورواتبك' : 'ملف الموظف'}
+        actions={f.job.tracks_attendance && <div className="segmented" role="group" aria-label="العرض">
+          <button type="button" aria-pressed={!performance} onClick={()=>setPerformance(false)}>الملف</button>
+          <button type="button" aria-pressed={performance} onClick={()=>setPerformance(true)}>الأداء الميداني</button>
+        </div>} />
+      <div className="emp-grid">
+        <aside className="emp-side">
+          <section className="card emp-id">
+            <div className="emp-photo"><Avatar name={f.user.name} size={88} /></div>
+            <h2>{f.user.name}</h2>
+            <p>{[f.job.job_title ?? f.user.role?.name, f.job.department?.name].filter(Boolean).join(' · ')}</p>
+            <div className="emp-tags"><span className="emp-tag num" dir="ltr">@{f.user.username}</span><Pill tone={STATUS_TONE[f.status]}>{STATUS_LABEL[f.status]}</Pill></div>
+            <dl className="emp-facts">
+              <div><dt>الفرع</dt><dd>{f.user.branch?.name ?? 'الإدارة العامة'}</dd></div>
+              <div><dt>نوع الأجر</dt><dd>{label(SALARY_TYPES, f.job.salary_type)}{f.job.salary_amount ? <> · <span className="num">{Number(f.job.salary_amount)}</span> ₪</> : ''}</dd></div>
+              <div><dt>تاريخ التوظيف</dt><dd className="num">{f.job.hire_date ?? '—'}</dd></div>
+              <div><dt>الدوام</dt><dd>{f.job.schedule?.name ?? 'الأساسي للفرع'} · <span className="num">{Number(f.job.daily_hours)}</span> ساعات</dd></div>
+              <div><dt>الحضور</dt><dd>{f.job.tracks_attendance ? (f.job.punch_anywhere ? 'يسجّل من أي مكان' : 'يسجّل') : 'لا يسجّل'}</dd></div>
+            </dl>
+            {(f.can.edit_job || f.can.set_status) && <div className="emp-actions">
+              {f.can.edit_job && <Button icon={<Wallet size={16}/>} onClick={()=>setEdit('job')}>العمل والراتب</Button>}
+              {f.can.set_status && <Button variant="ghost" onClick={() => setEdit('status')}>تغيير الحالة</Button>}
+            </div>}
+          </section>
+          {f.status === 'terminated' && f.termination_reason && <div className="banner danger"><p>سبب الفصل: {f.termination_reason}</p></div>}
+          <Section icon={<UserRound size={18} />} title="البيانات الشخصية" onEdit={f.can.edit_personal ? () => setEdit('personal') : undefined}>
+            <Row k="رقم الهوية" v={p.national_id} num />
+            <Row k="رقم الجوال" v={p.phone} num />
+            <Row k="مكان السكن" v={p.address} />
+            <Row k="آخر مؤهل" v={label(EDUCATION, p.education_level)} />
+            <Row k="التخصص" v={p.specialty} />
+            <Row k="الجنس" v={p.gender === 'male' ? 'ذكر' : p.gender === 'female' ? 'أنثى' : null} />
+          </Section>
+          <Section icon={<Wallet size={18} />} title={p.payment_method === 'bank' ? 'الحساب البنكي' : 'المحفظة'} onEdit={f.can.edit_personal ? () => setEdit('wallet') : undefined}>
+            <Row k={p.payment_method === 'bank' ? 'البنك' : 'المحفظة'} v={p.provider} />
+            <Row k="رقم الحساب" v={p.account_number} num />
+            <Row k="صاحب الحساب" v={p.account_holder_name} />
+            <Row k="هوية صاحب الحساب" v={p.account_holder_national_id} num />
+          </Section>
+        </aside>
+        <EmployeeOverview key={f.user.id} file={f} performance={performance}
+          documents={<Attachments file={f} onChange={(attachments) => setData({ ...f, attachments })} />}
+          extra={<>
+            <section className="card emp-card">
+              <h3 className="emp-card-h"><History size={18} /> الإجازة السنوية · <span className="num">{f.annual_leave.year}</span></h3>
+              <div className="emp-kv"><span>الرصيد</span><b className="num">{f.annual_leave.days ?? '—'}</b></div>
+              <div className="emp-kv"><span>المستخدم</span><b className="num">{f.annual_leave.used}</b></div>
+              <div className="emp-kv"><span>المتبقي</span><b className="num">{f.annual_leave.days === null ? 'لم يُحدَّد' : f.annual_leave.days - f.annual_leave.used}</b></div>
+              {leaveForm}
+            </section>
+            {f.status_log.length > 0 && <section className="card emp-card">
+              <h3 className="emp-card-h"><History size={18} /> سجل الحالة</h3>
+              {f.status_log.map((l, i) => <div key={i} className="emp-kv"><span>{l.from ? `${STATUS_LABEL[l.from as EmployeeStatus]} ← ` : ''}{STATUS_LABEL[l.to]}<small>{l.by ?? '—'}{l.reason ? ` · ${l.reason}` : ''}</small></span><b>{formatLongDate(new Date(l.at))}</b></div>)}
+            </section>}
+          </>} />
       </div>
-      <div className="af-employee-layout">
-      <aside className="af-employee-identity">
-      <section className="card glass af-pad af-profile">
-        <Avatar name={f.user.name} size={64} />
-        <div>
-          <b className="af-profile-name">{f.user.name}</b>
-          <p className="eyebrow">
-            {f.job.job_title ?? f.user.role?.name}{f.user.branch ? ` · ${f.user.branch.name}` : ''}{f.job.department ? ` · ${f.job.department.name}` : ''}
-          </p>
-          <p className="eyebrow" dir="auto">@{f.user.username}</p>
-        </div>
-        {f.can.edit_job && <Button icon={<Wallet size={16}/>} onClick={()=>setEdit('job')}>تعديل القسم والراتب</Button>}
-        {f.can.set_status && <Button onClick={() => setEdit('status')}>تغيير الحالة</Button>}
-      </section>
-      {f.status === 'terminated' && f.termination_reason && <div className="banner danger" style={{ marginTop: 12 }}><p>سبب الفصل: {f.termination_reason}</p></div>}
-
-      </aside>
-      <EmployeeOverview key={f.user.id} file={f} performance={performance} mine={mine} documents={<Attachments file={f} onChange={(attachments) => setData({ ...f, attachments })} />} />
-      {!performance && <div className="af-employee-details">
-        <Section icon={<UserRound size={18} />} title="البيانات الشخصية" onEdit={f.can.edit_personal ? () => setEdit('personal') : undefined}>
-          <Row k="الاسم الكامل" v={f.user.name} />
-          <Row k="رقم الهوية" v={p.national_id} num />
-          <Row k="رقم الجوال" v={p.phone} num />
-          <Row k="مكان السكن" v={p.address} />
-          <Row k="آخر مؤهل" v={label(EDUCATION, p.education_level)} />
-          <Row k="التخصص" v={p.specialty} />
-          <Row k="الجنس" v={p.gender === 'male' ? 'ذكر' : p.gender === 'female' ? 'أنثى' : null} />
-        </Section>
-
-        <Section icon={<Wallet size={18} />} title="المحفظة / الحساب البنكي" onEdit={f.can.edit_personal ? () => setEdit('wallet') : undefined}>
-          <Row k="النوع" v={p.payment_method === 'wallet' ? 'محفظة' : p.payment_method === 'bank' ? 'حساب بنك' : null} />
-          <Row k={p.payment_method === 'bank' ? 'البنك' : 'المحفظة'} v={p.provider} />
-          <Row k="رقم الحساب" v={p.account_number} num />
-          <Row k="اسم صاحب الحساب" v={p.account_holder_name} />
-          <Row k="هوية صاحب الحساب" v={p.account_holder_national_id} num />
-          <Row k="جوال صاحب الحساب" v={p.account_holder_phone} num />
-        </Section>
-
-        <Section icon={<Briefcase size={18} />} title="البيانات الوظيفية" onEdit={f.can.edit_job ? () => setEdit('job') : undefined}>
-          <Row k="المسمى الوظيفي" v={f.job.job_title} />
-          <Row k="القسم" v={f.job.department?.name} />
-          <Row k="الدوام" v={f.job.schedule?.name ?? 'الأساسي للفرع'} />
-          <Row k="نوع الراتب" v={label(SALARY_TYPES, f.job.salary_type)} />
-          <Row k="قيمة الراتب" v={f.job.salary_amount ? `${Number(f.job.salary_amount)} شيكل` : null} num />
-          <Row k="ساعات الدوام" v={String(Number(f.job.daily_hours))} num />
-          <Row k="تاريخ التوظيف" v={f.job.hire_date} num />
-          <Row k="الحضور" v={f.job.tracks_attendance ? (f.job.punch_anywhere ? 'يسجّل · الـQR من أي مكان' : 'يسجّل') : 'لا يسجّل الحضور'} />
-        </Section>
-
-        {f.job.tracks_attendance && <Section icon={<History size={18} />} title={`ملخص الحضور · ${f.attendance.month}`}>
-          <Row k="دقائق التأخير" v={String(f.attendance.late_minutes)} num />
-          <Row k="أيام الغياب" v={String(f.attendance.absent_days)} num />
-        </Section>}
-        <Section icon={<History size={18} />} title={`رصيد الإجازة السنوية · ${f.annual_leave.year}`}>
-          <Row k="الأيام المستخدمة" v={String(f.annual_leave.used)} /><Row k="الأيام المتبقية" v={f.annual_leave.days === null ? 'لم يُحدّد الرصيد' : String(f.annual_leave.days-f.annual_leave.used)} />
-          {can(me, 'leaves.decide') && !mine && <form className="form-grid" onSubmit={async e=>{
-            e.preventDefault()
-            try { await api(`/employees/${id}/leave-allowance`,{method:'PUT',body:{year:Number(year),days:Number(allowance)}})
-              setData(await api<File_>(`/employees/${id}`)); setAllowance(''); toast('حُفظ الرصيد')
-            } catch(err) { toast(err instanceof ApiError ? err.message : 'تعذّر الحفظ','danger') }
-          }}><label>السنة<input className="input" type="number" min="2000" max="2100" required value={year} onChange={e=>setYear(e.target.value)} /></label>
-          <label>إجمالي الاستحقاق السنوي بالأيام<input className="input" type="number" min="0" max="366" required value={allowance} onChange={e=>setAllowance(e.target.value)} /></label>
-          <Button type="submit">حفظ الرصيد</Button></form>}
-        </Section>
-
-      </div>}
-      </div>
-
-      {f.status_log.length > 0 && (
-        <Section icon={<History size={18} />} title="سجل الحالة" style={{ marginTop: 16 }}>
-          {f.status_log.map((l, i) => (
-            <div key={i} className="row">
-              <span className="row-label">{l.from ? `${STATUS_LABEL[l.from as EmployeeStatus]} ← ` : ''}{STATUS_LABEL[l.to]}
-                <small className="af-sub">{l.by ?? '—'}{l.reason ? ` · ${l.reason}` : ''}</small>
-              </span>
-              <span className="row-value">{formatLongDate(new Date(l.at))}</span>
-            </div>
-          ))}
-        </Section>
-      )}
 
       {(edit === 'personal' || edit === 'wallet') && <PersonalDialog file={f} part={edit} onClose={() => setEdit(null)} onSaved={(nf) => { setData(nf); setEdit(null) }} />}
       {edit === 'job' && <JobDialog file={f} onClose={() => setEdit(null)} onSaved={(nf) => { setData(nf); setEdit(null) }} />}
       {edit === 'status' && <StatusDialog file={f} onClose={() => setEdit(null)} onSaved={(nf) => { setData(nf); setEdit(null) }} />}
-    </>
+    </div>
   )
 }
 

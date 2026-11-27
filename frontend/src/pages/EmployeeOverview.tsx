@@ -1,4 +1,4 @@
-import { CalendarCheck, Clock3, FileHeart, Timer, CalendarDays } from 'lucide-react'
+import { Clock3, CalendarDays, Wallet } from 'lucide-react'
 import { MonthField } from '../ui/MonthField'
 import { ChoiceField } from '../ui/ChoiceField'
 import { useState, type FormEvent } from 'react'
@@ -23,73 +23,105 @@ const money = new Intl.NumberFormat('en-US', { maximumFractionDigits: 2 })
 const shortDay = (iso?: string) => iso ? new Intl.DateTimeFormat('ar-EG-u-nu-latn-ca-gregory', { day: 'numeric', month: 'long', timeZone: 'UTC' }).format(new Date(`${iso}T12:00:00Z`)) : ''
 const keys = <T extends object>(o: T) => Object.keys(o) as (keyof T)[]
 
-export function EmployeeOverview({ file, performance, documents }: { file: EmployeeFile; performance: boolean; mine?: boolean; documents: React.ReactNode }) {
+/** A ring with a figure in the middle: «10 من 14». */
+function Ring({ value, max, label, sub, tone = 'brand' }: { value: number; max: number | null; label: string; sub: string; tone?: 'brand' | 'ok' | 'warn' | 'info' }) {
+  const r = 30, c = 2 * Math.PI * r
+  const part = max ? Math.min(1, value / max) : 0
+  return (
+    <section className="emp-ring card" data-tone={tone}>
+      <small className="emp-ring-label">{label}</small>
+      <div className="emp-ring-svg">
+        <svg viewBox="0 0 76 76" aria-hidden="true">
+          <circle cx="38" cy="38" r={r} className="emp-ring-track" />
+          <circle cx="38" cy="38" r={r} className="emp-ring-bar" strokeDasharray={c} strokeDashoffset={c * (1 - part)} />
+        </svg>
+        <span className="num"><b>{value}</b>{max !== null && <small>/{max}</small>}</span>
+      </div>
+      <small className="emp-ring-sub">{sub}</small>
+    </section>
+  )
+}
+
+export function EmployeeOverview({ file, performance, documents, extra }: { file: EmployeeFile; performance: boolean; mine?: boolean; documents: React.ReactNode; extra?: React.ReactNode }) {
   const [month, setMonth] = useState(() => todayISO().slice(0,7))
   const [date, setDate] = useState('')
   const { data, error, loading, reload } = useLoad<{ calendar: Day[]; pay: Payment[] | null; reports: Report[]; leave_counts: Record<string,number> }>(`/employees/${file.user.id}/overview?month=${month}`)
   const active = data?.calendar.find(d => d.date === date)
   const annual = file.annual_leave
-  const balance = annual.days === null ? 'غير محدد' : String(annual.days - annual.used)
-  return <div className="af-employee-overview">
-    <div className="af-toolbar"><label>شهر العرض <MonthField value={month} onChange={(m)=>{setMonth(m);setDate('')}} aria-label="شهر العرض" /></label></div>
+  const count = (state: Day['state']) => data?.calendar.filter((d) => d.state === state).length ?? 0
+  const workDays = data?.calendar.filter((d) => d.state !== 'off' && d.state !== 'scheduled').length ?? 0
+  const hours = data ? Math.round(data.calendar.reduce((sum,d)=>sum+d.minutes,0)/60*10)/10 : 0
+  const peak = data ? Math.max(480, ...data.calendar.map(x=>x.minutes)) : 480
+  const monthPicker = <MonthField value={month} onChange={(m)=>{setMonth(m);setDate('')}} aria-label="الشهر" className="emp-month" />
+
+  if (performance) return <div className="emp-main emp-wide">
+    <div className="emp-toolbar">{monthPicker}</div>
     <ErrorBanner text={error} />
     {loading && !data && <Loading />}
-    {data && (performance ? <>
+    {data && <>
       <div className="field-command">
-        <section className="field-time"><Clock3 size={24}/><h2>ساعات العمل المسجّلة</h2><strong>{money.format(Math.round(data.calendar.reduce((sum,d)=>sum+d.minutes,0)/60*10)/10)}</strong><small>ساعة خلال الشهر</small></section>
+        <section className="field-time"><Clock3 size={24}/><h2>ساعات العمل المسجّلة</h2><strong>{money.format(hours)}</strong><small>ساعة خلال الشهر</small></section>
         <section className="field-attendance"><h2>توزيع الحضور</h2><div className="attendance-orbits">
-          {(['present','late','absent'] as const).map((state,index)=>{
-            const count=data.calendar.filter(d=>d.state===state).length
-            return <div className="orbit-line" key={state}><span>{states[state]}</span><meter aria-label={states[state]} min={0} max={data.calendar.length} value={count} data-tone={index}/><b>{count}</b></div>
-          })}
-        </div></section>
-        <section className="field-activity"><h2>نشاط الشهر</h2><div className="activity-mosaic">
-          {data.calendar.map(d=><span key={d.date} data-state={d.state} title={d.date+' · '+states[d.state]}>{Number(d.date.slice(-2))}</span>)}
+          {(['present','late','absent'] as const).map((state,index)=><div className="orbit-line" key={state}><span>{states[state]}</span><meter aria-label={states[state]} min={0} max={data.calendar.length} value={count(state)} data-tone={index}/><b>{count(state)}</b></div>)}
         </div></section>
       </div>
-      <section className="card glass af-pad"><h2 className="af-h2">الإنتاجية اليومية</h2>
+      <section className="card emp-card"><h3 className="emp-card-h">الإنتاجية اليومية</h3>
         {file.can.edit_job && <ReportForm key={file.user.id + month} userId={file.user.id} reports={data.reports} initialDate={month === todayISO().slice(0,7) ? todayISO() : month+'-01'} reload={reload} />}
-        {!data.reports.length && <p>لا توجد سجلات أداء لهذا الشهر.</p>}
-        <div className="af-performance-list">{data.reports.map(r=><article className="card af-pad" key={r.date+r.kind}><h3>{kinds[r.kind]}</h3><time>{r.date}</time>
+        {!data.reports.length && <p className="muted">لا توجد سجلات أداء لهذا الشهر.</p>}
+        <div className="af-performance-list">{data.reports.map(r=><article className="card af-pad" key={r.date+r.kind}><h3>{kinds[r.kind]}</h3><time className="num">{r.date}</time>
           <dl>{metrics[r.kind].map(k=><div key={k}><dt>{fields[k]}</dt><dd>{r.metrics[k]}</dd></div>)}</dl>
-          {r.kind === 'collection' && Number(r.metrics.target)>0 && <><progress aria-label="نسبة التحصيل إلى المستهدف" value={Number(r.metrics.collected)} max={Number(r.metrics.target)} /><span> {Math.round(Number(r.metrics.collected)/Number(r.metrics.target)*100)}٪</span></>}
+          {r.kind === 'collection' && Number(r.metrics.target)>0 && <><progress aria-label="نسبة التحصيل إلى المستهدف" value={Number(r.metrics.collected)} max={Number(r.metrics.target)} /><span> {Math.round(Number(r.metrics.collected)/Number(r.metrics.target)*100)}%</span></>}
         </article>)}</div>
       </section>
-      <section className="card glass af-pad"><h2 className="af-h2">ساعات العمل المسجّلة</h2>
-        <div className="af-work-activity">{data.calendar.map(d=><div key={d.date} title={`${d.date} · ${d.minutes} دقيقة`}>
-          <progress aria-label={d.date+' ساعات العمل'} max={Math.max(480,...data.calendar.map(day=>day.minutes))} value={d.minutes} />
-          <small>{Number(d.date.slice(-2))}</small></div>)}</div>
+    </>}
+  </div>
+
+  return <>
+    <div className="emp-main">
+      <div className="emp-rings">
+        <Ring label="الإجازة السنوية" value={annual.days === null ? annual.used : annual.days - annual.used} max={annual.days} sub={annual.days === null ? 'لم يُحدَّد الرصيد' : 'يوماً متبقية'} />
+        <Ring label="أيام الحضور" value={count('present') + count('late')} max={workDays || null} sub="في هذا الشهر" tone="ok" />
+        <Ring label="إجازات مرضية" value={data?.leave_counts.sick ?? 0} max={null} sub="في هذا الشهر" tone="warn" />
+        <Ring label="الأذونات" value={data?.leave_counts.permission ?? 0} max={null} sub="في هذا الشهر" tone="info" />
+      </div>
+      <ErrorBanner text={error} />
+      <section className="card emp-card emp-hours">
+        <div className="emp-card-top"><h3 className="emp-card-h"><Clock3 size={18} /> ساعات العمل</h3>{monthPicker}</div>
+        {loading && !data ? <Loading /> : <>
+          <strong className="emp-big num">{money.format(hours)} <small>ساعة</small></strong>
+          <div className="emp-bars" role="img" aria-label="ساعات العمل المسجلة لكل يوم من الشهر">
+            {data?.calendar.map(d=><i key={d.date} data-state={d.state} title={`${shortDay(d.date)} · ${Math.round(d.minutes/6)/10} ساعة`} style={{height:Math.max(3,100*d.minutes/peak)+'%'}} />)}
+          </div>
+          <div className="bar-axis"><span>{shortDay(data?.calendar[0]?.date)}</span><span>{shortDay(data?.calendar.at(-1)?.date)}</span></div>
+        </>}
       </section>
-      <section className="card glass af-pad"><h2 className="af-h2">الورديات وسجل الالتزام</h2><div className="af-planning-table"><table className="tbl"><thead><tr><th>اليوم</th><th>الوردية</th><th>الحضور</th><th>الانصراف</th><th>الحالة</th></tr></thead><tbody>{data.calendar.map(d=><tr key={d.date}><td>{d.date}</td><td>{d.shift ?? '—'}</td><td>{d.in ?? '—'}</td><td>{d.out ?? '—'}</td><td>{states[d.state]}{d.permission && ' · إذن معتمد'}</td></tr>)}</tbody></table></div></section>
-    </> : <>
-      <div className="leave-tiles">{[
-        {name:'رصيد السنوية',value:balance,icon:CalendarDays},
-        {name:'السنوية المستخدمة',value:annual.used,icon:CalendarCheck},
-        {name:'أيام مرضية في الشهر',value:data.leave_counts.sick ?? 0,icon:FileHeart},
-        {name:'أذونات الشهر',value:data.leave_counts.permission ?? 0,icon:Timer},
-      ].map(({name,value,icon:Icon})=><section key={name}><Icon size={18}/><strong>{value}</strong><small>{name}</small></section>)}</div>
-      <div className="profile-board">
-        <section className="card glass af-pad hours-card"><h2 className="af-h2">ساعات العمل اليومية</h2>
-          <strong>{money.format(Math.round(data.calendar.reduce((sum,d)=>sum+d.minutes,0)/60*10)/10)} <small>ساعة</small></strong>
-          <div className="profile-bars" role="img" aria-label="ساعات العمل المسجلة لكل يوم من الشهر">
-            {data.calendar.map(d=><i key={d.date} title={d.date+' · '+d.minutes+' دقيقة'} style={{height:Math.max(2,100*d.minutes/Math.max(480,...data.calendar.map(x=>x.minutes)))+'%'}} />)}
-          </div><div className="bar-axis"><span>{shortDay(data.calendar[0]?.date)}</span><span>{shortDay(data.calendar.at(-1)?.date)}</span></div>
-        </section>
-        <section className="card glass af-pad"><h2 className="af-h2">تقويم الحضور والانصراف</h2>
+      <div className="emp-docs">{documents}</div>
+    </div>
+    <div className="emp-aside">
+      <section className="card emp-card">
+        <h3 className="emp-card-h"><CalendarDays size={18} /> الحضور والانصراف</h3>
+        {data && <>
           <div className="af-calendar">{['س','ح','ن','ث','ر','خ','ج'].map(d=><small key={d}>{d}</small>)}
             {Array.from({length:(new Date(month+'-01T12:00:00Z').getUTCDay()+1)%7},(_,i)=><span key={i} />)}
-            {data.calendar.map(d=><button type="button" key={d.date} data-state={d.state} title={states[d.state]} aria-label={d.date+' '+states[d.state]} aria-pressed={date===d.date} onClick={()=>setDate(d.date)}>{Number(d.date.slice(-2))}</button>)}
+            {data.calendar.map(d=><button type="button" key={d.date} data-state={d.state} title={states[d.state]} aria-label={shortDay(d.date)+' '+states[d.state]} aria-pressed={date===d.date} onClick={()=>setDate(d.date)}>{Number(d.date.slice(-2))}</button>)}
           </div>
-          <div className="af-calendar-key">{keys(states).map(s=><small key={s} data-state={s}>{states[s]}</small>)}</div>
-          {active && <p>{active.date} · {states[active.state]}{active.permission && ' · إذن معتمد'} · دخول {active.in ?? '—'} · خروج {active.out ?? '—'}</p>}
-        </section>
-        <section className="card glass af-pad"><h2 className="af-h2">تفصيل الرواتب والبدلات</h2>
-          {data.pay === null ? <p>عرض الراتب لصاحب الملف وأصحاب صلاحية الرواتب.</p> : !data.pay.length ? <p>لا توجد دفعات معتمدة لهذا الشهر.</p> : data.pay.map(pay=><table className="tbl" key={pay.id}><caption>{pay.title}</caption><tbody>{keys(payFields).filter(k=>pay[k] || k==='base' || k==='net').map(k=><tr key={k}><th scope="row">{payFields[k]}</th><td>{money.format(pay[k])} ₪</td></tr>)}</tbody></table>)}
-        </section>
-        <div className="board-docs">{documents}</div>
-      </div>
-    </>)}
-  </div>
+          <div className="emp-legend">{(['present','late','absent','leave'] as const).map(s=><span key={s} data-state={s}><i />{states[s]}<b className="num">{count(s)}</b></span>)}</div>
+          {active && <p className="emp-day">{shortDay(active.date)} · {states[active.state]}{active.permission && ' · إذن معتمد'} · دخول <span className="num">{active.in ?? '—'}</span> · خروج <span className="num">{active.out ?? '—'}</span></p>}
+        </>}
+      </section>
+      <section className="card emp-card">
+        <h3 className="emp-card-h"><Wallet size={18} /> ملخص الراتب</h3>
+        {!data ? null : data.pay === null ? <p className="muted">يظهر لصاحب الملف ولأصحاب صلاحية الرواتب.</p> : !data.pay.length ? <p className="muted">لا توجد دفعات معتمدة لهذا الشهر.</p> : data.pay.map(pay=>(
+          <div key={pay.id} className="emp-pay">
+            <small className="emp-pay-title">{pay.title}</small>
+            {keys(payFields).filter(k=>k!=='net' && (pay[k] || k==='base')).map(k=><div key={k} className="emp-kv"><span>{payFields[k]}</span><b className="num">{['manual_deductions','auto_deductions','advance_deduction'].includes(k) ? '−' : ''}{money.format(pay[k])} ₪</b></div>)}
+            <div className="emp-kv emp-net"><span>الصافي</span><b className="num">{money.format(pay.net)} ₪</b></div>
+          </div>
+        ))}
+      </section>
+      {extra}
+    </div>
+  </>
 }
 
 function ReportForm({ userId, reports, initialDate, reload }: {userId:number; reports:Report[]; initialDate:string; reload():Promise<void>}) {
