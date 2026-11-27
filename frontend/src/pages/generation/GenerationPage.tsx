@@ -1,12 +1,12 @@
-import { ArrowLeft, Droplet, Gauge, Send, Wrench, Zap } from 'lucide-react'
-import { useState, type FormEvent } from 'react'
+import { ArrowLeft, CircleCheck, Droplet, Gauge, Send, Wrench, Zap } from 'lucide-react'
+import { useEffect, useRef, useState } from 'react'
 import { Link, useNavigate } from 'react-router'
 import { api, ApiError } from '../../api/client'
 import { useUser } from '../../app/auth'
 import { useDocumentTitle } from '../../lib/useDocumentTitle'
 import { useLoad } from '../../lib/useLoad'
 import { useConfirm } from '../../ui/Confirm'
-import { ErrorBanner, Field } from '../../ui/Field'
+import { ErrorBanner } from '../../ui/Field'
 import { Loading } from '../../ui/PageHead'
 import { Button, Pill } from '../../ui/primitives'
 import { useToast } from '../../ui/Toast'
@@ -50,9 +50,10 @@ function GenerationDay({ date }: { date: string }) {
   const load = useLoad<GenerationData>(path)
   const { weekday, date: longDate } = describeDay(date)
   return <div className="entry">
-    <BackButton fallback={path} />
+    {/* The site sees only its day, as in the old system; the manager can go back and move between days. */}
+    {load.data?.can.approve && <BackButton fallback={path} />}
     <header className="entry-head"><div><h1>{date === todayISO() ? "تقرير اليوم" : `تقرير ${dayName(date)}`}</h1><p className="muted">{weekday} · {longDate}{load.data?.branch_name && ` · ${load.data.branch_name}`}</p></div></header>
-    <DayJump date={date} hrefFor={(day) => `/entry/${day}`} />
+    {load.data?.can.approve && <DayJump date={date} hrefFor={(day) => `/entry/${day}`} />}
     <ErrorBanner text={load.error} />
     {load.loading && !load.data && <Loading />}
     {load.data && (load.data.can.fill && (!load.data.report || isEditableStatus(load.data.report.status) || load.data.can.approve)
@@ -75,7 +76,9 @@ function ReportEditor({ path, date, data }: { path: string; date: string; data: 
   const [step, setStep] = useState(0)
   const [error, setError] = useState<string | null>(null)
   const [busy, setBusy] = useState(false)
-  const [fuelName, setFuelName] = useState('')
+  const [autosave, setAutosave] = useState<'idle' | 'saving' | 'saved' | 'failed'>('idle')
+  const dirty = useRef(false)
+  const inFlight = useRef<Promise<unknown>>(Promise.resolve())
   const generatorName = (id: number) => generators.find((item) => item.id === id)?.name ?? 'مولد'
   const fuelLabel = (id: number) => fuelTypes.find((item) => item.id === id)?.name ?? 'وقود'
   const missing = [
@@ -85,6 +88,7 @@ function ReportEditor({ path, date, data }: { path: string; date: string; data: 
   const totals = reportTotals(report)
 
   const update: Update = (change) => setReport((current) => {
+    dirty.current = true
     const draft = structuredClone(current)
     change(draft)
     return applyAutoFigures(draft, previous)
@@ -105,32 +109,42 @@ function ReportEditor({ path, date, data }: { path: string; date: string; data: 
     setError(e instanceof ApiError ? Object.values(e.fields)[0] ?? e.message : 'تعذّر تنفيذ العملية.')
   }
 
-  async function addFuel(event: FormEvent) {
-    event.preventDefault()
-    setBusy(true)
-    setError(null)
-    try {
-      await api('/generation/equipment/fuel', { method: 'POST', body: { name: fuelName.trim(), isActive: true } })
-      await refreshEquipment()
-      setFuelName('')
-    } catch (e) { reportError(e) } finally { setBusy(false) }
-  }
+  // The draft is saved by itself a moment after typing stops, as in the old system.
+  const versionRef = useRef(version)
+  versionRef.current = version
+  const put = (current: SiteReport) => api<{ report: SavedReport }>(path, {
+    method: 'PUT',
+    body: {
+      version: versionRef.current, edit_closed: editingClosed,
+      fuel: current.fuel.map(({ totalQty, consumption, ...line }) => line),
+      generators: current.generators.map(({ runHours, storedLoads, ...log }) => ({ ...log, ...(storedLoads ?? {}) })),
+      maintenance: current.maintenance,
+      generalNotes: current.generalNotes,
+    },
+  })
+  useEffect(() => {
+    if (editingClosed || !dirty.current) return
+    const t = window.setTimeout(() => {
+      dirty.current = false
+      setAutosave('saving')
+      inFlight.current = inFlight.current.then(() => put(report)).then((r) => {
+        setVersion((r as { report: SavedReport }).report.version)
+        versionRef.current = (r as { report: SavedReport }).report.version
+        setAutosave('saved')
+      }).catch(() => { dirty.current = true; setAutosave('failed') })
+    }, 1500)
+    return () => window.clearTimeout(t)
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [report])
 
   async function save(submit: boolean) {
     if (submit && !await confirm({ title: 'إغلاق وإرسال التقرير؟', message: missing.length ? `توجد ${missing.length} خانات ناقصة في التقرير.` : undefined, confirmLabel: 'إرسال التقرير' })) return
     setBusy(true)
     setError(null)
     try {
-      const result = await api<{ report: SavedReport }>(path, {
-        method: 'PUT',
-        body: {
-          version, edit_closed: editingClosed,
-          fuel: report.fuel.map(({ totalQty, consumption, ...line }) => line),
-          generators: report.generators.map(({ runHours, storedLoads, ...log }) => ({ ...log, ...(storedLoads ?? {}) })),
-          maintenance: report.maintenance,
-          generalNotes: report.generalNotes,
-        },
-      })
+      await inFlight.current.catch(() => {})
+      dirty.current = false
+      const result = await put(report)
       setSaved(result.report)
       if (submit) {
         const closed = await api<{ report: SavedReport }>(`${path}/submit`, { method: 'POST', body: { version: result.report.version } })
@@ -138,24 +152,24 @@ function ReportEditor({ path, date, data }: { path: string; date: string; data: 
         navigate(path, { replace: true })
       }
       if (editingClosed) navigate(path, { replace: true })
-      toast(editingClosed ? "حُفظت التعديلات" : submit ? 'أُغلق وأُرسل التقرير' : 'حُفظت المسودة')
+      setAutosave('saved')
+      toast(editingClosed ? "حُفظت التعديلات" : submit ? 'أُغلق وأُرسل التقرير' : 'حُفظ')
     } catch (e) { reportError(e) } finally { setBusy(false) }
   }
 
   return <>
     {editingClosed && <div className="banner" role="status"><p>تعدّل التقرير المرسل. تُحفظ التعديلات وتبقى حالة الاعتماد.</p></div>}
-    <div><Pill tone={statusInfo[report.status].tone}>{statusInfo[report.status].label}</Pill></div>
+    {!editingClosed && <div className="entry-savebar">
+      {autosave === 'failed' ? <Pill tone="danger">تعذّر الحفظ: تحقق من الإنترنت</Pill>
+        : autosave === 'idle' ? <span className="save-badge muted">يُحفظ أثناء الكتابة</span>
+        : <span className="save-badge" role="status">{autosave === 'saving' ? <span className="spinner sm" /> : <CircleCheck size={16} />}{autosave === 'saving' ? 'يُحفظ…' : 'محفوظ'}</span>}
+      {report.status === 'returned' && <Pill tone={statusInfo[report.status].tone}>{statusInfo[report.status].label}</Pill>}
+    </div>}
     <ErrorBanner text={error} />
     {report.returnedReason && <p className="card af-pad">سبب إعادة الفتح · {report.returnedReason}</p>}
       <Stepper items={steps.map((item, index) => ({ ...item, done: index < 3 && !missing.some((item) => item.step === index) }))} current={step} onSelect={setStep} label="خطوات تعبئة التقرير" />
       <div className="entry-body" key={step} onKeyDown={advanceOnEnter}>
-        {step === 0 && <>
-          <FuelStep report={report} fuelTypes={fuelTypes} previous={previous} update={update} />
-          <form className="card fcard" onSubmit={addFuel}>
-            <Field label="نوع وقود جديد">{(id) => <input id={id} className="input" value={fuelName} maxLength={80} onChange={(event) => setFuelName(event.target.value)} />}</Field>
-            <Button type="submit" busy={busy} disabled={!fuelName.trim()}>إضافة نوع وقود</Button>
-          </form>
-        </>}
+        {step === 0 && <FuelStep report={report} fuelTypes={fuelTypes} previous={previous} update={update} />}
         {step === 1 && <RunsStep report={report} generators={generators} update={update} onEquipmentSaved={() => void refreshEquipment().catch(reportError)} />}
         {step === 2 && <MaintenanceStep report={report} generators={generators} update={update} />}
         {step === 3 && <>
@@ -171,7 +185,7 @@ function ReportEditor({ path, date, data }: { path: string; date: string; data: 
       </div>
       <footer className="entry-foot glass">
         {step > 0 && <Button disabled={busy} onClick={() => setStep(step - 1)}>السابق</Button>}
-        <Button disabled={busy} onClick={() => void save(false)}>{editingClosed ? "حفظ التعديلات والعودة" : "حفظ المسودة"}</Button>
+        {editingClosed && <Button disabled={busy} onClick={() => void save(false)}>حفظ التعديلات والعودة</Button>}
         {step < steps.length - 1
           ? <Button variant="primary" size="lg" block onClick={() => setStep(step + 1)}>التالي: {steps[step + 1]?.label}<ArrowLeft size={18} /></Button>
           : editingClosed ? null : <Button variant="send" size="lg" block busy={busy} icon={<Send size={18} />} onClick={() => void save(true)}>إغلاق اليوم وإرسال</Button>}

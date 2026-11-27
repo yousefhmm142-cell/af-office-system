@@ -8,7 +8,6 @@ import { todayISO } from '../lib/dates'
 import { useLoad } from '../lib/useLoad'
 import { ErrorBanner } from '../ui/Field'
 import { Button } from '../ui/primitives'
-import { PunchCard } from './attendance/PunchCard'
 import { Loading } from '../ui/PageHead'
 
 type Day = { date: string; state: keyof typeof states; shift: string | null; in: string | null; out: string | null; minutes: number; permission: boolean }
@@ -19,10 +18,12 @@ const metrics = { collection: ['collected','target','bills','meters','zones'], t
 type Report = { date: string; kind: keyof typeof kinds; metrics: Record<string,string | number> }
 const payFields = { base: 'الراتب الأساسي', overtime: 'بدل العمل الإضافي', bonuses: 'المكافآت والبدلات المسجلة', manual_deductions: 'الخصومات اليدوية', auto_deductions: 'خصومات حضور سابقة', advance_deduction: 'قسط السلفة', net: 'صافي الدفعة' }
 type Payment = { id: number; title: string } & Record<keyof typeof payFields, number>
-const money = new Intl.NumberFormat('ar-PS', { maximumFractionDigits: 2 })
+// Western digits, as everywhere else in the system.
+const money = new Intl.NumberFormat('en-US', { maximumFractionDigits: 2 })
+const shortDay = (iso?: string) => iso ? new Intl.DateTimeFormat('ar-EG-u-nu-latn-ca-gregory', { day: 'numeric', month: 'long', timeZone: 'UTC' }).format(new Date(`${iso}T12:00:00Z`)) : ''
 const keys = <T extends object>(o: T) => Object.keys(o) as (keyof T)[]
 
-export function EmployeeOverview({ file, performance, mine, documents }: { file: EmployeeFile; performance: boolean; mine: boolean; documents: React.ReactNode }) {
+export function EmployeeOverview({ file, performance, documents }: { file: EmployeeFile; performance: boolean; mine?: boolean; documents: React.ReactNode }) {
   const [month, setMonth] = useState(() => todayISO().slice(0,7))
   const [date, setDate] = useState('')
   const { data, error, loading, reload } = useLoad<{ calendar: Day[]; pay: Payment[] | null; reports: Report[]; leave_counts: Record<string,number> }>(`/employees/${file.user.id}/overview?month=${month}`)
@@ -30,7 +31,6 @@ export function EmployeeOverview({ file, performance, mine, documents }: { file:
   const annual = file.annual_leave
   const balance = annual.days === null ? 'غير محدد' : String(annual.days - annual.used)
   return <div className="af-employee-overview">
-    {mine && file.job.tracks_attendance && <PunchCard reminder onRecorded={()=>void reload()} />}
     <div className="af-toolbar"><label>شهر العرض <MonthField value={month} onChange={(m)=>{setMonth(m);setDate('')}} aria-label="شهر العرض" /></label></div>
     <ErrorBanner text={error} />
     {loading && !data && <Loading />}
@@ -73,7 +73,7 @@ export function EmployeeOverview({ file, performance, mine, documents }: { file:
           <strong>{money.format(Math.round(data.calendar.reduce((sum,d)=>sum+d.minutes,0)/60*10)/10)} <small>ساعة</small></strong>
           <div className="profile-bars" role="img" aria-label="ساعات العمل المسجلة لكل يوم من الشهر">
             {data.calendar.map(d=><i key={d.date} title={d.date+' · '+d.minutes+' دقيقة'} style={{height:Math.max(2,100*d.minutes/Math.max(480,...data.calendar.map(x=>x.minutes)))+'%'}} />)}
-          </div><div className="bar-axis"><span>{data.calendar[0]?.date}</span><span>{data.calendar.at(-1)?.date}</span></div>
+          </div><div className="bar-axis"><span>{shortDay(data.calendar[0]?.date)}</span><span>{shortDay(data.calendar.at(-1)?.date)}</span></div>
         </section>
         <section className="card glass af-pad"><h2 className="af-h2">تقويم الحضور والانصراف</h2>
           <div className="af-calendar">{['س','ح','ن','ث','ر','خ','ج'].map(d=><small key={d}>{d}</small>)}

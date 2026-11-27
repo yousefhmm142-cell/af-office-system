@@ -53,7 +53,7 @@ export function Inbox() {
         <aside className="card glass af-mail-categories" aria-label="تصنيفات المراسلات">
           <Button variant="primary" block icon={<PenLine size={18} />} onClick={() => setDraft({ kind: 'message' })}>رسالة جديدة</Button>
           {me.branch && <Button onClick={()=>setRequesting(true)}>طلب إجازة أو إذن</Button>}
-          {FOLDERS.map(([f,label,Icon])=><button className="af-mail-filter" type="button" key={f} aria-pressed={folder===f && !category} onClick={()=>{setFolder(f);selectCategory('')}}><Icon size={16}/>{label}{f==='inbox' && <span className="af-count">{data?.unread ?? 0}</span>}</button>)}
+          {FOLDERS.map(([f,label,Icon])=><button className="af-mail-filter" type="button" key={f} aria-pressed={folder===f && !category} onClick={()=>{setFolder(f);selectCategory('')}}><Icon size={16}/>{label}{f==='inbox' && !!data?.unread && <span className="af-count">{data.unread}</span>}</button>)}
           <span className="af-sub">تصنيفات العمل</span>
           {filters.map(([value,label])=><button className="af-mail-filter" type="button" key={value} aria-pressed={category===value} onClick={()=>{setFolder('inbox');selectCategory(value)}}>{label}</button>)}
         </aside>

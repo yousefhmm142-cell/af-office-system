@@ -1,5 +1,5 @@
-import { Check, Plus, Send } from 'lucide-react'
-import { useState, type FormEvent } from 'react'
+import { Check, CircleCheck, Send } from 'lucide-react'
+import { useEffect, useRef, useState } from 'react'
 import { Link, useNavigate } from 'react-router'
 import { api, ApiError } from '../../api/client'
 import { useUser } from '../../app/auth'
@@ -10,7 +10,7 @@ import { BackButton, DayJump } from '../sheets/ReportControls'
 import { useDocumentTitle } from '../../lib/useDocumentTitle'
 import { useLoad } from '../../lib/useLoad'
 import { useConfirm } from '../../ui/Confirm'
-import { ErrorBanner, Field } from '../../ui/Field'
+import { ErrorBanner } from '../../ui/Field'
 import { Loading } from '../../ui/PageHead'
 import { Button, Pill } from '../../ui/primitives'
 import { useToast } from '../../ui/Toast'
@@ -43,9 +43,9 @@ function DistributionDay({ date }: { date: string }) {
   const { data, error, loading } = useLoad<DistributionData>(path)
   const { weekday, date: longDate } = describeDay(date)
   return <div className="entry wide">
-    <BackButton fallback={path} />
+    {data?.can.approve && <BackButton fallback={path} />}
     <header className="entry-head"><div><h1>{date === todayISO() ? "كشف اليوم" : `كشف ${dayName(date)}`}</h1><p className="muted">{weekday} · {longDate}</p></div></header>
-    <DayJump date={date} hrefFor={(day) => `/sheet/${day}`} />
+    {data?.can.approve && <DayJump date={date} hrefFor={(day) => `/sheet/${day}`} />}
     <ErrorBanner text={error} />
     {loading && !data && <Loading />}
     {data && (data.can.fill && (!data.sheet || isEditableStatus(data.sheet.status) || data.can.approve)
@@ -62,7 +62,7 @@ function SheetEditor({ path, date, data }: { path: string; date: string; data: D
   const toast = useToast()
   const [generatorLoads, setGeneratorLoads] = useState(data.generatorLoads)
   const [editedGenerators, setEditedGenerators] = useState<number[]>([])
-  const [zones, setZones] = useState(data.zones)
+  const zones = data.zones
   const [sheet, setSheet] = useState<DistributionSheet>(() => data.sheet
     ? (isEditableStatus(data.sheet.status) ? reconcileSheet(data.sheet, zones) : data.sheet)
     : newSheet(date, zones, String(user.id), data.previous, new Date().toISOString()))
@@ -70,7 +70,11 @@ function SheetEditor({ path, date, data }: { path: string; date: string; data: D
   const [step, setStep] = useState(0)
   const [error, setError] = useState<string | null>(null)
   const [busy, setBusy] = useState(false)
-  const [zoneName, setZoneName] = useState('')
+  const [autosave, setAutosave] = useState<'idle' | 'saving' | 'saved' | 'failed'>('idle')
+  const dirty = useRef(false)
+  const inFlight = useRef<Promise<unknown>>(Promise.resolve())
+  const versionRef = useRef(version)
+  versionRef.current = version
   const names = new Map(zones.map((zone) => [zone.id, zone.name]))
   const missing = sheet.zones.flatMap((zone, index) => missingInZone(zone).map((text) => ({ text: `${names.get(zone.zoneId)}: ${text}`, step: index })))
   const sendIndex = sheet.zones.length
@@ -78,6 +82,7 @@ function SheetEditor({ path, date, data }: { path: string; date: string; data: D
   const totals = sheetTotals(sheet)
 
   function updateGenerator(id: number, changes: Record<number, number | null>, unit?: LoadUnit) {
+    dirty.current = true
     setEditedGenerators((current) => current.includes(id) ? current : [...current, id])
     setGeneratorLoads((current) => current.map((row) => {
       if (row.generator_id !== id) return row
@@ -88,6 +93,7 @@ function SheetEditor({ path, date, data }: { path: string; date: string; data: D
   }
 
   function update(change: (draft: DistributionSheet) => void) {
+    dirty.current = true
     setSheet((current) => {
       const draft = structuredClone(current)
       change(draft)
@@ -108,41 +114,57 @@ function SheetEditor({ path, date, data }: { path: string; date: string; data: D
     setVersion(response.sheet.version)
   }
 
-  function addZone(event: FormEvent) {
-    event.preventDefault()
-    void run(async () => {
-      await api('/distribution/zones', { method: 'POST', body: { name: zoneName.trim() } })
-      const fresh = await api<DistributionData>(path)
-      setZones(fresh.zones)
-      setSheet((current) => reconcileSheet(current, fresh.zones))
-      setZoneName('')
-    })
-  }
+  const put = (current: DistributionSheet, loads: GeneratorLoad[], edited: number[]) => api<{ sheet: SavedSheet }>(path, { method: 'PUT', body: {
+    version: versionRef.current, edit_closed: editingClosed, zones: current.zones.map(({ supplyHours, ...zone }) => zone), notes: current.notes,
+    generatorLoadEdits: loads.filter((row) => edited.includes(row.generator_id))
+      .map(({ generator_id, load_unit, band_loads }) => ({ generator_id, load_unit, band_loads })),
+  } })
+
+  // The sheet is saved by itself a moment after typing stops, as in the old system.
+  useEffect(() => {
+    if (editingClosed || !dirty.current || !sheet.zones.length) return
+    const t = window.setTimeout(() => {
+      dirty.current = false
+      setAutosave('saving')
+      inFlight.current = inFlight.current.then(() => put(sheet, generatorLoads, editedGenerators)).then((r) => {
+        versionRef.current = (r as { sheet: SavedSheet }).sheet.version
+        setVersion(versionRef.current)
+        setAutosave('saved')
+      }).catch(() => { dirty.current = true; setAutosave('failed') })
+    }, 1500)
+    return () => window.clearTimeout(t)
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [sheet, generatorLoads])
 
   async function save(submit: boolean) {
     if (submit && !await confirm({ title: 'إغلاق اليوم وإرسال الكشف؟', message: missing.length ? `في الكشف ${missing.length} حقول فارغة.` : undefined, confirmLabel: 'إغلاق وإرسال' })) return
     await run(async () => {
-      const draft = await api<{ sheet: SavedSheet }>(path, { method: 'PUT', body: {
-        version, edit_closed: editingClosed, zones: sheet.zones.map(({ supplyHours, ...zone }) => zone), notes: sheet.notes,
-        generatorLoadEdits: generatorLoads.filter((row) => editedGenerators.includes(row.generator_id))
-          .map(({ generator_id, load_unit, band_loads }) => ({ generator_id, load_unit, band_loads })),
-      } })
+      await inFlight.current.catch(() => {})
+      dirty.current = false
+      const draft = await put(sheet, generatorLoads, editedGenerators)
       saved(draft)
+      setAutosave('saved')
       setEditedGenerators([])
       if (submit) {
         saved(await api(`${path}/submit`, { method: 'POST', body: { version: draft.sheet.version } }))
         navigate(path, { replace: true })
       }
       if (editingClosed) navigate(path, { replace: true })
-      toast(editingClosed ? "حُفظت التعديلات" : submit ? 'أُغلق وأُرسل الكشف' : 'حُفظت المسودة')
+      toast(editingClosed ? "حُفظت التعديلات" : submit ? 'أُغلق وأُرسل الكشف' : 'حُفظ')
     })
   }
 
   return <>
     {editingClosed && <div className="banner" role="status"><p>تعدّل الكشف المرسل. تُحفظ التعديلات وتبقى حالة الاعتماد.</p></div>}
-    <div className="no-print"><Pill tone={statusInfo[sheet.status].tone}>{statusInfo[sheet.status].label}</Pill></div>
+    {!editingClosed && <div className="entry-savebar no-print">
+      {autosave === 'failed' ? <Pill tone="danger">تعذّر الحفظ: تحقق من الإنترنت</Pill>
+        : autosave === 'idle' ? <span className="save-badge muted">يُحفظ أثناء الكتابة</span>
+        : <span className="save-badge" role="status">{autosave === 'saving' ? <span className="spinner sm" /> : <CircleCheck size={16} />}{autosave === 'saving' ? 'يُحفظ…' : 'محفوظ'}</span>}
+      {sheet.status === 'returned' && <Pill tone={statusInfo[sheet.status].tone}>{statusInfo[sheet.status].label}</Pill>}
+    </div>}
     <ErrorBanner text={error} />
     {sheet.returnedReason && <p className="banner">سبب إعادة الفتح · {sheet.returnedReason}</p>}
+    {!sheet.zones.length && <section className="empty card"><h3>لا توجد مناطق توزيع بعد</h3><p>يضيف مدير الفرع المناطق من الإعدادات › مناطق التوزيع، ثم تظهر هنا.</p></section>}
     <div className="zone-layout">
       <nav className="zone-nav" aria-label="المناطق">
         {sheet.zones.map((zone, index) => {
@@ -180,15 +202,11 @@ function SheetEditor({ path, date, data }: { path: string; date: string; data: D
           <MissingList items={missing} onJump={setStep} />
         </>}
       </div>
-      <form className="fcard" onSubmit={addZone}>
-        <Field label="اسم منطقة التوزيع">{(id) => <input id={id} className="input" maxLength={80} value={zoneName} onChange={(event) => setZoneName(event.target.value)} />}</Field>
-        <Button type="submit" icon={<Plus size={16} />} disabled={busy || !zoneName.trim()}>إضافة منطقة</Button>
-      </form>
       </div>
     </div>
     <footer className="entry-foot glass">
       {step > 0 && <Button disabled={busy} onClick={() => setStep(step - 1)}>السابق</Button>}
-      <Button disabled={busy || !sheet.zones.length} onClick={() => void save(false)}>{editingClosed ? "حفظ التعديلات والعودة" : "حفظ المسودة"}</Button>
+      {editingClosed && <Button disabled={busy || !sheet.zones.length} onClick={() => void save(false)}>حفظ التعديلات والعودة</Button>}
       {step < sendIndex ? <Button variant="primary" size="lg" block onClick={() => setStep(step + 1)}>
         التالي: {names.get(sheet.zones[step + 1]?.zoneId ?? 0) ?? 'الإرسال'}</Button>
         : editingClosed ? null : <Button variant="send" size="lg" block disabled={busy || !sheet.zones.length} onClick={() => void save(true)}>إغلاق اليوم وإرسال</Button>}

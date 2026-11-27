@@ -217,11 +217,11 @@ export function UseDialog({ data, seal, onClose }: { data: SealData; seal?: Seal
               <div key={i} className="seal-sub">
                 <SubscriberField
                   list={directory.data?.subscribers ?? []}
-                  label={i === 0 ? 'اسم المشترك (اختياري) · اكتب اسمين فيظهر الطبلون' : `المشترك ${i + 1} على نفس الطبلون`}
+                  label={i === 0 ? 'اسم المشترك (اختياري)' : `المشترك ${i + 1} على نفس الطبلون`}
                   value={v}
                   onChange={(x) => setSub(i, x)}
                   onPick={(x) => { if (x.b && (i === 0 || !board.trim())) setBoard(x.b) }}
-                  placeholder="مثل: محمد أحمد"
+                  placeholder="اكتب اسمين فيظهر الطبلون، مثل: محمد أحمد"
                 />
                 {i === 0 ? (
                   <button type="button" className="seal-sub-btn" onClick={addSub} title="الطبلون عليه أكثر من مشترك">
@@ -229,7 +229,7 @@ export function UseDialog({ data, seal, onClose }: { data: SealData; seal?: Seal
                   </button>
                 ) : (
                   <button type="button" className="seal-sub-btn drop" onClick={() => dropSub(i)} aria-label={`إزالة المشترك ${i + 1}`}>
-                    <X size={14} aria-hidden="true" />شيل
+                    <X size={14} aria-hidden="true" />إزالة
                   </button>
                 )}
               </div>

@@ -49,7 +49,7 @@ export function PayrollHome() {
           'الدفعات التي تم تسجيل صرفها، مع تاريخ الصرف وتفاصيل كل موظف.'}</p>
         <ErrorBanner text={error}/>
         {loading ? <Loading/> : visible.length ? visible.map(b=><div className="pay-queue-row" key={b.id}>
-          <div><b>{b.title}</b><small className="af-sub">{monthLabel(b.month)} · {b.branch?.name ?? 'جميع الفروع'} · {b.percent}٪ من الشهر{b.paid_at && ' · صُرفت في '+new Date(b.paid_at).toLocaleDateString('ar-PS')}</small></div>
+          <div><b>{b.title}</b><small className="af-sub">{monthLabel(b.month)} · {b.branch?.name ?? 'جميع الفروع'} · {b.percent}٪ من الشهر{b.paid_at && ' · صُرفت في '+new Date(b.paid_at).toLocaleDateString('ar-EG-u-nu-latn-ca-gregory', { day: 'numeric', month: 'long' })}</small></div>
           <span><b>{fmt(b.total_net)} ₪</b><small className="af-sub">{b.employees_count} موظفاً</small></span>
           <Link className={'btn '+(stage==='approved'?'approve':'utility')} to={`/payroll/${b.id}`}>{selected.action}<ArrowLeft size={16}/></Link>
         </div>) : !error && <p className="pay-empty">{stage==='approved' ? 'لا توجد دفعات جاهزة للصرف. تظهر هنا الدفعة فور اعتمادها.' : stage==='draft' ? 'لا توجد مسودات بانتظار الاعتماد.' : 'لا توجد دفعات مسجّلة كمصروفة.'}</p>}

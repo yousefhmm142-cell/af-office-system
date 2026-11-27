@@ -6,7 +6,6 @@ import { firstName, formatLongDate, formatWeekday, greeting } from '../lib/forma
 import { useLoad } from '../lib/useLoad'
 import { ErrorBanner } from '../ui/Field'
 import { Loading, PageHead } from '../ui/PageHead'
-import { navFor } from '../app/nav'
 import { PunchCard } from './attendance/PunchCard'
 import { fmt } from './payroll/lib'
 import { BranchManagerHome } from './dashboard/BranchManagerHome'
@@ -43,23 +42,18 @@ export function Home() {
   const hr = role === 'hr'
   const titles: Record<string, string> = {
     branch_manager: 'إدارة الفرع', hr: 'شؤون الموظفين', finance: 'المالية',
-    management: 'الإدارة', employee: 'مساحتي', super_admin: 'إدارة النظام',
+    management: 'الإدارة', employee: user.job_title || 'موظف', super_admin: 'إدارة النظام',
   }
-  const shortcuts = navFor(user).filter(({ to }) => (
-    staff ? ['/attendance/me', '/my-tasks', '/me', '/my-pay'] :
-    finance ? ['/payroll', '/messages'] :
-    hr ? ['/users', '/attendance', '/payroll'] : ['/branches', '/attendance', '/payroll', '/audit']
-  ).includes(to))
   const hasAttendance = !!user.branch && !!user.modules?.includes('attendance')
 
   if (role === 'branch_manager') return <BranchManagerHome user={user} data={data} error={error} loading={loading} />
 
   return (
     <div className="home">
-      <PageHead title={titles[role ?? ''] ?? 'الرئيسية'}
-        eyebrow={`${formatWeekday(now)} · ${formatLongDate(now)} · ${user.role?.name ?? ''}${user.branch ? ` · فرع ${user.branch.name}` : ''}`} />
-      <section className="af-dashboard-hero glass">
-        <h2>{greeting(now)}، {firstName(user.name)}</h2>
+      {/* The greeting is the title, as on the branch manager's home; figures only when there are some. */}
+      <PageHead title={`${greeting(now)}، ${firstName(user.name)}`}
+        eyebrow={`${formatWeekday(now)} · ${formatLongDate(now)} · ${titles[role ?? ''] ?? user.role?.name ?? ''}${user.branch ? ` · فرع ${user.branch.name}` : ''}`} />
+      {((hr && data?.company) || (role === 'management' && data?.company) || (finance && data?.payroll)) && <section className="af-dashboard-hero glass">
         {hr && data?.company && <div className="af-hero-metrics">
           <span><b>{data.company.by_status.active}</b> موظفون فعّالون</span>
           <span><b>{data.company.by_status.trainee}</b> متدربون</span>
@@ -74,12 +68,7 @@ export function Home() {
           <span><b>{data.payroll.drafts}</b> دفعات مسودة</span>
           <span><b>{data.payroll.to_pay}</b> دفعات معتمدة بانتظار الصرف</span>
         </div>}
-        <div className="af-dashboard-links" aria-label="اختصارات لوحة التحكم">
-          {shortcuts.map(({ to, label, icon: Icon }) => (
-            <Link className="btn" key={to} to={to}><Icon size={18} />{label}<ArrowLeft size={15} /></Link>
-          ))}
-        </div>
-      </section>
+      </section>}
       {role==='management' && data && <section className="card glass af-pad"><h2 className="af-h2">متابعة التشغيل اليوم</h2>
         <div className="af-hero-metrics">
         {data.branches.some(b=>b.open_tasks!==null) && <Link to="/tasks"><b>{data.branches.reduce((n,b)=>n+(b.open_tasks??0),0)}</b> مهام مفتوحة في الفروع</Link>}

@@ -628,3 +628,13 @@ dialog.handoff-dialog{max-width:min(940px,96vw)}.handoff-sheet{min-width:560px;p
   .rpt-tbl tfoot > tr { background: color-mix(in srgb, var(--brand) 9%, var(--surface)); }
   .rpt-tbl tfoot > tr > * { background: none; border-top: 0; }
 }
+.entry-savebar { display: flex; justify-content: flex-end; align-items: center; gap: 8px; min-height: 22px; margin-top: -6px; }
+/* Phone tabs: the count sits on the icon's corner, never over the word. */
+.tab-icon .sb-cnt { position: absolute; top: -6px; inset-inline-end: -12px; margin: 0; min-width: 18px; height: 18px; font-size: 10.5px; }
+/* Weekly attendance on a phone: the week on its own line, the choices under it. */
+@media (max-width: 700px) {
+  .af-week-actions { flex-wrap: wrap; }
+  .af-week-actions .week-label { flex: 1 1 calc(100% - 110px); min-width: 0; text-align: center; }
+  .af-week-actions > .segmented { flex: 1 1 100%; }
+  .af-week-actions > .af-report-downloads { flex: 1 1 100%; margin: 0; }
+}
