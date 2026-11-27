@@ -151,7 +151,7 @@ class AttendanceController extends Controller
         ]);
     }
 
-    private function boardRows(array $branchIds, string $date): Collection
+    public function boardRows(array $branchIds, string $date): Collection
     {
         $dayDate = CarbonImmutable::parse($date, $this->svc->tz());
         $now = $this->svc->now();

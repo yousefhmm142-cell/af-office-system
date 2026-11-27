@@ -37,4 +37,21 @@ class CommandTest extends TestCase
         $this->actAs(Role::EMPLOYEE, $a);
         $this->getJson('/api/command/attendance')->assertForbidden();
     }
+
+    public function test_the_decision_centre_lists_what_waits_and_each_branch(): void
+    {
+        $a = $this->makeBranch('غزة');
+        $worker = $this->makeUser(Role::EMPLOYEE, $a);
+        $worker->employee->update(['tracks_attendance' => true]);
+        \Illuminate\Support\Facades\DB::table('leave_requests')->insert(['user_id' => $worker->id, 'branch_id' => $a->id, 'kind' => 'annual', 'starts' => '2026-12-01', 'ends' => '2026-12-02', 'reason' => 'سفر', 'status' => 'pending', 'created_at' => now(), 'updated_at' => now()]);
+        $this->actAs(Role::HR);
+
+        $res = $this->getJson('/api/command/center')->assertOk();
+        $this->assertSame('سفر', $res->json('decisions.leaves.0.reason'));
+        $this->assertSame('غزة', $res->json('branches.0.name'));
+        $this->assertNotNull($res->json('week.this'));
+
+        $this->actAs(Role::EMPLOYEE, $a);
+        $this->getJson('/api/command/center')->assertForbidden();
+    }
 }

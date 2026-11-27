@@ -1,13 +1,13 @@
 import { AlarmClock, Building2, CalendarCheck, CalendarRange, ChevronLeft, Clock3, LayoutList, ListTodo, Palmtree, Pencil, Rows3, Search, Sparkles, UserCheck, UserX, Users, X } from 'lucide-react'
 import { useEffect, useMemo, useRef, useState, type CSSProperties, type ReactNode } from 'react'
-import { Link } from 'react-router'
 import { can, useUser } from '../../app/auth'
 import { firstName, formatLongDate, formatWeekday, greeting } from '../../lib/format'
 import { useLoad } from '../../lib/useLoad'
 import { ChoiceField } from '../../ui/ChoiceField'
 import { ErrorBanner } from '../../ui/Field'
 import { NxAvatar, type Hue } from '../../ui/nx'
-import { ATTENTION, type Dashboard } from '../Home'
+import type { Dashboard } from '../Home'
+import { Alerts, BranchMap, Decisions, FieldNow, WeekBrief, type CenterData } from './Center'
 import { DayDialog } from './DayDialog'
 import { PersonDrawer } from './PersonDrawer'
 
@@ -37,7 +37,7 @@ export function CommandCenter() {
   const [shift, setShift] = useState('')
   const [q, setQ] = useState('')
   const [pulse, setPulse] = useState<Pulse>('all')
-  const [grouped, setGrouped] = useState(false)
+  const [grouped, setGrouped] = useState(true)
   const [person, setPerson] = useState<number | null>(null)
   const [editing, setEditing] = useState<Row | null>(null)
   const searchRef = useRef<HTMLInputElement>(null)
@@ -46,11 +46,13 @@ export function CommandCenter() {
   const from = period === 'week' ? iso(new Date(Date.now() - 6 * 864e5)) : period === 'month' ? `${today.slice(0, 8)}01` : null
   const board = useLoad<Board>(`/command/attendance${from ? `?from=${from}&to=${today}` : ''}`)
   const dash = useLoad<Dashboard>('/dashboard')
+  const center = useLoad<CenterData>('/command/center')
+  const boardRef = useRef<HTMLElement>(null)
   const [stamp, setStamp] = useState(() => Date.now())
   const [now, setNow] = useState(() => new Date())
 
   // Live: the board refreshes every minute; the clock every second.
-  useEffect(() => { const t = window.setInterval(() => { void board.reload().then(() => setStamp(Date.now())); void dash.reload() }, 60_000); return () => window.clearInterval(t) }, [board.reload, dash.reload]) // eslint-disable-line react-hooks/exhaustive-deps
+  useEffect(() => { const t = window.setInterval(() => { void board.reload().then(() => setStamp(Date.now())); void dash.reload(); void center.reload() }, 60_000); return () => window.clearInterval(t) }, [board.reload, dash.reload, center.reload]) // eslint-disable-line react-hooks/exhaustive-deps
   useEffect(() => { const t = window.setInterval(() => setNow(new Date()), 1000); return () => window.clearInterval(t) }, [])
   useEffect(() => { if (board.data) setStamp(Date.now()) }, [board.data])
   useEffect(() => {
@@ -161,14 +163,11 @@ export function CommandCenter() {
         ))}
       </section>
 
-      {dash.data && dash.data.attention.length > 0 && (
-        <nav className="cc-attn" aria-label="ينتظرك">
-          {dash.data.attention.map((a) => { const k = ATTENTION[a.kind]; return k && <Link key={a.kind} to={a.link} data-tone={k.tone}>{k.icon}<span>{k.text(a.count)}</span><ChevronLeft size={15} /></Link> })}
-        </nav>
-      )}
-
+      <div className="cc-grid">
+      <div className="cc-main">
+      {center.data && <BranchMap data={center.data} selected={branch} onPick={(id) => { setBranch(id); window.setTimeout(() => boardRef.current?.scrollIntoView({ behavior: 'smooth', block: 'start' }), 60) }} />}
       {/* ——— ② everyone's day ——— */}
-      <section className="cc-board">
+      <section className="cc-board" ref={boardRef}>
         <header className="cc-board-head">
           <div>
             <h2>{period === 'today' ? 'الحضور الآن' : period === 'week' ? 'حضور الأسبوع' : 'حضور الشهر'}</h2>
@@ -176,8 +175,8 @@ export function CommandCenter() {
           </div>
           <div className="cc-board-tools">
             <div className="cc-seg sm" role="radiogroup" aria-label="طريقة العرض">
-              <button type="button" role="radio" aria-checked={!grouped} onClick={() => setGrouped(false)} title="قائمة واحدة"><LayoutList size={16} /> الكل</button>
               <button type="button" role="radio" aria-checked={grouped} onClick={() => setGrouped(true)} title="حسب الفرع"><Rows3 size={16} /> حسب الفرع</button>
+              <button type="button" role="radio" aria-checked={!grouped} onClick={() => setGrouped(false)} title="قائمة واحدة"><LayoutList size={16} /> قائمة واحدة</button>
             </div>
           </div>
         </header>
@@ -188,7 +187,7 @@ export function CommandCenter() {
           : groups.map((g) => (
             <div key={g.id} className="cc-group">
               {grouped && <div className="cc-group-h"><Building2 size={15} /> {branchName.get(g.id)} <small className="num">{g.rows.filter(isIn).length}/{g.rows.filter((r) => r.state !== 'off' && r.state !== 'leave').length} حاضر</small></div>}
-              <div className="cc-rows" role="list">
+              <div className="cc-rows" role="list" data-grouped={grouped || undefined}>
                 {g.rows.map((r) => period === 'today'
                   ? <TodayRow key={r.user.id} r={r} branch={branchName.get(r.user.branch_id) ?? ''} now={data!.now} manage={canManage(r)} onOpen={() => setPerson(r.user.id)} onEdit={() => setEditing(r)} />
                   : <PeriodRow key={r.user.id} r={r} t={totals?.[r.user.id]} branch={branchName.get(r.user.branch_id) ?? ''} onOpen={() => setPerson(r.user.id)} />)}
@@ -196,6 +195,16 @@ export function CommandCenter() {
             </div>
           ))}
       </section>
+      </div>
+      <aside className="cc-side" aria-label="مركز القرارات">
+        {center.data ? <>
+          <Decisions data={center.data} reload={() => { void center.reload(); void board.reload() }} />
+          <Alerts data={center.data} onPerson={setPerson} />
+          <WeekBrief data={center.data} />
+          <FieldNow data={center.data} onPerson={setPerson} />
+        </> : center.loading ? <div className="cc-skel">{Array.from({ length: 3 }, (_, i) => <i key={i} style={{ height: 160 }} />)}</div> : null}
+      </aside>
+      </div>
 
       {editing && <DayDialog row={editing} date={data!.date} onClose={() => setEditing(null)} onSaved={() => { setEditing(null); void board.reload() }} />}
       {person !== null && <PersonDrawer id={person} today={data?.rows.find((r) => r.user.id === person) ?? null} canEditDay={(r) => canManage(r)} onEditDay={(r) => setEditing(r)} onClose={() => setPerson(null)} />}
@@ -209,12 +218,15 @@ function TodayRow({ r, branch, now, manage, onOpen, onEdit }: { r: Row; branch: 
   const S = 5 * 60, E = 21 * 60, span = E - S
   const pos = (m: number) => `${Math.min(100, Math.max(0, ((m - S) / span) * 100))}%`
   const [s0, s1] = (r.schedule ?? '').split('–').map(toMin)
-  const tin = toMin(r.day?.check_in), tout = toMin(r.day?.check_out) ?? (r.day?.check_in ? toMin(now) : null)
+  const tin = toMin(r.day?.check_in)
   const st = STATE[r.state]
   const late = r.day?.late_minutes ?? 0
-  // Still at work: count the minutes up to now.
-  const live = r.day && !r.day.check_out && tin != null ? Math.max(0, (toMin(now) ?? tin) - tin) : null
-  const worked = live ?? r.day?.worked_minutes ?? 0
+  // Still at work: count the minutes up to now; but long after the shift ended it's a missing check-out, not work.
+  const nowM = toMin(now) ?? 0
+  const forgot = !!r.day?.check_in && !r.day.check_out && s1 != null && nowM > s1 + 120
+  const live = r.day && !r.day.check_out && tin != null && !forgot ? Math.max(0, nowM - tin) : null
+  const tout = toMin(r.day?.check_out) ?? (forgot ? s1! : r.day?.check_in ? nowM : null)
+  const worked = live ?? (forgot && tin != null ? Math.max(0, s1! - tin) : r.day?.worked_minutes ?? 0)
   const barHue = r.state === 'left' ? 'violet' : r.state === 'present' || r.state === 'late' ? 'mint' : st.hue
   return (
     <div className="cc-row" role="listitem" data-state={r.state} onClick={onOpen} tabIndex={0} onKeyDown={(e) => { if (e.key === 'Enter') onOpen() }}>
@@ -242,6 +254,7 @@ function TodayRow({ r, branch, now, manage, onOpen, onEdit }: { r: Row; branch: 
       <span className="cc-state">
         <span className="nx-chip nx-chip-dot" data-hue={st.hue}>{st.label}</span>
         {r.permission && <span className="nx-chip" data-hue="sky">إذن {r.permission}</span>}
+        {forgot && <span className="nx-chip" data-hue="rose">لم يسجّل الخروج</span>}
         {r.day?.manually_edited && <span className="nx-chip" data-hue="slate">عُدّل يدوياً</span>}
       </span>
       {manage ? <button type="button" className="cc-act" onClick={(e) => { e.stopPropagation(); onEdit() }} aria-label={`تعديل حضور ${r.user.name}`} title="تسجيل أو تعديل أو اعتماد"><Pencil size={16} /></button> : <span />}
