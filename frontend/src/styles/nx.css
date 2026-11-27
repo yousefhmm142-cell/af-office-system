@@ -1678,3 +1678,4 @@ html { scroll-behavior: smooth; }
 .cc[data-tv] .cc-clock b > span { font-size: 3.4rem; }
 .cc[data-tv] .cc-clock b em { font-size: 1.1rem; }
 .cc[data-tv] .cx-decide .cx-btns { display: none; }
+@media (max-width: 860px) { .cc-tools > [aria-pressed] { display: none; } .cc-tools { margin-top: 0; } .cc-tool { flex: 1; justify-content: center; } }
