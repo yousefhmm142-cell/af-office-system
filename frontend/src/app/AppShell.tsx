@@ -9,6 +9,7 @@ import { ThemeToggle } from '../ui/ThemeToggle'
 import { can, useUser } from './auth'
 import { GlobalSearch, openSearch, SearchButton } from './GlobalSearch'
 import { AssistantButton } from './Assistant'
+import { startLiveMotion } from '../lib/liveMotion'
 import { navFor, type NavItem } from './nav'
 import { ActivityButton, NotificationsBell } from './Notifications'
 import { Sidebar, useSidebarMini } from './Sidebar'
@@ -48,6 +49,9 @@ export function AppShell() {
     void document.fonts?.ready.then(place)
     return () => ro.disconnect()
   }, [pathname, tabs.length])
+
+  // Cards rise into place and figures count up, on every page.
+  useLayoutEffect(() => { const main = document.getElementById('main'); return main ? startLiveMotion(main) : undefined }, [])
 
   return (
     <div className={`shell${mini ? ' mini' : ''}`}>
