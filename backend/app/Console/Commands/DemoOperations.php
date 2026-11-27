@@ -4,6 +4,7 @@ namespace App\Console\Commands;
 
 use App\Http\Controllers\Api\DistributionController;
 use App\Http\Controllers\Api\GenerationController;
+use App\Http\Controllers\Api\LeaveController;
 use App\Http\Controllers\Api\SealController;
 use App\Models\Branch;
 use App\Models\User;
@@ -104,6 +105,17 @@ class DemoOperations extends Command
                 foreach (array_slice($seals, 0, 4 - $k) as $j => $seal) {
                     $this->call_($manager, fn (Request $r) => app(SealController::class)->update($r, 'record'), 'POST', ['number' => $seal, 'status' => 'used', 'date' => $today->subDays(14 - $k * 4 - $j)->toDateString(), 'details' => ['تركيب اشتراك', 'تبديل ساعة', 'إعادة شبك', 'فصل خط'][$j], 'board' => (string) mt_rand(300, 380)]);
                 }
+            }
+
+            // Leave and permission requests through the leave system: one waiting, one decided.
+            $staff = User::where('branch_id', $branch->id)->whereHas('employee', fn ($q) => $q->where('job_title', 'like', '%محصّل%'))->orderBy('id')->get();
+            $hr = User::where('username', 'hr.demo')->first();
+            if ($staff->count() >= 2 && $hr) {
+                $next = $today->addDays(3)->toDateString();
+                $this->call_($staff[0], fn (Request $r) => app(LeaveController::class)->store($r), 'POST', ['kind' => 'sick', 'starts' => $today->addDay()->toDateString(), 'ends' => $today->addDays(2)->toDateString(), 'reason' => 'مراجعة طبية وراحة بأمر الطبيب.']);
+                $this->call_($staff[1], fn (Request $r) => app(LeaveController::class)->store($r), 'POST', ['kind' => 'permission', 'starts' => $next, 'ends' => $next, 'from_time' => '10:00', 'to_time' => '12:00', 'reason' => 'موعد في دائرة الأحوال المدنية.']);
+                $id = DB::table('leave_requests')->where('user_id', $staff[1]->id)->value('id');
+                $this->call_($hr, fn (Request $r) => app(LeaveController::class)->decide($r, $id), 'PATCH', ['action' => 'approved']);
             }
             $this->line("✓ {$branch->name}: {$days} تقريراً وكشفاً، ورولا أختام");
         }

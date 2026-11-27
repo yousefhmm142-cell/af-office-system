@@ -217,9 +217,9 @@ class DemoData extends Command
 
                 return $m;
             };
-            $leave = $send($camp['people'][0], [$hr], 'طلب إجازة', 'ظرف عائلي، أرجو الموافقة.', 'leave_request', ['from' => $today->addDays(3)->toDateString(), 'to' => $today->addDays(5)->toDateString()]);
-            $send($allPeople['gaza']['people'][2], [$hr, $allPeople['gaza']['manager']], 'طلب إذن', 'موعد عند الطبيب.', 'permission_request', ['date' => $today->addDay()->toDateString(), 'from_time' => '10:00', 'to_time' => '12:00']);
-            $send($hr, [$mgmt], 'رفع: طلب إجازة', 'للاطلاع والموافقة.', 'message', null, $leave);
+            $leave = $send($allPeople['gaza']['manager'], [$hr], 'بلاغ: عطل في مولد الفرع', 'المولد 2 يصدر صوتاً غير طبيعي منذ الصباح، نرجو إرسال فني الصيانة.', 'fault');
+            $send($camp['manager'], [$hr, $mgmt], 'تقرير التحصيل الأسبوعي', 'بلغت نسبة التحصيل هذا الأسبوع 87%، والمتأخرات في منطقة السوق.', 'collection');
+            $send($hr, [$mgmt], 'رفع: عطل في مولد غزة', 'للاطلاع والمتابعة.', 'message', null, $leave);
             $send($camp['manager'], [$hr], 'نقص في الفنيين', 'نحتاج فنياً إضافياً في الفترة المسائية بسبب كثرة الأعطال.');
             $send($hr, [...$camp['people'], $camp['manager']], 'تنبيه بخصوص الحضور', 'نرجو الالتزام بمواعيد الدوام، وتسجيل الحضور من الزر أو ورقة الـQR.', 'message', null, null, 'فرع مخيم 2');
             $this->line('✓ المراسلات');

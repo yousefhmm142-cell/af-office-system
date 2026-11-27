@@ -642,3 +642,66 @@ dialog.handoff-dialog{max-width:min(940px,96vw)}.handoff-sheet{min-width:560px;p
 .af-directory .perm-switch[data-on] { border-color: color-mix(in srgb, var(--ok) 45%, var(--line)); color: var(--ok); }
 .af-directory .perm-switch[data-on] i { background: var(--ok); }
 .af-directory .perm-switch:not([data-on]) { color: var(--muted); }
+
+/* ---------- Messages ---------- */
+.msg-page { display: grid; gap: 14px; }
+.msg-page .ph-actions, .msg-page .page-head-actions { gap: 8px; }
+.msg-tabs { justify-self: start; }
+.msg-tabs button { display: inline-flex; align-items: center; gap: 6px; }
+.msg-count { min-width: 20px; height: 20px; padding: 0 6px; border-radius: 99px; display: inline-grid; place-items: center; background: var(--danger); color: #fff; font-size: 11px; font-weight: 800; }
+.msg-layout { display: grid; grid-template-columns: minmax(300px, 380px) minmax(0, 1fr); gap: 14px; align-items: start; }
+.msg-list { display: grid; gap: 10px; padding: 12px; position: sticky; top: 12px; max-height: calc(100dvh - 210px); grid-template-rows: auto auto 1fr; }
+.msg-tools { display: grid; gap: 8px; }
+.msg-tools .af-search { width: 100%; }
+.msg-kinds { flex-wrap: nowrap; overflow-x: auto; scrollbar-width: none; padding-bottom: 2px; }
+.msg-kinds .chip { flex: none; height: 32px; font-size: .8125rem; }
+.msg-items { display: grid; align-content: start; gap: 2px; overflow-y: auto; min-height: 0; margin-inline: -6px; padding-inline: 6px; }
+.msg-item { display: flex; gap: 10px; align-items: flex-start; text-align: start; width: 100%; padding: 10px; border: 0; border-radius: 14px; background: none; color: var(--ink); font: inherit; cursor: pointer; transition: background .15s; }
+.msg-item:hover { background: var(--chrome); }
+.msg-item[data-active] { background: var(--brand-soft); box-shadow: inset -3px 0 0 var(--brand); }
+.msg-item[data-unread] .msg-top b, .msg-item[data-unread] .msg-subject { font-weight: 800; }
+.msg-item[data-unread] .msg-top b::after { content: ''; display: inline-block; width: 8px; height: 8px; margin-inline-start: 6px; border-radius: 50%; background: var(--brand); vertical-align: middle; }
+.msg-text { flex: 1; min-width: 0; display: grid; gap: 2px; }
+.msg-top { display: flex; justify-content: space-between; align-items: center; gap: 8px; }
+.msg-top b { font-weight: 600; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+.msg-top small { color: var(--muted); font-size: .75rem; flex: none; }
+.msg-subject { display: flex; align-items: center; gap: 6px; font-size: .875rem; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+.msg-preview { color: var(--muted); font-size: .8125rem; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+.msg-pages { display: flex; align-items: center; justify-content: space-between; gap: 8px; padding-top: 8px; color: var(--muted); font-size: .8125rem; }
+.msg-empty { display: grid; justify-items: center; gap: 8px; padding: 36px 16px; color: var(--muted); text-align: center; }
+.msg-empty.big { min-height: 420px; align-content: center; }
+.msg-empty svg { opacity: .55; }
+.msg-read { min-height: 520px; padding: 0; overflow: hidden; display: grid; }
+.msg-conv { display: grid; grid-template-rows: auto 1fr auto; min-height: 520px; }
+.msg-conv-head { display: flex; align-items: center; gap: 10px; padding: 14px 18px; border-bottom: 1px solid var(--line-2); }
+.msg-conv-title { flex: 1; min-width: 0; }
+.msg-conv-title h2 { margin: 0; font-size: 1.125rem; }
+.msg-conv-title small { color: var(--muted); font-size: .8125rem; }
+.msg-conv-actions { display: flex; gap: 4px; }
+.msg-back { display: none; }
+.msg-thread { display: grid; align-content: start; gap: 12px; padding: 16px 18px; overflow-y: auto; }
+.msg-read-state { display: inline-flex; align-items: center; gap: 4px; }
+.msg-reply { display: grid; gap: 8px; padding: 12px 18px 16px; border-top: 1px solid var(--line-2); background: var(--surface); }
+.msg-reply textarea { min-height: 64px; resize: vertical; }
+.msg-reply-bar { display: flex; justify-content: flex-end; gap: 8px; }
+.msg-reply-bar .select { width: auto; }
+.leave-card { display: grid; gap: 18px; padding: 20px 22px; align-content: start; }
+.leave-who { display: flex; align-items: center; gap: 12px; }
+.leave-who b { display: block; font-size: 1.0625rem; }
+.leave-who small { color: var(--muted); }
+.leave-facts { display: grid; grid-template-columns: repeat(auto-fit, minmax(150px, 1fr)); gap: 10px; margin: 0; }
+.leave-facts div { padding: 12px 14px; border-radius: 14px; background: color-mix(in srgb, var(--ink) 4%, var(--surface)); border: 1px solid var(--line-2); }
+.leave-facts dt { color: var(--muted); font-size: .78rem; }
+.leave-facts dd { margin: 2px 0 0; font-weight: 800; }
+.leave-reason small { color: var(--muted); font-size: .78rem; }
+.leave-reason p { margin: 4px 0 0; line-height: 1.8; white-space: pre-wrap; }
+.leave-actions { display: flex; flex-wrap: wrap; gap: 8px; padding-top: 4px; border-top: 1px solid var(--line-2); padding-top: 14px; }
+@media (max-width: 900px) {
+  .msg-layout { grid-template-columns: 1fr; }
+  .msg-list { position: static; max-height: none; }
+  .msg-page.reading .msg-list, .msg-page.reading .msg-tabs { display: none; }
+  .msg-page:not(.reading) .msg-read { display: none; }
+  .msg-back { display: inline-grid; }
+  .msg-tabs { justify-self: stretch; overflow-x: auto; }
+  .msg-tabs button { flex: 1 0 auto; }
+}
