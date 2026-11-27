@@ -184,6 +184,8 @@ Route::middleware(['auth:sanctum', 'active'])->group(function () {
         Route::post('tasks/{task}/{action}', [TaskController::class, 'act'])->middleware('throttle:60,1');
 
         // Internal mail: everyone, within who-may-write-to-whom.
+        Route::get('assistant', [\App\Http\Controllers\Api\AssistantController::class, 'status']);
+        Route::post('assistant', [\App\Http\Controllers\Api\AssistantController::class, 'ask'])->middleware('throttle:20,1');
         Route::get('messages', [MessageController::class, 'index']);
         Route::get('messages/unread', [MessageController::class, 'unread']);
         Route::get('messages/recipients', [MessageController::class, 'recipients']);

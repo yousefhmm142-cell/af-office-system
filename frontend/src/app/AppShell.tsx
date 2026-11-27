@@ -8,6 +8,7 @@ import { Avatar, Logo } from '../ui/primitives'
 import { ThemeToggle } from '../ui/ThemeToggle'
 import { can, useUser } from './auth'
 import { GlobalSearch, openSearch, SearchButton } from './GlobalSearch'
+import { AssistantButton } from './Assistant'
 import { navFor, type NavItem } from './nav'
 import { ActivityButton, NotificationsBell } from './Notifications'
 import { Sidebar, useSidebarMini } from './Sidebar'
@@ -73,6 +74,7 @@ export function AppShell() {
             </button>
             <span className="grow" />
             <div className="topbar-end">
+              <AssistantButton />
               <SearchButton className="phone-only" />
               {hasSettings && (
                 <NavLink to="/settings" className="rbtn top-settings" aria-label="الإعدادات" title="الإعدادات">
