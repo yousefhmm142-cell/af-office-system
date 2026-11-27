@@ -1,4 +1,4 @@
-import { useLayoutEffect, useRef, useState, type ReactNode } from 'react'
+import { useLayoutEffect, useRef, useState, type CSSProperties, type ReactNode } from 'react'
 
 type P = [number, number]
 /** A closed path through the points, each corner rounded by its own radius. */
@@ -24,10 +24,15 @@ const CUT = 68, GAP = 8, R = 26, r = 11
 export function ChamferCard({ className, verified, children }: { className: string; verified: boolean; children: ReactNode }) {
   const ref = useRef<HTMLElement>(null)
   const [size, setSize] = useState<{ w: number; h: number } | null>(null)
+  // Once verified, the card keeps the height it had: the content changes, the window does not shrink.
+  const lastH = useRef(0)
+  const verifiedNow = useRef(verified)
+  verifiedNow.current = verified
+  const lock = verified && lastH.current ? lastH.current : null
   useLayoutEffect(() => {
     const el = ref.current
     if (!el) return
-    const measure = () => setSize({ w: el.offsetWidth, h: el.offsetHeight })
+    const measure = () => { if (!verifiedNow.current) lastH.current = el.offsetHeight; setSize({ w: el.offsetWidth, h: el.offsetHeight }) }
     measure()
     const ro = new ResizeObserver(measure)
     ro.observe(el)
@@ -43,13 +48,17 @@ export function ChamferCard({ className, verified, children }: { className: stri
   const tri1 = rounded([[1, 1], [s - 1, 1], [s - 1, s - 1]], [9, 15, 9])
   const tri2 = rounded([[1, 1], [s - 1, s - 1], [1, s - 1]], [9, 9, 15])
 
+  // Where each triangle travels to meet the other in the middle as one square, with a hairline between.
+  const mx = w / 2 - s / 2, my = h / 2 - s / 2, split = 2.5
+  const vars = { '--tx1': `${-(w - s - mx) + split}px`, '--ty1': `${my - split}px`, '--tx2': `${mx - split}px`, '--ty2': `${-(h - s - my) + split}px`, '--s': `${s}px` } as CSSProperties
+
   return (
-    <div className="lc-shell" data-verified={verified || undefined}>
+    <div className="lc-shell" data-verified={verified || undefined} style={vars}>
       {size && <>
         <svg className="lc-tri t1" width={s} height={s} aria-hidden="true"><path d={tri1} /></svg>
         <svg className="lc-tri t2" width={s} height={s} aria-hidden="true"><path d={tri2} /></svg>
       </>}
-      <section ref={ref} className={className} data-verified={verified || undefined} style={size ? { clipPath: `path("${card}")` } : undefined}>
+      <section ref={ref} className={className} data-verified={verified || undefined} style={size ? { clipPath: `path("${card}")`, minHeight: lock ?? undefined } : undefined}>
         {size && (
           <svg className="lc-frame" width={w} height={h} aria-hidden="true">
             <path className="lc-frame-base" d={edge} pathLength={1000} />

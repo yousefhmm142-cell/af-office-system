@@ -98,7 +98,7 @@ export function Login() {
         <div className="entry-theme"><ThemeToggle /></div>
         <ChamferCard className="login-card glass lc" verified={verified}>
           <span className="lc-glow" aria-hidden="true" />
-          <div className="lc-intro" aria-hidden="true"><i className="lc-ring" /><i className="lc-ring r2" /><span className="lc-emblem"><LockKeyhole size={34} /></span></div>
+          <div className="lc-intro" aria-hidden="true"><i className="lc-halo" /><i className="lc-ring" /><i className="lc-ring r2" /><i className="lc-ring r3" /></div>
           <div className="login-card-head">
             <span className="entry-badge" aria-hidden="true">{verified ? <ShieldCheck size={22} /> : <LockKeyhole size={22} />}</span>
             <h2 key={verified ? 'ok' : 'in'}>{isSetup ? 'تجهيز النظام' : verified ? 'تم التحقق بنجاح' : 'تسجيل الدخول'}</h2>
